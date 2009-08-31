@@ -1,0 +1,7 @@
+(in-package skat-requests)
+
+(let ((request-definitions nil))
+  (defmacro request (name &rest parameters)
+    (push (cons name parameters) request-definitions)
+    t))
+

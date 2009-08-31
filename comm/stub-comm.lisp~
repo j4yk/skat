@@ -1,0 +1,4 @@
+(in-package skat-comm)
+
+(defclass stub-comm (base-comm)
+  ())

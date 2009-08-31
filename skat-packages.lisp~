@@ -1,0 +1,18 @@
+(defpackage skat-kernel
+  (:nicknames :kern)
+  (:use :cl))
+
+(defpackage skat-communication
+  (:nicknames :skat-comm :comm)
+  (:use :cl)
+  (:export :start ; startet das Kommunikationsobjekt
+	   :login ; lässt es sich einwählen
+	   :get-request ; holt eine Anfrage aus ihm heraus
+	   :has-request ; gibt darüber Auskunft, ob Anfragen vorliegen
+	   :send  ; beauftragt es, eine Anfrage zu verschicken
+	   :stop  ; gibt ihm das Signal, die Arbeit einzustellen
+	   :received-other-content)) ; Condition für den Fall, dass Daten empfangen wurden, die nicht als Anfragen interpretiert werden konnten
+
+(defpackage skat-ui
+  (:nicknames :ui)
+  (:use :cl))

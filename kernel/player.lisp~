@@ -1,0 +1,33 @@
+(in-package skat-kernel)
+
+(defclass player ()
+  ((ui :accessor ui :initarg :ui)
+   (comm :accessor comm :initarg :comm)
+   (cards :accessor cards)
+   (current-trick :accessor current-trick)
+   (won-tricks :accessor won-tricks)
+   (bidding-mate :accessor bidding-mate)
+   (declarer :accessor declarer)
+   (game-declaration :accessor game-declaration)
+   (state :accessor state)))
+
+(let ((request-handlers nil))
+  (defun request-handler-fn (request-name)
+    (cdr (assoc request-name request-handlers)))
+  (defun register-handler-fn (request-name fn)
+    (push (cons request-name fn) request-handlers))
+  (defmacro defhandler (request-name states (&rest request-args) &body body)
+    (let* ((handler-fn-name request-name))
+      `(progn
+	 (defmethod ,handler-fn-name ((player player) sender ,@request-args)
+	   (if (find (state player) ,states)
+	       (progn
+		 ,@body)
+	       (signal 'request-state-mismatch :state state :request-name ,request-name :request-args ,@request-args)))
+	 (register-handler-fn ,request-name #',handler-fn-name)))))
+
+(defmethod receive-requests ((player player))
+  "Holt alle vorliegenden Anfragen aus dem Kommunikationsobjekt heraus und ruft entsprechende Anfragehandler auf."
+  (loop while (comm:has-request (comm player))
+     do (multiple-value-bind (request-name sender request-args) (comm:get-request (comm player))
+	  (apply (request-handler-fn request-name) sender request-args))))
