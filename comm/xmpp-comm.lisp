@@ -66,8 +66,11 @@ Setzt stop-working auf t und schickt sich selbst eine Anfrage, um aus xmpp:recei
 
 (defun receive-loop (comm)
   "Empfängt so lange XMPP-Stanzas, bis nach Empfang eines Stanzas (stop-working comm) t ergibt."
-  (loop until (stop-working comm)
-     do (xmpp:receive-stanza (connection comm))))
+  (loop 
+     (sleep 0.1) ; nicht die CPU hetzen
+     (if (stop-working comm)
+	 (return)
+	 (xmpp:receive-stanza (connection comm)))))
 
 (define-condition received-other-content ()
   ((message :accessor message :initarg :message)))
