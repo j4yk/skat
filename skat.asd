@@ -10,8 +10,10 @@
   :license "GNU General Public License"
   :depends-on (:cl-xmpp-tls :cl-glu :cl-glut :lispbuilder-sdl)
   :components ((:file skat-packages)
+	       (:file requests)
 	       (:module comm
 			:serial t
+			:depends-on (skat-packages)
 			:components ((:file base-comm)
 				     (:file xmpp-comm)))
 	       (:module ui
@@ -20,7 +22,9 @@
 			:components ((:file base-ui)
 				     (:module opengl-ui)))
 	       (:module kernel
-			:depends-on (skat-packages)
+			:depends-on (skat-packages requests)
 			:serial t
-			:components ((:file host)
+			:components ((:file request-handling)
+				     (:file base-kernel)
+				     (:file host)
 				     (:file player)))))

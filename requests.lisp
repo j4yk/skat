@@ -4,14 +4,14 @@
   (intern (symbol-name symbol) 'keyword))
 
 (let ((request-definitions nil))
-  (defun request (name &rest parameters)
+  (defun add-request-definition (name &rest parameters)
     (push (cons (symbol-to-keyword name) (mapcar #'symbol-to-keyword parameters)) request-definitions))
   (defun request-parameters (request-name)
     (cdr (assoc (symbol-to-keyword request-name) request-definitions)))
 ;;   (defun request-definition (request-name)
 ;;     (assoc (symbol-to-keyword request-name) request-definitions))
   (defmacro defrequest (name &rest parameters)
-    `(apply #'request ',name ',parameters))
+    `(apply #'add-request-definition ',name ',parameters))
   (defun correct-parameters (name &rest parameters)
     (equal (mapcar #'symbol-to-keyword parameters) (cdr (assoc (symbol-to-keyword name) request-definitions)))))
 

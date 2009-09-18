@@ -8,7 +8,7 @@ Nebeneffekte: setzt *print-circle* auf t."
     (setf (cdr (last list)) list) ; Ringschluss
     list))
 
-(defclass player ()
+(defclass player (base-kernel)
   ((ui :accessor ui :initarg :ui)
    (comm :accessor comm :initarg :comm)
    (cards :accessor cards)
@@ -28,43 +28,6 @@ Nebeneffekte: setzt *print-circle* auf t."
   "Bewegt die Ringliste in table einen Schritt weiter."
   (setf (table player) (cdr (table player))))
 
-(define-condition wrong-request-parameters (error)
-  ((request-name :accessor request-name :initarg :request-name)))
-
-(defun handler-fn-name (request-name)
-  (intern (concatenate 'string (symbol-name request-name) "-HANDLER") 'skat-kernel))
-
-(let ((request-handlers nil))
-  (defun handler-fn (request-name)
-    "Gibt das Handlerfunktionsobjekt für diese Art Anfrage zurück."
-    (cdr (assoc request-name request-handlers)))
-  (defun register-handler-fn (request-name fn)
-    "Macht die Funktion fn zur Handlerfunktion für Anfragen dieses Typs."
-    (push (cons request-name fn) request-handlers))
-  (defmacro defhandler (request-name states (player-arg sender-arg &rest request-args) &body body)
-    "Definiert eine Handlerfunktion für diese Anfragen."
-    (unless (apply #'requests:correct-parameters request-name request-args)
-      (error 'wrong-request-parameters :request-name request-name))
-    (let ((handler-fn-name (handler-fn-name request-name)))
-      `(progn
-	 (defmethod ,handler-fn-name ((,player-arg player) ,sender-arg ,@request-args)
-	   (if (find (state player) '(,@states))
-	       (progn
-		 ,@body)
-	       (signal 'request-state-mismatch :state (state ,player-arg) :request-name ',request-name :request-args ,@request-args)))
-	 (register-handler-fn ',request-name #',handler-fn-name)
-	 ',handler-fn-name))))
-
-(defmethod receive-requests ((player player))
-  "Holt alle vorliegenden Anfragen aus dem Kommunikationsobjekt heraus und ruft entsprechende Anfragehandler auf."
-  (loop while (comm:has-request (comm player))
-     do (multiple-value-bind (request-name sender request-args) (comm:get-request (comm player))
-	  (apply (handler-fn request-name) sender request-args))))
-
-(defmethod switch-state ((player player) target-state)
-  "Wechselt den Zustand des Kernelobjekts. Dies hat Auswirkungen auf die Menge der Akzeptierten Anfragen."
-  (setf (state player) target-state))
-
 (defmacro call-ui (request-name player sender &rest request-args)
   "Stellt die Anfrage an die UI weiter."
   `(apply #',(intern (symbol-name (handler-fn-name request-name)) 'skat-ui) (ui ,player) ,sender ,@request-args))
@@ -75,10 +38,6 @@ Nebeneffekte: setzt *print-circle* auf t."
 (defhandler login-data (start) (player ui data)
   (comm:login (comm player) data)
   (switch-state player 'unregistered))
-
-;; Comm teilt die eigene Adresse nach erfolgtem Login mit
-(defhandler own-address (unregistered) (player comm address)
-  (setf (own-address player) address))
 
 (defhandler registration-parameters (unregistered) (player comm parameters)
   (call-ui registration-parameters player comm parameters))
