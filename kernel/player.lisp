@@ -9,8 +9,7 @@ Nebeneffekte: setzt *print-circle* auf t."
     list))
 
 (defclass player (base-kernel)
-  ((ui :accessor ui :initarg :ui)
-   (comm :accessor comm :initarg :comm)
+  ((comm :accessor comm :initarg :comm)
    (cards :accessor cards)
    (current-trick :accessor current-trick)
    (won-tricks :accessor won-tricks)
@@ -27,10 +26,6 @@ Nebeneffekte: setzt *print-circle* auf t."
 (defmethod turn-table ((player player))
   "Bewegt die Ringliste in table einen Schritt weiter."
   (setf (table player) (cdr (table player))))
-
-(defmacro call-ui (request-name player sender &rest request-args)
-  "Stellt die Anfrage an die UI weiter."
-  `(apply #',(intern (symbol-name (handler-fn-name request-name)) 'skat-ui) (ui ,player) ,sender ,@request-args))
 
 (defhandler login-parameters (start) (player comm parameters)
   (call-ui login-parameters player comm parameters))

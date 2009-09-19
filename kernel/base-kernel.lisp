@@ -1,9 +1,14 @@
 (in-package :skat-kernel)
 
 (defclass base-kernel ()
-  ((comm :accessor comm :initarg :comm)
+  ((ui :accessor ui :initarg :ui)
+   (comm :accessor comm :initarg :comm)
    (state :accessor state)
    (own-address :accessor own-address)))
+
+(defmacro call-ui (request-name player sender &rest request-args)
+  "Stellt die Anfrage an die UI weiter."
+  `(apply #',(intern (symbol-name (handler-fn-name request-name)) 'skat-ui) (ui ,player) ,sender ,@request-args))
 
 (defmethod address-compare-function ((kernel base-kernel))
   (address-compare-function (comm kernel)))
