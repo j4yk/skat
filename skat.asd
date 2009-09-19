@@ -24,7 +24,8 @@
 	       (:module kernel
 			:depends-on (skat-packages requests)
 			:serial t
-			:components ((:file request-handling)
+			:components ((:file cards)
+				     (:file request-handling)
 				     (:file base-kernel)
 				     (:file host)
 				     (:file player)))))

@@ -7,7 +7,9 @@
   ((connection :accessor connection)
    (stop-working :accessor stop-working :initform nil)
    (resource :accessor resource)
-   (own-address :accessor own-address)))
+   (own-address :accessor own-address)
+   (address-compare-function :reader address-compare-function :initform #'string= :allocation :class))
+  (:documentation "Communication over an XMPP-Connection. The addresses are JID-strings."))
 
 (defmethod start ((comm xmpp-comm))
   "Initialisiert dieses XMPP-Verbindungsobjekt. Fügt nur die Login-Parameterliste für Kernel zum Abruf ein."

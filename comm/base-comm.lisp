@@ -19,7 +19,9 @@
   (car (queue-elements queue)))
 
 (defclass base-comm ()
-  ((arrived-requests :accessor arrived-requests :initform (make-queue))))
+  ((arrived-requests :accessor arrived-requests :initform (make-queue)))
+  (:documentation "Fundamental Communication system. Implements no useable connection.
+Meant as base class for other communication-classes."))
 
 (defun push-request (comm sender request-name &rest request-args)
   "Fügt eine Anfrage zur Queue hinzu."

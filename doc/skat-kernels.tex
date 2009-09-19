@@ -1,0 +1,13 @@
+\section{Skat Kernel Klassen}
+
+\subsection{Adressen anderer Spieler und des Hostes}
+Skat Kernels dürfen Adressen von Spielern auch in einer anderen Datenstruktur speichern,
+als das verbundene Kommunikationobjekt dies tut (zum Beispiel, um zusätzliche Informationen
+zu den Adressen zu speichern).
+Für diesen Fall muss der Skat-Kernel die Methode address-compare-function implementieren,
+um die Vergleichsfunktion für die Adressen im kerneleigenen Format zugänglich zu machen.
+
+Benutzt der Kernel die gleiche Datenstruktur, wie sein Kommunikationsobjekt,
+genügt die Spezialisierung von address-compare-function auf die Basisklasse base-kernel.
+Diese gibt lediglich das Ergebnis von address-compare-function auf das Kommunikations-
+objekt angewandt zurück.

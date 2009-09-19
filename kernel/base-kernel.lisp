@@ -5,6 +5,9 @@
    (state :accessor state)
    (own-address :accessor own-address)))
 
+(defmethod address-compare-function ((kernel base-kernel))
+  (address-compare-function (comm kernel)))
+
 (defmethod receive-requests ((subject base-kernel))
   "Holt alle vorliegenden Anfragen aus dem Kommunikationsobjekt heraus und ruft entsprechende Anfragehandler auf."
   (loop while (comm:has-request (comm subject))

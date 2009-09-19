@@ -1,3 +1,5 @@
+(in-package :skat-kernel)
+
 (defun user-provide (host-or-player ui-implementation comm-implementation)
   "Lässt den Benutzer auf der Konsole die nicht als Programmparameter angegebenen Einstellungen auswählen."
   (values (or host-or-player 
@@ -14,9 +16,9 @@
   "Erzeugt das Spieler- oder Hostobjekt, sowie Kommunikations- und UI-Objekt und startet deren Aktivität."
   (let* ((ui (make-instance ui-class))
 	 (comm (make-instance comm-class))
-	 (subject (make-instance 'subject-class :ui ui :comm comm)))
-    (start comm)
-    (start ui)))
+	 (subject (make-instance subject-class :ui ui :comm comm)))
+    (skat-comm:start comm)
+    (skat-ui:start ui)))
 
 (defun start-skat (&optional (host-or-player nil) (ui-implementation 'ui:stub-ui) (comm-implementation 'comm:stub-comm))
   "Haupteintrittsfunktion des Spiels"
