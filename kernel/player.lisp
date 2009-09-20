@@ -8,6 +8,9 @@ Nebeneffekte: setzt *print-circle* auf t."
     (setf (cdr (last list)) list) ; Ringschluss
     list))
 
+(defun turn-ring (ringlist-place)
+  (setf ringlist-place (cdr ringlist-place)))
+
 (defclass player (base-kernel)
   ((comm :accessor comm :initarg :comm)
    (cards :accessor cards)
