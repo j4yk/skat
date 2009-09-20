@@ -12,7 +12,7 @@
 ;;     (assoc (symbol-to-keyword request-name) request-definitions))
   (defmacro defrequest (name &rest parameters)
     `(apply #'add-request-definition ',name ',parameters))
-  (defun correct-parameters (name &rest parameters)
+  (defun correct-parameters-p (name &rest parameters)
     (equal (mapcar #'symbol-to-keyword parameters) (cdr (assoc (symbol-to-keyword name) request-definitions)))))
 
 (defrequest login-parameters parameters)

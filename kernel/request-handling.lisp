@@ -27,7 +27,7 @@ sender-arg:   Name des Parameters, der die Repräsentation des request-Absenders
 request-args: weitere Parameter für den request
 body:         forms des handlers"
   ;; prüfen, ob die Parameter richtig heißen
-  (unless (apply #'requests:correct-parameters request-name request-args)
+  (unless (apply #'requests:correct-parameters-p request-name request-args)
     (error 'wrong-request-parameters :request-name request-name))
   (let ((handler-fn-name (handler-fn-name request-name)))
     `(progn
