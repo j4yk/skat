@@ -10,7 +10,7 @@
   :license "GNU General Public License"
   :depends-on (:cl-xmpp-tls :cl-glu :cl-glut :lispbuilder-sdl)
   :components ((:file skat-packages)
-	       (:file requests)
+	       (:file requests :depends-on (skat-packages))
 	       (:module comm
 			:serial t
 			:depends-on (skat-packages)
