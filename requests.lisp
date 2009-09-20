@@ -1,17 +1,14 @@
 (in-package skat-requests)
 
-(defun symbol-to-keyword (symbol)
-  (intern (symbol-name symbol) 'keyword))
-
 (defvar *request-definitions* nil "Assoc Liste: (cons :request-name (list of :parameter-names))")
 	
 (defun add-request-definition (name &rest parameters)
   "Eine Request-Definition in *request-definitions* einfügen"
-  (push (cons (symbol-to-keyword name) (mapcar #'symbol-to-keyword parameters)) *request-definitions*))
+  (push (cons (to-keyword name) (mapcar #'to-keyword parameters)) *request-definitions*))
 
 (defun request-parameters (request-name)
   "Gibt die Parameterliste (keywords) eines Requests zurück."
-  (cdr (assoc (symbol-to-keyword request-name) *request-definitions*)))
+  (cdr (assoc (to-keyword request-name) *request-definitions*)))
 
 (defmacro defrequest (name &rest parameters)
   "Definiert eine neue Art Request.
@@ -25,7 +22,7 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 (defun correct-parameters-p (name &rest parameters)
   "Gibt t zurück, wenn die Namen der Parameter und ihre Reihenfolge mit denen in der
 Definition des Requests übereinstimmen."
-  (equal (mapcar #'symbol-to-keyword parameters) (cdr (assoc (symbol-to-keyword name) *request-definitions*))))
+  (equal (mapcar #'to-keyword parameters) (cdr (assoc (to-keyword name) *request-definitions*))))
 
 (defrequest login-parameters parameters)
 (defrequest login-data data)
