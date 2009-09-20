@@ -53,5 +53,5 @@
 (defpackage skat-requests
   (:nicknames requests)
   (:use :cl)
-  (:export correct-parameters
+  (:export correct-parameters-p
 	   request-parameters))
