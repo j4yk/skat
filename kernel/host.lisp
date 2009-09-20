@@ -2,7 +2,6 @@
 
 (defclass host (base-kernel)
   ((registered-players :accessor registered-players :initform nil)
-   (current-dealer :accessor current-dealer :documentation "DEPRECATED, dealers")
    (dealers :accessor dealers :initform nil :documentation "ringlist of players, dealer is car")
    (current-declarer :accessor current-declarer)
    (score-table :accessor score-table)
@@ -57,7 +56,6 @@
     (comm:send (comm host) (second (registered-players host)) cards (subseq cards 12 22))
     (comm:send (comm host) (third (registered-players host)) cards (subseq cards 22 32))
     (turn-ring (dealers host))
-    (setf (current-dealer host) (current-dealer host)) ; so lange der current-dealer-Slot noch existiert
     (comm:send (comm host) (current-forehand host) 'listen (current-middlehand host))
     (comm:send (comm host) (current-middlehand host) 'start-bidding (current-forehand host))
     ;; und jetzt warte auf pass
