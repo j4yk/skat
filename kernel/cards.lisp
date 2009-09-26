@@ -40,7 +40,7 @@
 (set-dispatch-macro-character #\# #\c #'read-card)
 
 (defmethod print-card (card stream)
-  (format stream "#c ~a ~a" (symbol-name (card-suit card)) (symbol-name (card-value card))))
+  (format stream "#c ~a ~a" (symbol-name (suit card)) (symbol-name (value card))))
 
 (defun all-cards ()
   (loop for suit in *card-suits*
