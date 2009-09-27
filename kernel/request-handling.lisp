@@ -22,6 +22,7 @@
 
 request-name: Name des requests
 states:       Liste mit states, in denen der request verarbeitet wird
+              (nil bedeutet, dass der Handler immer gilt)
 player-arg:   Name des Parameters, der das Spielerobjekt enthält
 sender-arg:   Name des Parameters, der die Repräsentation des request-Absenders enthält
 request-args: weitere Parameter für den request
@@ -29,16 +30,17 @@ body:         forms des handlers"
   ;; prüfen, ob die Parameter richtig heißen
   (unless (apply #'requests:correct-parameters-p request-name request-args)
     (error 'wrong-request-parameters :request-name request-name))
-  (let ((handler-fn-name (handler-fn-name request-name)))
-    `(progn
+  (let ((handler-fn-name (handler-fn-name request-name))
+	(encapsulated-body `(progn ,@body)))
+    `(prog1
        ;; handler function definieren
        (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) ,sender-arg ,@request-args)
-	 (if (member (state ,kernel-class-and-varname) '(,@states))
-	     (progn
-	       ,@body)
-	     (signal 'request-state-mismatch :state (state ,kernel-class-and-varname) 
-		     :request-name ',request-name :request-args ,@request-args)))
+	 ,(if (null states) ;; states = () bedeutet, Handler gilt immer
+	      encapsulated-body
+	      `(if (member (state ,kernel-class-and-varname) '(,@states)) ;; vorher state abfragen
+		   ,encapsulated-body
+		   (signal 'request-state-mismatch :state (state ,kernel-class-and-varname) 
+			   :request-name ',request-name :request-args ,@request-args))))
        ;; handler function registrieren
-       (register-handler-fn ',request-name #',handler-fn-name)
-       ;; function name zurückgeben, damit defhandler wie defmethod oder defun arbeitet
-       ',handler-fn-name)))
+       (register-handler-fn ',request-name #',handler-fn-name))))
+
