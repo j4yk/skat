@@ -15,10 +15,6 @@
 			      (:ace :a) 
 			      (:jack :j)))
 
-(defun to-keyword (symbol)
-  "Gibt ein Symbol gleichen Namens aus dem Package keyword zurück"
-  (intern (symbol-name symbol) :keyword))
-
 (defun translate-token (token list-of-token-lists)
   (let ((result (find (if (symbolp token) (to-keyword token) token) list-of-token-lists :test #'member)))
     (and result (car result))))
@@ -44,7 +40,7 @@
 (set-dispatch-macro-character #\# #\c #'read-card)
 
 (defmethod print-card (card stream)
-  (format stream "#c ~a ~a" (symbol-name (card-suit card)) (symbol-name (card-value card))))
+  (format stream "#c ~a ~a" (symbol-name (suit card)) (symbol-name (value card))))
 
 (defun all-cards ()
   (loop for suit in *card-suits*

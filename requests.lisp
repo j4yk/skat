@@ -1,19 +1,28 @@
 (in-package skat-requests)
 
-(defun symbol-to-keyword (symbol)
-  (intern (symbol-name symbol) 'keyword))
+(defvar *request-definitions* nil "Assoc Liste: (cons :request-name (list of :parameter-names))")
+	
+(defun add-request-definition (name &rest parameters)
+  "Eine Request-Definition in *request-definitions* einfügen"
+  (push (cons (to-keyword name) (mapcar #'to-keyword parameters)) *request-definitions*))
 
-(let ((request-definitions nil))
-  (defun add-request-definition (name &rest parameters)
-    (push (cons (symbol-to-keyword name) (mapcar #'symbol-to-keyword parameters)) request-definitions))
-  (defun request-parameters (request-name)
-    (cdr (assoc (symbol-to-keyword request-name) request-definitions)))
-;;   (defun request-definition (request-name)
-;;     (assoc (symbol-to-keyword request-name) request-definitions))
-  (defmacro defrequest (name &rest parameters)
-    `(apply #'add-request-definition ',name ',parameters))
-  (defun correct-parameters-p (name &rest parameters)
-    (equal (mapcar #'symbol-to-keyword parameters) (cdr (assoc (symbol-to-keyword name) request-definitions)))))
+(defun request-parameters (request-name)
+  "Gibt die Parameterliste (keywords) eines Requests zurück."
+  (cdr (assoc (to-keyword request-name) *request-definitions*)))
+
+(defmacro defrequest (name &rest parameters)
+  "Definiert eine neue Art Request.
+
+defrequest name parameter*
+
+name: Name des Requests. Daran orientieren sich die Handler-Funktionen zur Unterscheidung verschiedener Request-Arten.
+parameter: Name eines dem Request immer zwingend beigefügten Parameters"
+  `(apply #'add-request-definition ',name ',parameters))
+
+(defun correct-parameters-p (name &rest parameters)
+  "Gibt t zurück, wenn die Namen der Parameter und ihre Reihenfolge mit denen in der
+Definition des Requests übereinstimmen."
+  (equal (mapcar #'to-keyword parameters) (cdr (assoc (to-keyword name) *request-definitions*))))
 
 (defrequest login-parameters parameters)
 (defrequest login-data data)

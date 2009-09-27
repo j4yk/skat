@@ -1,17 +1,28 @@
+(defpackage skat-utils
+  (:nicknames :utils)
+  (:use :cl)
+  (:export to-keyword))
+
+(defpackage skat-requests
+  (:nicknames requests)
+  (:use cl skat-utils)
+  (:export correct-parameters-p
+	   request-parameters))
+
 (defmacro define-skat-packages ((&rest requests-kernel-ui) (&rest requests-kernel-comm))
   `(progn
      (defpackage skat-kernel
        (:nicknames :kernel :kern)
-       (:use :cl)
+       (:use cl skat-utils)
        (:export ,@requests-kernel-ui
 		,@requests-kernel-comm))
      (defpackage skat-ui
        (:nicknames :ui)
-       (:use :cl)
+       (:use cl)
        (:export ,@requests-kernel-ui))
      (defpackage skat-communication
        (:nicknames :skat-comm :comm)
-       (:use :cl)
+       (:use cl)
        (:export start ; startet das Kommunikationsobjekt
 		login ; lässt es sich einwählen
 		register ; weist zur Registrierung mit einem Host an
@@ -49,9 +60,3 @@
      game-end
      logout) 
     ())
-
-(defpackage skat-requests
-  (:nicknames requests)
-  (:use :cl)
-  (:export correct-parameters-p
-	   request-parameters))
