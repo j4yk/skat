@@ -28,6 +28,6 @@
 			:components ((:file cards)
 				     (:file request-handling)
 				     (:file ringlist)
-				     (:file base-kernel)
+				     (:file kernel)
 				     (:file host)
 				     (:file player)))))
