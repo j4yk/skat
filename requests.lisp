@@ -56,3 +56,5 @@ Definition des Requests übereinstimmen."
 	    player3-address player3-score)
 (defrequest game-end prompt)
 (defrequest logout)
+
+(defrequest message text)
