@@ -1,6 +1,6 @@
 (in-package skat-kernel)
 
-(defclass host (base-kernel)
+(defclass host (kernel)
   ((registered-players :accessor registered-players :initform nil)
    (dealers :accessor dealers :initform nil :documentation "ringlist of players, dealer is car")
    (current-declarer :accessor current-declarer)

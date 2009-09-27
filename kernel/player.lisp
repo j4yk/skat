@@ -1,6 +1,6 @@
 (in-package skat-kernel)
 
-(defclass player (base-kernel)
+(defclass player (kernel)
   ((ui :accessor ui :initarg :ui)
    (cards :accessor cards)
    (current-trick :accessor current-trick)
