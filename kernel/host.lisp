@@ -61,8 +61,7 @@
     ;; und jetzt warte auf pass
     ))
 
-(defhandler registration-request (registration) (host sender)
-  ;; FIXME: muss in allen States akzeptiert werden (zum Ablehnen)
+(defhandler registration-request () (host sender)
   (case (state host)
     (registration
        (if (>= (length (registered-players host)) 3)
