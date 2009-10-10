@@ -74,10 +74,13 @@
 		 (setf (dealers host) (make-ring (registered-players host))) ; setze die Spieler an einen runden Tisch
 		 (start-game host)))))
     (otherwise
-     (comm:send (comm host) sender 'registration-reply nil)))) ; es werden keine Registrierungen akzeptiert
+     ;; es werden keine Registrierungen akzeptiert
+     (comm:send (comm host) sender 'registration-reply nil)
+     (comm:send (comm host) sender 'message "Host is not in registration mode.")))) 
 
 (defhandler game-start (game-over) (host sender)
   (unless (member sender (want-game-start host) :test (address-compare-function host))
-    (push sender (want-game-start host)))
+    (push sender (want-game-start host))) ; vermerke, dass der Spieler game-start gesendet hat
   (if (null (set-difference (want-game-start host) (registered-players host)))
       (switch-state host 'bidding-1)))
+
