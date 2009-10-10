@@ -49,7 +49,7 @@ Definition des Requests übereinstimmen."
 (defrequest choose-card)
 (defrequest trick cards winner)
 (defrequest game-over)
-(defrequest cards-score declarer-scrore defenders-score)
+(defrequest cards-score declarer-score defenders-score)
 (defrequest game-result declaration won score)
 (defrequest match-score player1-address player1-score
 	    player2-address player2-score
