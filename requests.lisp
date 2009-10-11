@@ -33,6 +33,7 @@ Definition des Requests übereinstimmen."
 (defrequest registration-reply accepted)
 (defrequest server-update events)
 (defrequest unregister)
+(defrequest logout)
 (defrequest playmates left right)
 (defrequest game-start)
 (defrequest cards cards)
