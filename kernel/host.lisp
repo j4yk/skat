@@ -12,14 +12,6 @@
    (want-game-start :accessor want-game-start :initform nil 
 		    :documentation "Liste der Spieler, die eine neue Runde wollen")))
 
-(defhandler login-parameters (start) (host comm parameters)
-  "Von der Kommunikation kommende Parameter zum Einwählen ins Kommunikationsmedium"
-  (call-ui login-parameters host comm parameters))
-
-(defhandler login-data (start) (host ui data)
-  (comm:login (comm host) data)
-  (switch-state host 'registration))
-
 (defmethod send-to-players ((host host) request-name &rest request-args)
   "Sendet einen request an alle registrierten Spieler."
   (dolist (receiver (registered-players host))
@@ -64,6 +56,18 @@
     (comm:send (comm host) (current-middlehand host) 'start-bidding (current-forehand host))
     ;; und jetzt warte auf pass
     ))
+
+;; state: start. Alles vor dem Registrieren.
+
+(defhandler login-parameters (start) (host comm parameters)
+  "Von der Kommunikation kommende Parameter zum Einwählen ins Kommunikationsmedium"
+  (call-ui login-parameters host comm parameters))
+
+(defhandler login-data (start) (host ui data)
+  (comm:login (comm host) data)
+  (switch-state host 'registration))
+
+;; state: registration, alles
 
 (defhandler registration-request () (host sender)
   "Behandelt Anfragen von Spielern, ob sie sich an den Tisch setzen dürfen"
