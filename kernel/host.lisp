@@ -102,3 +102,7 @@
   (if (null (set-difference (want-game-start host) (registered-players host)))
       (switch-state host 'bidding-1)))
 
+;; state: bidding-1. Erste Stufe des Reizens
+
+(define-state-entering-function bidding-1 host
+  (start-game host))
