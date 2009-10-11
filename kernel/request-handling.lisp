@@ -17,6 +17,12 @@
   "Macht die Funktion fn zur Handlerfunktion für Anfragen dieses Typs."
   (push (cons request-name fn) *request-handlers*))
 
+(defun parse-body (body)
+  "Gibt die Forms und den Docstring zurück."
+  (if (stringp (car body))
+      (values (cdr body) (car body))
+      (values body nil)))
+
 (defmacro defhandler (request-name states (kernel-class-and-varname sender-arg &rest request-args) &body body)
   "Definiert eine Handlerfunktion für diese Anfragen.
 
@@ -30,17 +36,19 @@ body:         forms des handlers"
   ;; prüfen, ob die Parameter richtig heißen
   (unless (apply #'requests:correct-parameters-p request-name request-args)
     (error 'wrong-request-parameters :request-name request-name))
-  (let ((handler-fn-name (handler-fn-name request-name))
-	(encapsulated-body `(progn ,@body)))
-    `(prog1
-       ;; handler function definieren
-       (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) ,sender-arg ,@request-args)
-	 ,(if (null states) ;; states = () bedeutet, Handler gilt immer
-	      encapsulated-body
-	      `(if (member (state ,kernel-class-and-varname) '(,@states)) ;; vorher state abfragen
-		   ,encapsulated-body
-		   (signal 'request-state-mismatch :state (state ,kernel-class-and-varname) 
-			   :request-name ',request-name :request-args ,@request-args))))
-       ;; handler function registrieren
-       (register-handler-fn ',request-name #',handler-fn-name))))
+  (multiple-value-bind (forms docstring) (parse-body body)
+    (let ((handler-fn-name (handler-fn-name request-name))
+	  (encapsulated-body `(progn ,@forms)))
+      `(prog1
+	   ;; handler function definieren
+	   (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) ,sender-arg ,@request-args)
+	     ,(or docstring (format nil "Handler Funktion für Request ~a" request-name))
+	     ,(if (null states) ;; states = () bedeutet, Handler gilt immer
+		  encapsulated-body
+		  `(if (member (state ,kernel-class-and-varname) '(,@states)) ;; vorher state abfragen
+		       ,encapsulated-body
+		       (signal 'request-state-mismatch :state (state ,kernel-class-and-varname) 
+			       :request-name ',request-name :request-args ,@request-args))))
+	 ;; handler function registrieren
+	 (register-handler-fn ',request-name #',handler-fn-name)))))
 
