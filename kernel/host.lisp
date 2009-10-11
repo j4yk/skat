@@ -100,13 +100,59 @@
      (inform-players-of-leaving-player)
      (send-to-players host 'message (format nil "Spieler ~a verlässt die Runde." sender)))))
 
+;; game-start wird ansonsten vorrangig im game-over state behandelt
+;; deshalb steht der Handler unten
+
+;; state: bidding-1. Erste Stufe des Reizens
+;;        bidding-2. Zweite Reizrunde
+;;        bidding-3. Dritte Reizrunde (Ramschentscheidung)
+
+(define-state-entering-function bidding-1 host
+  (start-game host))
+
+(defhandler bid (bidding-1 bidding-2 bidding-3) (host sender value)
+  "Behandelt das Ansagen eines Reizwertes durch einen Spieler."
+  )
+
+(defhandler join (bidding-1 bidding-2 bidding-3) (host sender value)
+  "Behandelt das Mitgehen eines Spielers bei einem Reizwert."
+  )
+
+(defhandler pass (bidding-1 bidding-2 bidding-3) (host sender value)
+  "Behandelt das Passen eines Mitspielers bei einem Reizwert."
+  )
+
+;; state: declarer-found. Warte auf hand-decision.
+
+(defhandler hand-decision (declarer-found) (host sender hand)
+  "Behandelt die Ansage, ob der Declarer Hand spielt."
+  )
+
+;; state: skat-away. Warte auf Rückgabe des Skats.
+
+(defhandler skat (skat-away) (host sender skat)
+  "Behandelt die Rückgabe des Skats vom Declarer."
+  )
+
+;; state: await-declaration. Warte auf die Ansage des Declarers.
+
+(defhandler declaration (await-declaration) (host sender declaration)
+  "Behandelt die Verkündung der Ansage des Declarers."
+  )
+
+;; state: in-game. Das Spiel läuft, die Stiche werden mitgenommen
+
+(defhandler card (in-game) (host sender card)
+  "Behandelt das Spielen einer Karte durch einen Spieler."
+  )
+
+;; state: game-over. Das Spiel ist vorbei
+
+(define-state-entering-function game-over host
+  (setf (want-game-start host) nil))	; setze die Liste der Spielwilligen zurück
+
 (defhandler game-start (game-over) (host sender)
   (unless (member sender (want-game-start host) :test (address-compare-function host))
     (push sender (want-game-start host))) ; vermerke, dass der Spieler game-start gesendet hat
   (if (null (set-difference (want-game-start host) (registered-players host)))
       (switch-state host 'bidding-1)))
-
-;; state: bidding-1. Erste Stufe des Reizens
-
-(define-state-entering-function bidding-1 host
-  (start-game host))
