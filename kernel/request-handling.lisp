@@ -23,7 +23,7 @@
       (values (cdr body) (car body))
       (values body nil)))
 
-(defmacro defhandler (request-name states (kernel-class-and-varname sender-arg &rest request-args) &body body)
+(defmacro defhandler (request-name (&rest states) (kernel-class-and-varname sender-arg &rest request-args) &body body)
   "Definiert eine Handlerfunktion für diese Anfragen.
 
 request-name: Name des requests
@@ -43,9 +43,9 @@ body:         forms des handlers"
 	   ;; handler function definieren
 	   (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) ,sender-arg ,@request-args)
 	     ,(or docstring (format nil "Handler Funktion für Request ~a" request-name))
-	     ,(if (null states) ;; states = () bedeutet, Handler gilt immer
+	     ,(if (null states) ; states = () bedeutet, Handler gilt immer
 		  encapsulated-body
-		  `(if (member (state ,kernel-class-and-varname) '(,@states)) ;; vorher state abfragen
+		  `(if (member (state ,kernel-class-and-varname) '(,@states)) ; vorher state abfragen
 		       ,encapsulated-body
 		       (signal 'request-state-mismatch :state (state ,kernel-class-and-varname) 
 			       :request-name ',request-name :request-args ,@request-args))))
