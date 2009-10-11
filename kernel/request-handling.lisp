@@ -17,12 +17,6 @@
   "Macht die Funktion fn zur Handlerfunktion für Anfragen dieses Typs."
   (push (cons request-name fn) *request-handlers*))
 
-(defun parse-body (body)
-  "Gibt die Forms und den Docstring zurück."
-  (if (stringp (car body))
-      (values (cdr body) (car body))
-      (values body nil)))
-
 (defmacro defhandler (request-name (&rest states) (kernel-class-and-varname sender-arg &rest request-args) &body body)
   "Definiert eine Handlerfunktion für diese Anfragen.
 
@@ -36,7 +30,7 @@ body:         forms des handlers"
   ;; prüfen, ob die Parameter richtig heißen
   (unless (apply #'requests:correct-parameters-p request-name request-args)
     (error 'wrong-request-parameters :request-name request-name))
-  (multiple-value-bind (forms docstring) (parse-body body)
+  (multiple-value-bind (forms docstring) (parse-function-body body)
     (let ((handler-fn-name (handler-fn-name request-name))
 	  (encapsulated-body `(progn ,@forms)))
       `(prog1
