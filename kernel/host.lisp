@@ -1,8 +1,11 @@
 (in-package skat-kernel)
 
-(defclass host (kernel)
+(defkernel host (start registration
+		       bidding-1 bidding-2 bidding-3
+		       declarer-found skat-away await-declaration
+		       in-game game-over)
   ((registered-players :accessor registered-players :initform nil)
-   (dealers :accessor dealers :initform nil :documentation "ringlist of players, dealer is car")
+   (dealers :accessor dealers :documentation "ringlist of players, dealer is car")
    (current-declarer :accessor current-declarer)
    (score-table :accessor score-table)
    (skat :accessor skat :documentation "Noch nicht ausgegebener Skat")
@@ -10,6 +13,7 @@
 		    :documentation "Liste der Spieler, die eine neue Runde wollen")))
 
 (defhandler login-parameters (start) (host comm parameters)
+  "Von der Kommunikation kommende Parameter zum Einwählen ins Kommunikationsmedium"
   (call-ui login-parameters host comm parameters))
 
 (defhandler login-data (start) (host ui data)
@@ -62,21 +66,35 @@
     ))
 
 (defhandler registration-request () (host sender)
+  "Behandelt Anfragen von Spielern, ob sie sich an den Tisch setzen dürfen"
   (case (state host)
     (registration
-       (if (>= (length (registered-players host)) 3)
-	   (comm:send (comm host) sender 'registration-reply nil) ; es gibt schon drei Spieler
-	   (unless (member sender (registered-players host) :test (address-compare-function host))
-	     (send-to-players host 'server-update `(:player-join ,sender))
-	     (push sender (registered-players host)) ; Spieler aufnehmen
-	     (comm:send (comm host) sender 'registration-reply t)
-	     (if (= (length (registered-players host)) 3)
-		 (setf (dealers host) (make-ring (registered-players host))) ; setze die Spieler an einen runden Tisch
-		 (start-game host)))))
+     ;; während der Registrierungsphase werden Registrierungen akzeptiert
+     (if (>= (length (registered-players host)) 3)
+	 (comm:send (comm host) sender 'registration-reply nil) ; es gibt schon drei Spieler
+	 (unless (member sender (registered-players host) :test (address-compare-function host))
+	   (send-to-players host 'server-update `(:player-join ,sender))
+	   (push sender (registered-players host)) ; Spieler aufnehmen
+	   (comm:send (comm host) sender 'registration-reply t)
+	   (when (= (length (registered-players host)) 3)
+	     (setf (dealers host) (make-ring (registered-players host))) ; setze die Spieler an einen runden Tisch
+	     ;;(start-game host)))))  	  ; erstmal warten, bis alle game-start gesendet haben
+	     ))))
     (otherwise
      ;; es werden keine Registrierungen akzeptiert
      (comm:send (comm host) sender 'registration-reply nil)
-     (comm:send (comm host) sender 'message "Host is not in registration mode.")))) 
+     (comm:send (comm host) sender 'message "Host is not in registration mode."))))
+
+(defhandler unregister () (host sender)
+  "Behandelt die Nachricht eines Spielers, dass er die Runde verlässt."
+  (ecase (state host)
+    (registration
+     ;; Spieler aus der Liste entfernen
+     (setf (registered-players host)
+	   (delete sender (registered-players host) :test (address-compare-function host)))
+     (slot-makunbound host 'dealers)	  ; die Tischrunde auflösen
+     (inform-players-of-leaving-player)
+     (send-to-players host 'message (format nil "Spieler ~a verlässt die Runde." sender)))))
 
 (defhandler game-start (game-over) (host sender)
   (unless (member sender (want-game-start host) :test (address-compare-function host))
