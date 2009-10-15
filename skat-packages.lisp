@@ -1,7 +1,8 @@
 (defpackage skat-utils
   (:nicknames :utils)
   (:use :cl)
-  (:export to-keyword))
+  (:export to-keyword
+	   parse-function-body))
 
 (defpackage skat-requests
   (:nicknames requests)
@@ -18,11 +19,11 @@
 		,@requests-kernel-comm))
      (defpackage skat-ui
        (:nicknames :ui)
-       (:use cl)
+       (:use cl skat-utils)
        (:export ,@requests-kernel-ui))
      (defpackage skat-communication
        (:nicknames :skat-comm :comm)
-       (:use cl)
+       (:use cl skat-utils)
        (:export start ; startet das Kommunikationsobjekt
 		login ; lässt es sich einwählen
 		register ; weist zur Registrierung mit einem Host an

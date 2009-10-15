@@ -17,7 +17,7 @@
   "Macht die Funktion fn zur Handlerfunktion für Anfragen dieses Typs."
   (push (cons request-name fn) *request-handlers*))
 
-(defmacro defhandler (request-name (&rest states) (kernel-class-and-varname sender-arg &rest request-args) &body body)
+(defmacro defhandler (request-name (&rest states) (kernel-class-and-varname &rest request-args) &body body)
   "Definiert eine Handlerfunktion für diese Anfragen.
 
 request-name: Name des requests
@@ -32,10 +32,12 @@ body:         forms des handlers"
     (error 'wrong-request-parameters :request-name request-name))
   (multiple-value-bind (forms docstring) (parse-function-body body)
     (let ((handler-fn-name (handler-fn-name request-name))
-	  (encapsulated-body `(progn ,@forms)))
+	  (encapsulated-body `(let ((kernel ,kernel-class-and-varname)
+				    (request-name ',request-name))
+				,@forms)))
       `(prog1
 	   ;; handler function definieren
-	   (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) ,sender-arg ,@request-args)
+	   (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) sender ,@request-args)
 	     ,(or docstring (format nil "Handler Funktion für Request ~a" request-name))
 	     ,(if (null states) ; states = () bedeutet, Handler gilt immer
 		  encapsulated-body

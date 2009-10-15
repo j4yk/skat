@@ -9,24 +9,24 @@
   :author "Jakob Reschke <jakob@resfarm.de>"
   :license "GNU General Public License"
   :depends-on (:cl-xmpp-tls :cl-glu :cl-glut :lispbuilder-sdl)
+  :serial t
   :components ((:file skat-packages)
-	       (:file utils :depends-on (skat-packages))
-	       (:file requests :depends-on (skat-packages utils))
+	       (:file utils)
+	       (:file requests)
 	       (:module comm
 			:serial t
-			:depends-on (skat-packages utils)
 			:components ((:file base-comm)
 				     (:file xmpp-comm)))
 	       (:module ui
 			:serial t
-			:depends-on (skat-packages)
 			:components ((:file base-ui)
 				     (:module opengl-ui)))
 	       (:module kernel
-			:depends-on (skat-packages requests)
 			:serial t
 			:components ((:file cards)
+				     (:file bidding)
 				     (:file request-handling)
+				     (:file states)
 				     (:file ringlist)
 				     (:file kernel)
 				     (:file host)

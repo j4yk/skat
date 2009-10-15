@@ -17,6 +17,23 @@
   "Stellt die Anfrage an die UI weiter."
   `(apply #',(intern (symbol-name (handler-fn-name request-name)) 'skat-ui) (ui ,player) ,sender ,@request-args))
 
+(define-condition invalid-request-sender-error (error)
+  ((sender :accessor sender :initarg :sender)
+   (kernel :accessor kernel :initarg :kernel)
+   (expected-senders :accessor expected-senders :initarg :expected-senders)
+   (request-name :accessor request-name :initarg :request-name)))
+
+(defmacro with-correct-sender (sender correct-senders &body body)
+  "Führt body nur aus, wenn sender und corretct-sender übereinstimmen.
+Andernfalls wird ein invalid-request-sender-error signalisiert.
+Dieses Makro sollte nur innerhalb von defhandler verwendet werden,
+da es die Bindungen der Variablen kernel und request-name voraussetzt."
+  `(if (or ,@(loop for correct-sender in correct-senders
+	       collect `(funcall (address-compare-function kernel) ,sender ,correct-sender)))
+       (progn ,@body)
+       (error 'invalid-request-sender-error :sender ,sender :kernel kernel :expected-senders (list ,@correct-senders)
+	      :request request-name)))
+
 (defmethod address-compare-function ((kernel kernel))
   (address-compare-function (comm kernel)))
 
@@ -39,5 +56,6 @@ Zustand wechseln zu lassen"))
       (error 'invalid-kernel-state-error :kernel-class (class-of kernel) :target-state target-state)))
 
 ;; Comm teilt die eigene Adresse nach erfolgtem Login mit
-(defhandler own-address (unregistered) (kernel comm address)
-  (setf (own-address kernel) address))
+(defhandler own-address (unregistered) (kernel address)
+  (let ((comm sender))
+    (setf (own-address kernel) address)))
