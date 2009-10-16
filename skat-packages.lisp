@@ -2,7 +2,8 @@
   (:nicknames :utils)
   (:use :cl)
   (:export to-keyword
-	   parse-function-body))
+	   parse-function-body
+	   separate-lambda-list))
 
 (defpackage skat-requests
   (:nicknames requests)

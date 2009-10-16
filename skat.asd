@@ -24,6 +24,7 @@
 	       (:module kernel
 			:serial t
 			:components ((:file cards)
+				     (:file tricks)
 				     (:file bidding)
 				     (:file request-handling)
 				     (:file ringlist)
