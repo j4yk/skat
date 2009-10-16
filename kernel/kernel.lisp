@@ -13,6 +13,28 @@
       ,@direct-slots)
      ,@options))
 
+(defmacro defkernelmethod (name (kernel-class &rest method-parameters) &body body)
+  "Definiert eine neue Methode für eine Kernelklasse,
+in deren body eine lexikalische Bindung der Variable kernel
+etabliert wird.
+
+Beispiel:
+(defkernelmethod testmethode (player text)
+  \"Dokumentation\"
+  (comm:send (comm kernel) 'message text))
+
+ergibt eine Methode namens testmethode mit der Lambda-Liste:
+(defmethod testmethode ((player player) text)
+  \"Dokumentation\"
+  (let ((kernel player))
+    (comm:send (comm kernel) 'message text)))"
+  (multiple-value-bind (forms docstring) (parse-function-body body) ; docstring finden
+    `(defmethod ,name ((,kernel-class ,kernel-class) ,@method-parameters)
+       ,docstring
+       (let ((kernel ,kernel-class))	; kernel binden
+	 (declare (ignorable kernel))	; muss aber nicht zwangsläufig benutzt werden
+	 ,@forms))))
+
 (defmacro call-ui (request-name player sender &rest request-args)
   "Stellt die Anfrage an die UI weiter."
   `(apply #',(intern (symbol-name (handler-fn-name request-name)) 'skat-ui) (ui ,player) ,sender ,@request-args))
