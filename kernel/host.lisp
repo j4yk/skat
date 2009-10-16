@@ -132,17 +132,34 @@
     ;; und jetzt warte auf pass
     ))
 
+(define-state-switch-function bidding-2 (host listener bidder)
+  "Zweite Reizinstanz starten.
+bidder (normalerweise current-dealer) sagt listener weiter."
+  (listen-to listener bidder))
+
+(define-state-switch-function bidding-3 (host bidder)
+  "Wechselt den Host in den Zustand bidding-3.
+Vorderhand darf entscheiden, ob geramscht wird oder nicht."
+  ;; der Spieler soll entscheiden, ob er 18 reizt oder geramscht werden soll
+  (comm:send (comm host) bidder 'start-bidding (own-address host)))
+
 (defhandler bid (bidding-1 bidding-2 bidding-3) (host value)
   "Behandelt das Ansagen eines Reizwertes durch einen Spieler."
-  (setf (bidding-values host) (cut-away-bidding-values value (bidding-values host))) ; Reizwerte aktualisieren
-  )
+  (with-correct-sender sender ((current-bidder host))
+  ;; Reizwerte aktualisieren
+    (setf (bidding-values host) (cut-away-bidding-values value (bidding-values host)))
+    ;; Spieler erhebt Anspruch auf Spielführung
+    (setf (current-declarer host) sender)
+    (case (state host)
+      (bidding-3
+       ;; Vorderhand reizt in dritter Instanz 18, d. h. dieser Spieler wird Spielführer
+       (declarer-found (current-declarer host))))))
 
 (defhandler join (bidding-1 bidding-2 bidding-3) (host value)
   "Behandelt das Mitgehen eines Spielers bei einem Reizwert."
-  (case (state host)
-    (bidding-1
-     ;; in der ersten Reizrunde geht einer mit, d. h. Reizen ist schonmal unmöglich
-     (setf (current-declarer sender) sender))))
+  (with-correct-sender sender ((current-listener host))
+    ;; Spieler erhebt durch Mitgehen Anspruch auf Spielführung
+    (setf (current-declarer host) sender)))
 
 (defmacro player-case (player &body cases)
   "(case-player {address}
