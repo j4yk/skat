@@ -13,6 +13,7 @@
    (score-table :accessor score-table :documentation "die Punktetabelle aus (cons Adresse Punktzahl)")
    (skat :accessor skat :documentation "Noch nicht ausgegebener Skat")
    (tricks :accessor tricks :documentation "Gespielte Stiche")
+   (current-trick :accessor current-trick :documentation "Der aktuell auf dem Tisch liegende Stich")
    (want-game-start :accessor want-game-start :initform nil 
 		    :documentation "Liste der Spieler, die eine neue Runde wollen")))
 
@@ -103,13 +104,21 @@
 ;;        bidding-2. Zweite Reizrunde
 ;;        bidding-3. Dritte Reizrunde (Ramschentscheidung)
 
+(defkernelmethod listener (host listener bidder)
+  "Nominiert einen Hörer und sendet ihm den entsprechenden Auftrag."
+  (setf (current-listener host) listener)
+  (comm:send (comm host) listener 'listen bidder))
+
+(defkernelmethod bidder (host bidder listener)
+  "Nominiert einen Reizansager und sendet ihm den entsprechenden Auftrag."
+  (setf (current-bidder host) bidder)
+  (comm:send (comm host) bidder 'start-bidding listener))
+
 (defmacro listen-to (listener bidder)
   "Sendet zwei Spielern die Befehle zum gegenseitigen Reizen."
   `(progn
-     (setf (current-listener host) ,listener
-	   (current-bidder host) ,bidder)
-     (comm:send (comm host) ,listener 'listen ,bidder)
-     (comm:send (comm host) ,bidder 'start-bidding ,listener)))
+     (listener host ,listener ,bidder)
+     (bidder host ,bidder ,listener)))
 
 (define-state-switch-function bidding-1 (host)
   "Startet das eigentliche Spiel, teilt die Karten aus und startet den Reizvorgang."
@@ -141,12 +150,13 @@ bidder (normalerweise current-dealer) sagt listener weiter."
   "Wechselt den Host in den Zustand bidding-3.
 Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   ;; der Spieler soll entscheiden, ob er 18 reizt oder geramscht werden soll
-  (comm:send (comm host) bidder 'start-bidding (own-address host)))
+  (bidder host bidder nil)
+  (slot-makunbound host 'current-listener))
 
 (defhandler bid (bidding-1 bidding-2 bidding-3) (host value)
   "Behandelt das Ansagen eines Reizwertes durch einen Spieler."
   (with-correct-sender sender ((current-bidder host))
-  ;; Reizwerte aktualisieren
+    ;; Reizwerte aktualisieren
     (setf (bidding-values host) (cut-away-bidding-values value (bidding-values host)))
     ;; Spieler erhebt Anspruch auf Spielführung
     (setf (current-declarer host) sender)
@@ -195,7 +205,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 	  ;; d. h. Geber spielt
 	  (declarer-found)
 	 (current-dealer		; Geber hat gepasst
-	  (if (null (current-declarer host))
+	  (if (not (slot-boundp host 'current-declarer))
 	      ;; noch hat keiner etwas gereizt, d. h. Vorderhand entscheidet über Ramsch
 	      (bidding-3 (current-forehand host))
 	      ;; es hat schon jemand etwas gereizt und nicht gepasst, derjenige spielt
@@ -206,34 +216,63 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 ;; state: declarer-found. Warte auf hand-decision.
 
 (define-state-switch-function declarer-found (host)
-  "Der Spielführer steht nun fest. ..."
-  )
+  "Der Spielführer steht nun fest."
+  (send-to-players host 'declarer (current-declarer host)))
 
 (defhandler hand-decision (declarer-found) (host hand)
   "Behandelt die Ansage, ob der Declarer Hand spielt."
-  )
+  (if hand
+      (await-declaration)		; warte gleich auf die Ansage
+      (skat-away)))			; verschicke den Skat
 
 ;; state: skat-away. Warte auf Rückgabe des Skats.
 
-(defhandler skat (skat-away) (host  skat)
+(define-state-switch-function skat-away (host)
+  "Gibt den Skat zum Spielführer und wechselt in den skat-away Zustand."
+  (comm:send (comm host) (current-declarer host) 'skat (skat host)) ; Skat verschicken
+  (slot-makunbound host 'skat))					    ; der Host hat den dann nicht mehr
+
+(defhandler skat (skat-away) (host skat)
   "Behandelt die Rückgabe des Skats vom Declarer."
-  )
+  (setf (skat host) skat)		; Skat nehmen
+  (await-declaration))			; Ansage abwarten
 
 ;; state: await-declaration. Warte auf die Ansage des Declarers.
 
+(define-state-switch-function await-declaration (host))
+
 (defhandler declaration (await-declaration) (host declaration)
   "Behandelt die Verkündung der Ansage des Declarers."
-  )
+  (in-game))				; starte das Stichespielen
 
 ;; state: in-game. Das Spiel läuft, die Stiche werden mitgenommen
 
+(define-state-switch-function in-game (host)
+  "Startet das Stichespielen"
+  (comm:send (comm host) (current-forehand host) 'choose-card)) ; lässt Vorderhand anspielen
+
 (defhandler card (in-game) (host card)
   "Behandelt das Spielen einer Karte durch einen Spieler."
-  )
+  (unless (slot-boundp host 'current-trick)
+    (setf (current-trick host) (make-trick))) ; einen neuen Stich eröffnen
+  					      ; wenn es noch keinen gibt
+  (with-slots (current-trick tricks) host
+    (add-contribution card sender current-trick) ; die Karte zum Stich packen
+    (when (trick-complete-p current-trick)
+      ;; über fertige Stiche werden die Spieler benachrichtigt
+      (send-to-players host 'trick (cards current-trick) (trick-winner current-trick))
+      ;; auf den Stapel packen
+      (push current-trick tricks)
+      ;; Platz machen für den nächsten Stich
+      (slot-makunbound host 'current-trick)
+      (when (= 10 (length tricks))	; war das der letzte Stich?
+	(game-over t)))))
 
 ;; state: game-over. Das Spiel ist vorbei
 
-(define-state-entering-function game-over host
+(define-state-switch-function game-over (host prompt)
+  "Spiel beenden und auswerten."
+  (send-to-players host 'game-over prompt) ; Spieler in Kenntnis setzen
   (setf (want-game-start host) nil))	; setze die Liste der Spielwilligen zurück
 
 (defhandler game-start (game-over) (host)
