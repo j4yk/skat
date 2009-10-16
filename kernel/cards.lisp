@@ -15,6 +15,12 @@
 			      (:ace :a) 
 			      (:jack :j)))
 
+(defparameter *values-order-null* '(:seven :eight :nine :ten :jack :queen :king :ace)
+  "Die Wertigkeit der Kartenwerte bei einem Nullspiel")
+
+(defparameter *values-order-normal* '(:seven :eight :nine :queen :king :ten :ace)
+  "Die Wertigkeit der Kartenwerte bei einem Nullspiel")
+
 (defun translate-token (token list-of-token-lists)
   (let ((result (find (if (symbolp token) (to-keyword token) token) list-of-token-lists :test #'member)))
     (and result (car result))))
@@ -43,6 +49,37 @@
   (format stream "#c ~a ~a" (symbol-name (suit card)) (symbol-name (value card))))
 
 (defun all-cards ()
-  (loop for suit in *card-suits*
-     append (loop for value in *card-values*
+  "Gibt alle 32 Karten zurück."
+  (loop for suit in (mapcar #'car *card-suits*)
+     append (loop for value in (mapcar #'car *card-values*)
 	       collect (make-card :suit suit :value value))))
+
+(defun same-suit-p (card1 card2 game-variant)
+  "Gibt zurück, ob zwei Karten von der selben logischen Farbe sind.
+Trümpfe gelten als eigene Farbe."
+  (if (or (eq (suit card1) game-variant)
+	  (and (not (eq game-variant :null)) (eq (value card1) :jack)))
+      (or (eq (suit card2) game-variant) (eq (value card2) :jack))
+      (eq (suit card1) (suit card2))))
+
+(defmethod compare-cards ((card1 card) (card2 card) (game-variant (eql :null)))
+  "Berechnet einen Vergleichswert der beiden Karten für ein Nullspiel."
+  (labels ((position-in-values-order (card)
+	     (position (value card) *values-order-null*)))
+    (if (eq (suit card1) (suit card2))
+	(reduce #'- (list card1 card2) :key #'position-in-values-order)
+	1)))
+
+(defun card-greater-p (card1 card2 game-variant)
+  "Gibt zurück, ob card1 höher ist als card2"
+  (plusp (compare-cards card1 card2 game-variant)))
+
+(defun greatest-card (game-variant &rest cards)
+  "Gibt die höchste der Karten zurück (Reihenfolge der Karten gilt!)"
+  (if (null cards)
+      nil
+      (if (null (cdr cards))
+	  (car cards)
+	  (if (card-greater-p (car cards) (cadr cards) game-variant)
+	      (apply #'greatest-card game-variant (cons (car cards) (cddr cards)))
+	      (apply #'greatest-card game-variant (cdr cards))))))
