@@ -34,6 +34,7 @@ body:         forms des handlers"
     (let ((handler-fn-name (handler-fn-name request-name))
 	  (encapsulated-body `(let ((kernel ,kernel-class-and-varname)
 				    (request-name ',request-name))
+				(declare (ignorable kernel request-name))
 				,@forms)))
       `(prog1
 	   ;; handler function definieren
