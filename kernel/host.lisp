@@ -7,6 +7,8 @@
   ((registered-players :accessor registered-players :initform nil)
    (dealers :accessor dealers :documentation "ringlist of players, dealer is car")
    (bidding-values :accessor bidding-values :documentation "verbliebene mögliche Reizwerte")
+   (current-listener :accessor current-listener :documentation "Adresse des aktuell hörenden Spielers")
+   (current-bidder :accessor current-bidder :documentation "Adresse des aktuell sagenden Spielers")
    (current-declarer :accessor current-declarer :documentation "Adresse des aktuellen Spielführers")
    (score-table :accessor score-table :documentation "die Punktetabelle aus (cons Adresse Punktzahl)")
    (skat :accessor skat :documentation "Noch nicht ausgegebener Skat")
@@ -104,21 +106,25 @@
 (defmacro listen-to (listener bidder)
   "Sendet zwei Spielern die Befehle zum gegenseitigen Reizen."
   `(progn
+     (setf (current-listener host) ,listener
+	   (current-bidder host) ,bidder)
      (comm:send (comm host) ,listener 'listen ,bidder)
      (comm:send (comm host) ,bidder 'start-bidding ,listener)))
 
-(define-state-entering-function bidding-1 host
+(define-state-switch-function bidding-1 (host)
   "Startet das eigentliche Spiel, teilt die Karten aus und startet den Reizvorgang."
   (with-slots (registered-players skat comm dealers bidding-values) host
     (assert (= (length registered-players) 3) (registered-players))
-    (switch-state host 'bidding-1)
-    (send-to-players host 'game-start)
+    (send-to-players host 'game-start)	; das Spiel beginnt
     (let ((cards (shuffle (all-cards))))
+      ;; Karten austeilen
       (setf skat (subseq cards 0 2))
       (comm:send comm (first registered-players) cards (subseq cards 2 12))
       (comm:send comm (second registered-players) cards (subseq cards 12 22))
       (comm:send comm (third registered-players) cards (subseq cards 22 32)))
+    ;; den Geber verschieben
     (setf dealers (cdr dealers))
+    ;; ersten Reizauftrag erteilen: Mittelhand sagt Vorderhand
     (symbol-macrolet ((current-forehand (current-forehand host))
 		      (current-middlehand (current-middlehand host)))
       (listen-to current-forehand current-middlehand))
@@ -214,4 +220,4 @@
   (unless (member sender (want-game-start host) :test (address-compare-function host))
     (push sender (want-game-start host))) ; vermerke, dass der Spieler game-start gesendet hat
   (if (null (set-difference (want-game-start host) (registered-players host)))
-      (switch-state host 'bidding-1)))
+      (bidding-1)))			; wenn alle Spieler fertig sind, Reizen starten
