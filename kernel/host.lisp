@@ -181,30 +181,33 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
       (bidding-1			; erster Pass
        (player-case sender
 	 (current-forehand 		; Vorderhand hat gepasst
-	  ;; Geber sagt Mittelhand weiter, Mittelhand hat einen Reizwert gesagt
-	  (bidding-2 (current-middlehand host) (current-dealer host)
-		     :declarer (current-middlehand host)))
+	  ;; Geber sagt Mittelhand weiter
+	  (bidding-2 (current-middlehand host) (current-dealer host)))
 	 (current-middlehand		; Mittelhand hat gepasst
-	  ;; Geber sagt Vorderhand weiter, keine Information über Reizwerte
+	  ;; Geber sagt Vorderhand weiter
 	  (bidding-2 (current-forehand host) (current-dealer host)))))
       (bidding-2			; zweiter Pass
        (player-case sender
 	 (current-forehand		; Vorderhand hat gepasst
 	  ;; d. h. Geber spielt
-	  (declarer-found (current-dealer host)))
+	  (declarer-found)
 	 (current-middlehand		; Mittelhand hat gepasst
 	  ;; d. h. Geber spielt
-	  (declarer-found (current-dealer host)))
+	  (declarer-found)
 	 (current-dealer		; Geber hat gepasst
 	  (if (null (current-declarer host))
 	      ;; noch hat keiner etwas gereizt, d. h. Vorderhand entscheidet über Ramsch
-	      (bidding-3)
+	      (bidding-3 (current-forehand host))
 	      ;; es hat schon jemand etwas gereizt und nicht gepasst, derjenige spielt
-	      (declarer-found (current-declarer host))))))
+	      (declarer-found)))))))
       (bidding-3			; dritter Pass => Ramsch
        (ramschen)))))
-
+	  
 ;; state: declarer-found. Warte auf hand-decision.
+
+(define-state-switch-function declarer-found (host)
+  "Der Spielführer steht nun fest. ..."
+  )
 
 (defhandler hand-decision (declarer-found) (host hand)
   "Behandelt die Ansage, ob der Declarer Hand spielt."
