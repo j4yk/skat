@@ -60,7 +60,6 @@
     (call-ui login-parameters host comm parameters)))
 
 (defhandler login-data (start) (host data)
-  (let ((ui sender))
     (comm:login (comm host) data)
     (switch-state host 'registration)))
 

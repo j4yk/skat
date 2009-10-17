@@ -79,5 +79,4 @@ Zustand wechseln zu lassen"))
 
 ;; Comm teilt die eigene Adresse nach erfolgtem Login mit
 (defhandler own-address (unregistered) (kernel address)
-  (let ((comm sender))
-    (setf (own-address kernel) address)))
+  (setf (own-address kernel) address))
