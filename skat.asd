@@ -26,6 +26,7 @@
 			:components ((:file cards)
 				     (:file tricks)
 				     (:file bidding)
+				     (:file scoring)
 				     (:file request-handling)
 				     (:file ringlist)
 				     (:file kernel)
