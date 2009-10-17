@@ -7,6 +7,18 @@
   (push (cons card player) (trick-contributions trick))
   trick)				; trick als Rückgabewert
 
+(deftest "Test make-trick-with-contributions" :category "Tricks"
+	 :test-fn #'(lambda ()
+		      (let ((trick (make-trick-with-contributions
+				    #cd7 "P1" #cd8 "P2")))
+			(equalp trick (let ((trick (make-trick)))
+					(add-contribution
+					 #cd7 "P1" trick)
+					(add-contribution
+					 #cd8 "P2" trick)
+					trick)))))
+				    
+
 (defmacro make-trick-with-contributions (&rest args)
   "make-trick-with-contributions [card player]*
 Erstellt einen Stich mit den als Argumente übergebenen
