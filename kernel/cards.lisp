@@ -15,6 +15,9 @@
 			      (:ace :a) 
 			      (:jack :j)))
 
+(defparameter *suit-order-jacks* '(:diamonds :hearts :spades :clubs)
+  "Die Wertigkeit der Farben der vier Buben")
+
 (defparameter *values-order-null* '(:seven :eight :nine :ten :jack :queen :king :ace)
   "Die Wertigkeit der Kartenwerte bei einem Nullspiel")
 
@@ -69,6 +72,22 @@ Trümpfe gelten als eigene Farbe."
     (if (eq (suit card1) (suit card2))
 	(reduce #'- (list card1 card2) :key #'position-in-values-order)
 	1)))
+
+(defun jack-p (card)
+  (eq (value card) :jack))
+
+(deftest "compare-cards two jacks" :category "Cards"
+	 :input-form (values #c hearts jack #c diamonds jack)
+	 :test-fn #'compare-cards
+	 :output-form 1)
+
+(defmethod compare-cards ((card1 card) (card2 card) (game-variant keyword))
+  "Berechnet einen Vergleichswert der beiden Karten für ein Farbenspiel."
+  (if (same-suit-p card1 card2 game-variant)
+      (if (jack-p card1)
+	  (if (jack-p card2)
+	      (reduce #'- (list card1 card2)
+		      :key (lambda (c) (position c *suit-order-jacks* :key #'value)))
 
 (defun card-greater-p (card1 card2 game-variant)
   "Gibt zurück, ob card1 höher ist als card2"
