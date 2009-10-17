@@ -1,9 +1,10 @@
 (defpackage skat-utils
   (:nicknames :utils)
-  (:use :cl)
+  (:use :cl :org.ancar.clunit)
   (:export to-keyword
 	   parse-function-body
-	   separate-lambda-list))
+	   separate-lambda-list
+	   deftestfn))
 
 (defpackage skat-requests
   (:nicknames requests)
@@ -15,7 +16,7 @@
   `(progn
      (defpackage skat-kernel
        (:nicknames :kernel :kern)
-       (:use cl skat-utils)
+       (:use cl skat-utils org.ancar.clunit)
        (:export ,@requests-kernel-ui
 		,@requests-kernel-comm))
      (defpackage skat-ui
