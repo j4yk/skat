@@ -6,29 +6,39 @@
   "Eine Request-Definition in *request-definitions* einfügen"
   (push (cons (to-keyword name) (mapcar #'to-keyword parameters)) *request-definitions*))
 
+(defun request-exists-p (name)
+  "Gibt nil zurück, wenn Anfragen mit diesem Namen nicht, sonst einen Wert verschieden von nil"
+  (assoc (to-keyword name) *request-definitions*))
+
 (defun request-parameters (request-name)
   "Gibt die Parameterliste (keywords) eines Requests zurück."
   (cdr (assoc (to-keyword request-name) *request-definitions*)))
+     
+(defun correct-parameters-p (name &rest parameters)
+  "Gibt t zurück, wenn die Namen der Parameter und ihre Reihenfolge mit denen in der
+Definition des Requests übereinstimmen."
+  (equal (mapcar #'to-keyword parameters) (cdr (assoc (to-keyword name) *request-definitions*))))
 
-(defun format-parameters-list-latex (parameter-definitions)
-  (labels ((format-parameter-item (param-def)
-	     (let ((name (car param-def))
-		   (doc (cadr param-def)))
-	       (format nil "~a: ~a" name doc))))
-    (format nil "\\begin{requestsparameterslist}
+(eval-when (:compile-toplevel)
+  (defun format-parameters-list-latex (parameter-definitions)
+    (labels ((format-parameter-item (param-def)
+	       (let ((name (car param-def))
+		     (doc (cadr param-def)))
+		 (format nil "~a: ~a" name doc))))
+      (format nil "\\begin{requestsparameterslist}
 ~{  \\item ~a~%~}\\end{requestsparameterslist}" (mapcar #'format-parameter-item parameter-definitions))))
 
-(defun print-request-latex (name parameter-definitions documentation sender receiver stream)
-  "Formatiert eine Requestdefinition für die LaTeX-Dokumentation."
-  (declare (ignore sender))
-  (format stream "\\request~%  {~a}~%  {~a}~%  {~a}~%  {~a}~%"
-	  name
-	  documentation
-	  (if (null parameter-definitions)
-	      "-"
-	      (format-parameters-list-latex parameter-definitions))
-	  ;; sender
-	  receiver))
+  (defun print-request-latex (name parameter-definitions documentation sender receiver stream)
+    "Formatiert eine Requestdefinition für die LaTeX-Dokumentation."
+    (declare (ignore sender))
+    (format stream "\\request~%  {~a}~%  {~a}~%  {~a}~%  {~a}~%"
+	    name
+	    documentation
+	    (if (null parameter-definitions)
+		"-"
+		(format-parameters-list-latex parameter-definitions))
+	    ;; sender
+	    receiver)))
 
 (defmacro defrequest (name parameters options)
   "Definiert eine neue Art Request.
@@ -53,14 +63,8 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 	   (print-request-latex ',name ',parameters ,documentation ,sender ,receiver fs)
 	   (format t "printed request ~a" ',name))
 	 (defvar *request-printing-started* t))
-       (eval-when ;(:load-toplevel :execute)
-	   ()
+       (eval-when (:load-toplevel :execute)
 	 (apply #'add-request-definition ',name ',parameter-symbols)))))
-     
-(defun correct-parameters-p (name &rest parameters)
-  "Gibt t zurück, wenn die Namen der Parameter und ihre Reihenfolge mit denen in der
-Definition des Requests übereinstimmen."
-  (equal (mapcar #'to-keyword parameters) (cdr (assoc (to-keyword name) *request-definitions*))))
 
 (makunbound '*request-printing-started*)
 
@@ -187,6 +191,14 @@ Definition des Requests übereinstimmen."
    "Die Übergabe des Skats. Sowohl vom Host zum Declarer als auch zurück."
    :SENDER "Host, Player" :RECEIVER "Host, Player"))
 
+(defrequest flush-run
+    ((with-or-without
+      "entweder :with oder :without (mit oder ohne)")
+     (run-value
+      "Die Anzahl der (fehlenden) Trumpfspitzen"))
+  (:documentation "Wird durch den Spielführer vor DECLARATION übermittelt, um den Spielwert auszurechnen"
+		  :sender "Player" :receiver "Host"))
+
 (DEFREQUEST DECLARATION
     ((DECLARATION "Eine Liste an Spieloptionen (zum Beispiel was Trumpf ist)"))
   (:DOCUMENTATION "Verkündet das Spiel, das der Declarer ansagt" :SENDER
@@ -209,6 +221,12 @@ Definition des Requests übereinstimmen."
    "Fasst einen vollständigen Stich zusammen und teilt den Gewinner mit"
    :SENDER "Host" :RECEIVER "Player"))
 
+(DEFREQUEST GAME-OVER
+    ((PROMPT
+      "wenn t, dann können die Spieler entscheiden, ob sie noch eine Runde spielen wollen"))
+  (:DOCUMENTATION "Offizielle Beendigung des Spiels durch den Host" :SENDER
+		  "Host" :RECEIVER "Player"))
+
 (DEFREQUEST CARDS-SCORE
     ((DECLARER-SCORE "die Augensumme der Spielführerstiche")
      (DEFENDERS-SCORE "die Augensumme der Stiche der verteidigenden Spieler"))
@@ -223,22 +241,16 @@ Definition des Requests übereinstimmen."
   (:DOCUMENTATION "Fasst das Spielresultat zusammen." :SENDER "Host" :RECEIVER
 		  "Player"))
 
-(DEFREQUEST MATCH-SCORE
+(DEFREQUEST SCORE-table
     ((PLAYER1-ADDRESS "Adresse von Spieler 1")
-     (PLAYER1-SCORE "Punktedifferenz für Spieler 1")
+     (PLAYER1-SCORE "Punktestand von Spieler 1")
      (PLAYER2-ADDRESS "analog")
      (PLAYER2-SCORE "analog")
      (PLAYER3-ADDRESS "analog")
      (PLAYER3-SCORE "analog"))
   (:DOCUMENTATION
-   "Die Punktedifferenzen nach einem Spiel für die einzelnen Spieler" :SENDER
+   "Die Punktestände der Spieler nach einem Spiel" :SENDER
    "Host" :RECEIVER "Player"))
-
-(DEFREQUEST GAME-OVER
-    ((PROMPT
-      "wenn t, dann können die Spieler entscheiden, ob sie noch eine Runde spielen wollen"))
-  (:DOCUMENTATION "Offizielle Beendigung des Spiels durch den Host" :SENDER
-		  "Host" :RECEIVER "Player"))
 
 (DEFREQUEST MESSAGE
     ((TEXT "Nachrichtentext"))
