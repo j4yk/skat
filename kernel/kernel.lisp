@@ -16,18 +16,7 @@
 (defmacro defkernelmethod (name (kernel-class &rest method-parameters) &body body)
   "Definiert eine neue Methode für eine Kernelklasse,
 in deren body eine lexikalische Bindung der Variable kernel
-etabliert wird.
-
-Beispiel:
-(defkernelmethod testmethode (player text)
-  \"Dokumentation\"
-  (comm:send (comm kernel) 'message text))
-
-ergibt eine Methode namens testmethode mit der Lambda-Liste:
-(defmethod testmethode ((player player) text)
-  \"Dokumentation\"
-  (let ((kernel player))
-    (comm:send (comm kernel) 'message text)))"
+etabliert wird."
   (multiple-value-bind (forms docstring) (parse-function-body body) ; docstring finden
     `(defmethod ,name ((,kernel-class ,kernel-class) ,@method-parameters)
        ,docstring
@@ -57,7 +46,7 @@ da es die Bindungen der Variablen kernel und request-name voraussetzt."
 	      :request request-name)))
 
 (defmethod address-compare-function ((kernel kernel))
-  (address-compare-function (comm kernel)))
+  (comm:address-compare-function (comm kernel)))
 
 (defmethod receive-requests ((kernel kernel))
   "Holt alle vorliegenden Anfragen aus dem Kommunikationsobjekt heraus und ruft entsprechende Anfragehandler auf."
