@@ -5,19 +5,7 @@
 (defun add-contribution (card player trick)
   "Fügt dem Stich eine Karte von einem Spieler bei."
   (push (cons card player) (trick-contributions trick))
-  trick)				; trick als Rückgabewert
-
-(deftest "Test make-trick-with-contributions" :category "Tricks"
-	 :test-fn #'(lambda ()
-		      (let ((trick (make-trick-with-contributions
-				    #cd7 "P1" #cd8 "P2")))
-			(equalp trick (let ((trick (make-trick)))
-					(add-contribution
-					 #cd7 "P1" trick)
-					(add-contribution
-					 #cd8 "P2" trick)
-					trick)))))
-				    
+  trick)				; trick als Rückgabewert 
 
 (defmacro make-trick-with-contributions (&rest args)
   "make-trick-with-contributions [card player]*
@@ -30,6 +18,18 @@ Beiträgen."
 	    collect `(add-contribution ,card ,player trick)
 	    until (< (length args) 2))
        trick)))
+
+(deftest "Test make-trick-with-contributions" :category "Tricks"
+	 :test-fn #'(lambda ()
+		      (let ((trick (make-trick-with-contributions
+				    #cd7 "P1" #cd8 "P2")))
+			(equalp trick (let ((trick (make-trick)))
+					(add-contribution
+					 #cd7 "P1" trick)
+					(add-contribution
+					 #cd8 "P2" trick)
+					trick)))))
+				   
 
 (defmethod cards ((trick trick))
   "Gibt alle Karten in einem Stich zurück."
@@ -61,3 +61,7 @@ die den Stich für sich entscheidet."
 (defun trick-complete-p (trick)
   "Gibt zurück, ob der Stich komplett ist (3 Karten)"
   (= 3 (length (trick-contributions trick))))
+
+(defun trick-card-points (trick)
+  "Gibt die Summe der Augen zurück, die im Stich liegen."
+  (apply #'+ (mapcar #'card-points (cards trick))))
