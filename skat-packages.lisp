@@ -4,12 +4,13 @@
   (:export to-keyword
 	   parse-function-body
 	   separate-lambda-list
-	   deftestfn))
+	   deftests))
 
 (defpackage skat-requests
   (:nicknames requests)
   (:use cl skat-utils)
-  (:export correct-parameters-p
+  (:export request-exists-p
+	   correct-parameters-p
 	   request-parameters))
 
 (defmacro define-skat-packages ((&rest requests-kernel-ui) (&rest requests-kernel-comm))
@@ -34,6 +35,7 @@
 		send  ; beauftragt es, eine Anfrage zu verschicken
 		stop  ; gibt ihm das Signal, die Arbeit einzustellen
 		received-other-content ; Condition für den Fall, dass Daten empfangen wurden, die nicht als Anfragen interpretiert werden konnten
+		address-compare-function ; Slot-Accessor für die Adressenvergleichende Funktion
 		,@requests-kernel-comm))))
 
 
