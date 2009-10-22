@@ -12,6 +12,8 @@
    (current-declarer :accessor current-declarer :documentation "Adresse des aktuellen Spielführers")
    (score-table :accessor score-table :documentation "die Punktetabelle aus (cons Adresse Punktzahl)")
    (skat :accessor skat :documentation "Noch nicht ausgegebener Skat")
+   (flush-run :accessor flush-run :documentation "Anzahl Spitzen des Spielführers und ob sie vorhanden sind oder fehlen")
+   (declaration :accessor declarer-declaration :documentation "was der Spielführer angesagt hat")
    (tricks :accessor tricks :documentation "Gespielte Stiche")
    (current-trick :accessor current-trick :documentation "Der aktuell auf dem Tisch liegende Stich")
    (want-game-start :accessor want-game-start :initform nil 
@@ -61,7 +63,7 @@
 
 (defhandler login-data (start) (host data)
     (comm:login (comm host) data)
-    (switch-state host 'registration)))
+    (switch-state host 'registration))
 
 ;; state: registration, alles
 
@@ -119,10 +121,21 @@
      (listener host ,listener ,bidder)
      (bidder host ,bidder ,listener)))
 
+(defmethod init-score-table ((host host))
+  "Initialisiert die Punktetabelle, sofern sie noch nicht besteht"
+  (with-slots (registered-players score-table) host
+    (unless (slot-boundp host 'score-table)
+      (setf score-table (make-hash-table :test (address-compare-function host)))
+      (setf (gethash (first registered-players) score-table) 0
+	    (gethash (second registered-players) score-table) 0
+	    (gethash (third registered-players) score-table) 0)))
+  (values))
+
 (define-state-switch-function bidding-1 (host)
   "Startet das eigentliche Spiel, teilt die Karten aus und startet den Reizvorgang."
   (with-slots (registered-players skat comm dealers bidding-values) host
     (assert (= (length registered-players) 3) (registered-players))
+    (init-score-table host)
     (send-to-players host 'game-start)	; das Spiel beginnt
     (let ((cards (shuffle (all-cards))))
       ;; Karten austeilen
@@ -240,6 +253,15 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 
 (define-state-switch-function await-declaration (host))
 
+(defhandler flush-run (await-declaration) (host with-or-without run-value)
+  "Behandelt die Information des Spielführers über die vorhandenen oder
+fehlenden Trumpfspitzen."
+  (setf (flush-run host) (cons with-or-without run-value)))
+
+(defmethod flush-run-value ((host host))
+  "Gibt die Anzahl der fehlenden oder vorhandenen Trumpfspitzen des Spielführers zurück."
+  (cdr (flush-run host)))
+
 (defhandler declaration (await-declaration) (host declaration)
   "Behandelt die Verkündung der Ansage des Declarers."
   (in-game))				; starte das Stichespielen
@@ -258,24 +280,78 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   (with-slots (current-trick tricks) host
     (add-contribution card sender current-trick) ; die Karte zum Stich packen
     (when (trick-complete-p current-trick)
-      ;; über fertige Stiche werden die Spieler benachrichtigt
-      (send-to-players host 'trick (cards current-trick) (trick-winner current-trick))
-      ;; auf den Stapel packen
-      (push current-trick tricks)
-      ;; Platz machen für den nächsten Stich
-      (slot-makunbound host 'current-trick)
-      (when (= 10 (length tricks))	; war das der letzte Stich?
-	(game-over t)))))
+      (let ((trick-winner (trick-winner current-trick
+					(game-variant (declarer-declaration host)))))
+	;; über fertige Stiche werden die Spieler benachrichtigt
+	(send-to-players host 'trick (cards current-trick) trick-winner)
+	;; auf den Stapel packen
+	(push current-trick tricks)
+	;; Platz machen für den nächsten Stich
+	(slot-makunbound host 'current-trick)
+	(if (= 10 (length tricks))	; war das der letzte Stich?
+	    (game-over t)		; dann beende das Spiel
+	    ;; nein? dann sage dem Stichsieger, dass er anspielen möge
+	    (comm:send (comm host) trick-winner 'choose-card))))))
 
 ;; state: game-over. Das Spiel ist vorbei
+
+(defun count-card-points (tricks declarer &optional (address-compare-function #'equalp))
+  "Zählt die Augen in den Stichen der beiden Spielparteien aus.
+==> declarer-card-points, defenders-card-points"
+  (multiple-value-bind (declarer-tricks defenders-tricks)
+      (loop for trick in tricks
+	 if (funcall address-compare-function (trick-winner trick) declarer)
+	 collect trick into declarer-tricks
+	 else collect trick into defenders-tricks
+	 end
+	 finally (return (values declarer-tricks defenders-tricks)))
+    (values-list (mapcar #'(lambda (tricks) (apply #'+ (mapcar #'trick-card-points tricks)))
+			 (list declarer-tricks defenders-tricks)))))
+
+(defmethod send-score-table ((host host))
+  "Übermittelt allen Spielern den aktuellen Punktestand"
+  (with-slots (registered-players score-table) host
+    (send-to-players host 'score-table
+		     (first registered-players)
+		     (gethash (first registered-players) score-table)
+		     (second registered-players)
+		     (gethash (second registered-players) score-table)
+		     (third registered-players)
+		     (gethash (third registered-players) score-table))))
+		     
 
 (define-state-switch-function game-over (host prompt)
   "Spiel beenden und auswerten."
   (send-to-players host 'game-over prompt) ; Spieler in Kenntnis setzen
-  (setf (want-game-start host) nil))	; setze die Liste der Spielwilligen zurück
+  (setf (want-game-start host) nil) ; setze die Liste der Spielwilligen zurück
+  (multiple-value-bind (declarer-score defenders-score)
+      (count-card-points (tricks host) (current-declarer host) (address-compare-function host))
+    (send-to-players host 'cards-score declarer-score defenders-score)
+    (with-slots (declaration current-declarer score-table) host
+      (let ((won (> declarer-score defenders-score)))
+	(if won
+	    (progn
+	      (when (>= declarer-score 90)
+		(push :played-schneider (cdr declaration))
+		(when (= declarer-score 120)
+		  (push :played-schwarz (cdr declaration))))
+	      (let ((game-points (game-points declaration (flush-run-value host))))
+		(send-to-players host 'game-result declaration won game-points)
+		(incf (gethash current-declarer score-table) game-points)))
+	    (progn
+	      (when (<= declarer-score 30)
+		(push :played-schneider (cdr declaration))
+		(when (= declarer-score 0)
+		  (push :played-schwarz (cdr declaration)))
+		(let ((game-points (* 2 (game-points declaration (flush-run-value host)))))
+		  (send-to-players host 'game-result declaration won game-points)
+		  (decf (gethash current-declarer score-table) game-points))))))))
+  (send-score-table host))
 
-(defhandler game-start (game-over) (host)
+(defhandler game-start (registration game-over) (host)
+  "Behandelt den Wunsch eines Spielers nach einem weiteren Spiel."
   (unless (member sender (want-game-start host) :test (address-compare-function host))
     (push sender (want-game-start host))) ; vermerke, dass der Spieler game-start gesendet hat
   (if (null (set-difference (want-game-start host) (registered-players host)))
-      (bidding-1)))			; wenn alle Spieler fertig sind, Reizen starten
+      (bidding-1)))    ; wenn alle Spieler fertig sind, Reizen starten
+
