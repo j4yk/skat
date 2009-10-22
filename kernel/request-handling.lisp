@@ -1,7 +1,10 @@
 (in-package :skat-kernel)
 
-(define-condition wrong-request-parameters (error)
+(define-condition %request-error (error)
   ((request-name :accessor request-name :initarg :request-name)))
+
+(define-condition wrong-request-parameters (%request-error) ())
+(define-condition undefined-request-error (%request-error) ())
 
 (defun handler-fn-name (request-name)
   "Gibt den Namen der Funktion zurück, die bei einem bestimmten Request aufgerufen wird."
@@ -27,6 +30,9 @@ player-arg:   Name des Parameters, der das Spielerobjekt enthält
 sender-arg:   Name des Parameters, der die Repräsentation des request-Absenders enthält
 request-args: weitere Parameter für den request
 body:         forms des handlers"
+  ;; prüfen, ob es diesen Anfragetyp überhaupt gibt
+  (unless (requests:request-exists-p request-name)
+    (error 'undefined-request-error :request-name request-name))
   ;; prüfen, ob die Parameter richtig heißen
   (unless (apply #'requests:correct-parameters-p request-name request-args)
     (error 'wrong-request-parameters :request-name request-name))
