@@ -82,12 +82,11 @@ in die jeweils erstgenannte um, d. h. in das ausgeschriebene keyword."
   (defmethod print-card (card stream)
     (format stream "#! ~a ~a" (symbol-name (suit card)) (symbol-name (rank card))))
 
-  (eval-when (:compile-toplevel)
-    (defmethod make-load-form ((card card) &optional environment)
-      "Stellt eine Form für den Compiler zur Verfügung, um
+  (defmethod make-load-form ((card card) &optional environment)
+    "Stellt eine Form für den Compiler zur Verfügung, um
 identische Kartenobjekte zu erzeugen."
-      (declare (ignore environment))
-      `(make-card :suit ,(suit card) :rank ,(rank card)))))
+    (declare (ignore environment))
+    `(make-card :suit ,(suit card) :rank ,(rank card))))
 
 (defun all-cards ()
   "Gibt alle 32 Karten zurück."
