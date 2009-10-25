@@ -1,11 +1,5 @@
 (in-package :skat-kernel)
 
-(define-condition %request-error (error)
-  ((request-name :accessor request-name :initarg :request-name)))
-
-(define-condition wrong-request-parameters (%request-error) ())
-(define-condition undefined-request-error (%request-error) ())
-
 (defun handler-fn-name (request-name)
   "Gibt den Namen der Funktion zurück, die bei einem bestimmten Request aufgerufen wird."
   (intern (concatenate 'string (symbol-name request-name) "-HANDLER") 'skat-kernel))
@@ -32,10 +26,10 @@ request-args: weitere Parameter für den request
 body:         forms des handlers"
   ;; prüfen, ob es diesen Anfragetyp überhaupt gibt
   (unless (requests:request-exists-p request-name)
-    (error 'undefined-request-error :request-name request-name))
+    (error 'requests:undefined-request-error :request-name request-name))
   ;; prüfen, ob die Parameter richtig heißen
   (unless (apply #'requests:correct-parameters-p request-name request-args)
-    (error 'wrong-request-parameters :request-name request-name))
+    (error 'requests:wrong-request-parameters :request-name request-name))
   (multiple-value-bind (forms docstring) (parse-function-body body)
     (let ((handler-fn-name (handler-fn-name request-name))
 	  (encapsulated-body `(let ((kernel ,kernel-class-and-varname)

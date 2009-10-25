@@ -66,6 +66,12 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
        (eval-when (:load-toplevel :execute)
 	 (apply #'add-request-definition ',name ',parameter-symbols)))))
 
+(define-condition %request-error (error)
+  ((request-name :accessor request-name :initarg :request-name)))
+
+(define-condition wrong-request-parameters (%request-error) ())
+(define-condition undefined-request-error (%request-error) ())
+
 (makunbound '*request-printing-started*)
 
 (DEFREQUEST LOGIN-PARAMETERS
