@@ -14,6 +14,15 @@
   "Macht die Funktion fn zur Handlerfunktion für Anfragen dieses Typs."
   (push (cons request-name fn) *request-handlers*))
 
+(defun validate-request-handler (request-name &rest request-arg-names)
+  "Überprüft die Gültigkeit des Anfragenamens und der Namen der Parameter"
+  ;; prüfen, ob es diesen Anfragetyp überhaupt gibt
+  (unless (requests:request-exists-p request-name)
+    (error 'requests:undefined-request-error :request-name request-name))
+  ;; prüfen, ob die Parameter richtig heißen
+  (unless (apply #'requests:correct-parameters-p request-name request-arg-names)
+    (error 'requests:wrong-request-parameters :request-name request-name)))
+
 (defmacro defhandler (request-name (&rest states) (kernel-class-and-varname &rest request-args) &body body)
   "Definiert eine Handlerfunktion für diese Anfragen.
 
@@ -24,12 +33,7 @@ player-arg:   Name des Parameters, der das Spielerobjekt enthält
 sender-arg:   Name des Parameters, der die Repräsentation des request-Absenders enthält
 request-args: weitere Parameter für den request
 body:         forms des handlers"
-  ;; prüfen, ob es diesen Anfragetyp überhaupt gibt
-  (unless (requests:request-exists-p request-name)
-    (error 'requests:undefined-request-error :request-name request-name))
-  ;; prüfen, ob die Parameter richtig heißen
-  (unless (apply #'requests:correct-parameters-p request-name request-args)
-    (error 'requests:wrong-request-parameters :request-name request-name))
+  (apply #'validate-request-handler request-name request-args)
   (multiple-value-bind (forms docstring) (parse-function-body body)
     (let ((handler-fn-name (handler-fn-name request-name))
 	  (encapsulated-body `(let ((kernel ,kernel-class-and-varname)
@@ -49,3 +53,6 @@ body:         forms des handlers"
 	 ;; handler function registrieren
 	 (register-handler-fn ',request-name #',handler-fn-name)))))
 
+(defun call-handler-fn (kernel sender request-name &rest arguments)
+  "Ruft eine Handlerfunktion auf"
+  (apply (handler-fn request-name) kernel sender arguments))
