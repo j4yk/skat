@@ -4,7 +4,8 @@
 		       bidding-1 bidding-2 bidding-3
 		       declarer-found skat-away await-declaration
 		       in-game game-over)
-  ((registered-players :accessor registered-players :initform nil)
+  ((login-data :initarg :login-data :documentation "login-Parameter, die beim Initialisieren übergeben werden, damit man sie nicht mehr abfragen muss.")
+   (registered-players :accessor registered-players :initform nil)
    (dealers :accessor dealers :documentation "ringlist of players, dealer is car")
    (bidding-values :accessor bidding-values :documentation "verbliebene mögliche Reizwerte")
    (current-listener :accessor current-listener :documentation "Adresse des aktuell hörenden Spielers")
@@ -56,10 +57,16 @@
 
 ;; state: start. Alles vor dem Registrieren.
 
+(define-condition no-login-data-supplied-error (error)
+  ((host :accessor host :initarg :host))
+  (:documentation "Wird signalisiert, wenn dem Hostobjekt keine Logindaten zur Verfügung gestellt wurden."))
+
 (defhandler login-parameters (start) (host parameters)
-  "Von der Kommunikation kommende Parameter zum Einwählen ins Kommunikationsmedium"
-  (let ((comm sender))
-    (call-ui login-parameters host comm parameters)))
+  "Von der Kommunikation kommende Parameter zum Einwählen ins Kommunikationsmedium.
+Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden sein."
+  (if (slot-boundp host 'login-data)
+      (funcall (handler-fn 'login-data) host (slot-value host 'login-data)) ; login-data "senden"
+      (error 'no-login-data-supplied-error :host host)))
 
 (defhandler login-data (start) (host data)
     (comm:login (comm host) data)
