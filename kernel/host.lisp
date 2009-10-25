@@ -52,7 +52,7 @@
 
 (defmethod reset-bidding-values ((host host))
   "Setzt die verbliebenen Reizwerte auf den Anfangszustand (also alle Werte ab 18) zurück."
-  (setf (bidding-values host) (cut-away-bidding-values 18)))
+  (setf (bidding-values host) (cut-away-game-point-levels 18)))
 
 ;; state: start. Alles vor dem Registrieren.
 
@@ -64,7 +64,7 @@
   "Von der Kommunikation kommende Parameter zum Einwählen ins Kommunikationsmedium.
 Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden sein."
   (if (slot-boundp host 'login-data)
-      (funcall (handler-fn 'login-data) host (slot-value host 'login-data)) ; login-data "senden"
+      (call-handler-fn host host 'login-data (slot-value host 'login-data)) ; login-data "senden"
       (error 'no-login-data-supplied-error :host host)))
 
 (defhandler login-data (start) (host data)
@@ -146,9 +146,9 @@ Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden se
     (let ((cards (shuffle (all-cards))))
       ;; Karten austeilen
       (setf skat (subseq cards 0 2))
-      (comm:send comm (first registered-players) cards (subseq cards 2 12))
-      (comm:send comm (second registered-players) cards (subseq cards 12 22))
-      (comm:send comm (third registered-players) cards (subseq cards 22 32)))
+      (comm:send comm (first registered-players) 'cards (subseq cards 2 12))
+      (comm:send comm (second registered-players) 'cards (subseq cards 12 22))
+      (comm:send comm (third registered-players) 'cards (subseq cards 22 32)))
     ;; den Geber verschieben
     (setf dealers (cdr dealers))
     ;; ersten Reizauftrag erteilen: Mittelhand sagt Vorderhand
@@ -181,7 +181,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
     (case (state host)
       (bidding-3
        ;; Vorderhand reizt in dritter Instanz 18, d. h. dieser Spieler wird Spielführer
-       (declarer-found (current-declarer host))))))
+       (declarer-found)))))
 
 (defhandler join (bidding-1 bidding-2 bidding-3) (host value)
   "Behandelt das Mitgehen eines Spielers bei einem Reizwert."
