@@ -2,17 +2,20 @@
 
 (defun handler-fn-name (request-name)
   "Gibt den Namen der Funktion zurück, die bei einem bestimmten Request aufgerufen wird."
+  ;; paketbereinigt durch symbol-name
   (intern (concatenate 'string (symbol-name request-name) "-HANDLER") 'skat-kernel))
 
 (defvar *request-handlers* nil "Liste mit Assocs: request->function")
 
 (defun handler-fn (request-name)
   "Gibt das Handlerfunktionsobjekt für diese Art Anfrage zurück."
-  (cdr (assoc request-name *request-handlers*)))
+  ;; paketbereinigt durch to-keyword
+  (cdr (assoc (to-keyword request-name) *request-handlers*)))
 
 (defun register-handler-fn (request-name fn)
   "Macht die Funktion fn zur Handlerfunktion für Anfragen dieses Typs."
-  (push (cons request-name fn) *request-handlers*))
+  ;; paketbereinigt durch to-keyword
+  (push (cons (to-keyword request-name) fn) *request-handlers*))
 
 (defun validate-request-handler (request-name &rest request-arg-names)
   "Überprüft die Gültigkeit des Anfragenamens und der Namen der Parameter"
