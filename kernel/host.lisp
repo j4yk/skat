@@ -32,15 +32,14 @@
       (let ((card (nth (random (length list)) list)))
 	(cons card (shuffle (remove card list :count 1))))))
 
-(defun shuffle-test ()
-  "Testcase für #'shuffle"
-  (let* ((list (loop for i from 0 to 10 collect (random 10)))
-	 (shuffled-list (shuffle list)))
-    (format *debug-io* "~&function shuffle: ~s => ~s" list shuffled-list)
-    (assert (= (length list) (length shuffled-list)))
-    (dolist (item list)
-      (assert (member item shuffled-list))
-      (assert (= (count item shuffled-list) (count item list))))))
+(deftest "shuffle-test" :category "Host"
+	 :test-fn #'(lambda ()
+		      (let* ((list (loop for i from 0 to 10 collect (random 10)))
+			     (shuffled-list (shuffle list)))
+			(assert (= (length list) (length shuffled-list)))
+			(dolist (item list)
+			  (assert (member item shuffled-list))
+			  (assert (= (count item shuffled-list) (count item list)))))))
 
 (defmethod current-dealer ((host host))
   (first (dealers host)))
