@@ -16,10 +16,13 @@
 	       (:module comm
 			:serial t
 			:components ((:file base-comm)
+				     (:file stub-comm)
 				     (:file xmpp-comm)))
 	       (:module ui
 			:serial t
 			:components ((:file base-ui)
+				     (:file stub-ui)
+				     (:file host-ui)
 				     (:module opengl-ui)))
 	       (:module kernel
 			:serial t
