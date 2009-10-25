@@ -7,7 +7,8 @@
   ((connection :accessor connection)
    (stop-working :accessor stop-working :initform nil)
    (resource :accessor resource)
-   (own-address :accessor own-address))
+   (own-address :accessor own-address)
+   (address-compare-function :initform #'equalp))
   (:documentation "Communication over an XMPP-Connection. The addresses are JID-strings."))
 
 (defmethod start ((comm xmpp-comm))

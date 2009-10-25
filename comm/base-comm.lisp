@@ -20,7 +20,7 @@
 
 (defclass base-comm ()
   ((arrived-requests :accessor arrived-requests :initform (make-queue))
-   (address-compare-function :reader address-compare-function :initform #'string= :allocation :class))
+   (address-compare-function :reader address-compare-function :allocation :class))
   (:documentation "Fundamental Communication system. Implements no useable connection.
 Meant as base class for other communication-classes."))
 

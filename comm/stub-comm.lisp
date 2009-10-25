@@ -1,7 +1,7 @@
 (in-package skat-comm)
 
 (defclass stub-comm (base-comm)
-  ())
+  ((address-compare-function :initform #'eq)))
 
 (defun stub-msg (format-str &rest format-args)
   (apply #'format t format-str format-args)
@@ -28,7 +28,7 @@
   (:documentation "Condition zum automatisierten Weiterverarbeiten einer Sendung."))
 
 (defmethod send ((comm stub-comm) address request-name &rest request-args)
-  (format t "COMM: sending ~a ~a to ~a" request-name request-args address)
+  (stub-msg "COMM: sending ~a ~a to ~a" request-name request-args address)
   (signal 'stub-communication-send :request request-name :args request-args
 	  :sender comm :address address)
   (values))
