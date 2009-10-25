@@ -11,19 +11,29 @@
   (:use cl skat-utils)
   (:export request-exists-p
 	   correct-parameters-p
-	   request-parameters))
+	   request-parameters
+	   undefined-request-error
+	   wrong-request-parameters))
 
 (defmacro define-skat-packages ((&rest requests-kernel-ui) (&rest requests-kernel-comm))
   `(progn
      (defpackage skat-kernel
        (:nicknames :kernel :kern)
        (:use cl skat-utils org.ancar.clunit)
-       (:export ,@requests-kernel-ui
+       (:export handler-fn-name
+		handler-fn
+		receive-requests
+		call-handler-fn
+		,@requests-kernel-ui
 		,@requests-kernel-comm))
      (defpackage skat-ui
        (:nicknames :ui)
        (:use cl skat-utils)
-       (:export ,@requests-kernel-ui))
+       (:export handler-fn-name
+		handler-fn
+		call-handler-fn
+		start
+		,@requests-kernel-ui))
      (defpackage skat-communication
        (:nicknames :skat-comm :comm)
        (:use cl skat-utils)
