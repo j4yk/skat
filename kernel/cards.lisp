@@ -12,10 +12,10 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defstruct (card :conc-name (:print-object print-card)) suit rank)
 
-  (defparameter *card-suits* '((:diamonds #\d #\D :d) 
-			       (:hearts #\h #\H :h)
-			       (:spades #\s #\S :s) 
-			       (:clubs #\c #\C :c))
+  (defparameter *card-suits* '((:diamonds :d #\d #\D) 
+			       (:hearts :h #\h #\H)
+			       (:spades :s #\s #\S) 
+			       (:clubs :c #\c #\C))
     "Token-Liste der vier Spielfarben")
 
   (defparameter *card-ranks* '((:seven 7) 
@@ -80,7 +80,7 @@ in die jeweils erstgenannte um, d. h. in das ausgeschriebene keyword."
   (set-dispatch-macro-character #\# #\c #'read-card) ; keine komplexen Zahlen notwendig
 
   (defmethod print-card (card stream)
-    (format stream "#! ~a ~a" (symbol-name (suit card)) (symbol-name (rank card))))
+    (format stream "#!~a~a" (second (assoc (suit card) *card-suits*)) (second (assoc (rank card) *card-ranks*))))
 
   (defmethod make-load-form ((card card) &optional environment)
     "Stellt eine Form für den Compiler zur Verfügung, um
