@@ -20,6 +20,12 @@
   "Schreibt auf, was gepusht wurde"
   (stub-msg "COMM: pushed ~a ~a from ~a" request-name request-args sender))
 
+(defmethod get-request :around ((comm stub-comm))
+  "Schreibt auf, was gepoppt wurde."
+  (multiple-value-bind (request-name sender request-args) (call-next-method)
+    (stub-msg "popped: ~a (~{~a ~}) from ~a" request-name request-args sender)
+    (values request-name sender request-args)))
+
 (define-condition stub-communication-send ()
   ((request-name :accessor request-name :initarg :request)
    (args :accessor args :initarg :args)
@@ -39,3 +45,7 @@
 (defmethod feed-comm ((comm stub-comm) sender request-name &rest request-args)
   "\"Füttert\" eine Stub-Comm mit einer Anfrage. So als ob sie sie empfangen hätte."
   (apply #'push-request comm sender request-name request-args))
+
+(defmethod receive-requests ((comm stub-comm))
+  "Tut eigentlich nichts."
+  t)
