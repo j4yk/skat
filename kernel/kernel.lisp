@@ -24,9 +24,9 @@ etabliert wird."
 	 (declare (ignorable kernel))	; muss aber nicht zwangsläufig benutzt werden
 	 ,@forms))))
 
-(defmacro call-ui (request-name player sender &rest request-args)
+(defun call-ui (request-name kernel sender &rest request-args)
   "Stellt die Anfrage an die UI weiter."
-  `(apply #',(intern (symbol-name (handler-fn-name request-name)) 'skat-ui) (ui ,player) ,sender ,@request-args))
+  (apply (skat-ui:handler-fn request-name) (ui kernel) sender request-args))
 
 (define-condition invalid-request-sender-error (error)
   ((sender :accessor sender :initarg :sender)
@@ -52,7 +52,7 @@ da es die Bindungen der Variablen kernel und request-name voraussetzt."
   "Holt alle vorliegenden Anfragen aus dem Kommunikationsobjekt heraus und ruft entsprechende Anfragehandler auf."
   (loop while (comm:has-request (comm kernel))
      do (multiple-value-bind (request-name sender request-args) (comm:get-request (comm kernel))
-	  (apply (handler-fn request-name) sender request-args))))
+	  (apply (handler-fn request-name) kernel sender request-args))))
 
 (define-condition invalid-kernel-state-error (error)
   ((kernel-class :accessor kernel-class :initarg :kernel-class)
@@ -61,7 +61,7 @@ da es die Bindungen der Variablen kernel und request-name voraussetzt."
 Zustand wechseln zu lassen"))
 
 (defmethod switch-state ((kernel kernel) target-state)
-  "Wechselt den Zustand des Kernelobjekts. Dies hat Auswirkungen auf die Menge der Akzeptierten Anfragen."
+  "Wechselt den Zustand des Kernelobjekts. Dies hat Auswirkungen auf die Menge der akzeptierten Anfragen."
   (if (member target-state (valid-states kernel))
       (setf (state kernel) target-state)
       (error 'invalid-kernel-state-error :kernel-class (class-of kernel) :target-state target-state)))
