@@ -139,16 +139,16 @@ Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden se
 
 (define-state-switch-function bidding-1 (host)
   "Startet das eigentliche Spiel, teilt die Karten aus und startet den Reizvorgang."
-  (with-slots (registered-players skat comm dealers bidding-values) host
+  (with-slots (registered-players skat dealers bidding-values) host
     (assert (= (length registered-players) 3) (registered-players))
     (init-score-table host)
     (send-to-players host 'game-start)	; das Spiel beginnt
     (let ((cards (shuffle (all-cards))))
       ;; Karten austeilen
       (setf skat (subseq cards 0 2))
-      (comm:send comm (first registered-players) 'cards (subseq cards 2 12))
-      (comm:send comm (second registered-players) 'cards (subseq cards 12 22))
-      (comm:send comm (third registered-players) 'cards (subseq cards 22 32)))
+      (comm:send (comm host) (first registered-players) 'cards (subseq cards 2 12))
+      (comm:send (comm host) (second registered-players) 'cards (subseq cards 12 22))
+      (comm:send (comm host) (third registered-players) 'cards (subseq cards 22 32)))
     ;; den Geber verschieben
     (setf dealers (cdr dealers))
     ;; ersten Reizauftrag erteilen: Mittelhand sagt Vorderhand
@@ -175,7 +175,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   "Behandelt das Ansagen eines Reizwertes durch einen Spieler."
   (with-correct-sender sender ((current-bidder host))
     ;; Reizwerte aktualisieren
-    (setf (bidding-values host) (cut-away-bidding-values value (bidding-values host)))
+    (setf (bidding-values host) (cut-away-game-point-levels value (bidding-values host)))
     ;; Spieler erhebt Anspruch auf Spielführung
     (setf (current-declarer host) sender)
     (case (state host)
