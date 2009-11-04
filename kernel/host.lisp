@@ -73,6 +73,15 @@ Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden se
 
 ;; state: registration, alles
 
+(define-state-switch-function registration (host reset-registered-players-p)
+  "Geht in den Registrierungen-Entgegennahme Modus über.
+In diesem Zustand werden Registrierungsanfragen aufgenommen."
+  (when reset-registered-players-p	; Spielerliste zurücksetzen, wenn gewünscht
+    (setf (registered-players host) nil))
+  (setf (want-game-start host) nil)	; alle Registrierte müssen auf Start drücken
+  (slot-makunbound host 'dealers)	; löse die Tischrunde auf, wenn es schon eine gab
+  
+
 (defhandler registration-request () (host)
   "Behandelt Anfragen von Spielern, ob sie sich an den Tisch setzen dürfen"
   (case (state host)
