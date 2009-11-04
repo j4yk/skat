@@ -36,7 +36,7 @@ assoc-list ist eine Liste von cons-Zellen. Die Variable-Wert-Paare werden mit as
   "Stellt die XMPP-Verbindung zum Server her und loggt sich dort mit den bereitgestellten Daten ein."
   (let-from-assoc-list (data username hostname jid-domain-part resource password mechanism)
     ;; Verbindung herstellen und bei connection speichern
-    (setf (connection comm) (xmpp:connect :hostname hostname :jid-domain-part jid-domain-part :class 'xmpp-skat-connection))
+    (setf (connection comm) (xmpp:connect-tls :hostname hostname :jid-domain-part jid-domain-part :class 'xmpp-skat-connection))
     ;; Rückverweis im Verbindungsobjekt setzen (wichtig für xmpp:handle)
     (setf (comm-object (connection comm)) comm)
     ;; einloggen
@@ -51,39 +51,26 @@ assoc-list ist eine Liste von cons-Zellen. Die Variable-Wert-Paare werden mit as
   ;; Host instruieren, was für die Registrierung benötigt wird
   (push-request comm comm 'registration-parameters '((host-address string "JID des Skat-Hostes"))))
 
-(defmethod register ((comm xmpp-comm) data)
-  "Fragt bei einem Host die Registrierung an."
-  (let-from-assoc-list (data host-address)
-    (send comm host-address 'registration-request)))
+;; Ist das hier notwendig? Sollte eigentlich Sache des Kernels sein.
+;; (defmethod register ((comm xmpp-comm) data)
+;;   "Fragt bei einem Host die Registrierung an."
+;;   (let-from-assoc-list (data host-address)
+;;     (send comm host-address 'registration-request)))
 
 (defmethod send ((comm xmpp-comm) address request-name &rest request-args)
   "Sendet eine Anfrage an einen anderen Spieler. Das Format der Anfrage ist eine Liste: (cons request-name request-args)."
   (xmpp:message (connection comm) address (format nil "~s" (cons request-name request-args))))
 
 (defmethod stop ((comm xmpp-comm))
-  "Signalisiert dem XMPP-Kommunikationsmodul die Arbeit einzustellen. 
-Setzt stop-working auf t und schickt sich selbst eine Anfrage, um aus xmpp:receive-stanza herauszukommen."
-  (setf (stop-working comm) t)
-  (send comm (own-address comm) 'stop))
-
-(defun receive-loop (comm)
-  "Empfängt so lange XMPP-Stanzas, bis nach Empfang eines Stanzas (stop-working comm) t ergibt."
-  (eval-when (:compile-toplevel)
-    (warn "receive-loop is DEPRECATED!"))
-  (loop
-     (sleep 0.1) ; nicht die CPU hetzen
-     (if (stop-working comm)
-	 (return)
-	 (xmpp:receive-stanza (connection comm)))))
+  "Signalisiert dem XMPP-Kommunikationsmodul die Arbeit einzustellen.
+Beendet die XMPP-Verbindung."
+  (xmpp:disconnect (connection comm)))
 
 (defmethod receive-requests ((comm xmpp-comm))
   "Lässt alle wartenden Anfragen abrufen"
   (with-slots (connection) comm
-    (loop while (xmpp:stanza-waiting connection)
+    (loop while (xmpp:stanza-waiting-p connection)
        do (xmpp:receive-stanza connection))))
-
-(define-condition received-other-content ()
-  ((message :accessor message :initarg :message)))
 
 (defmethod xmpp:handle ((connection xmpp-skat-connection) (message xmpp:message))
   "Behandelt eingehende XMPP-Nachrichten-Stanzas. Wenn die Nachricht eine Liste ist, wird sie in die Queue gepackt. 
