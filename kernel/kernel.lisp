@@ -13,6 +13,12 @@
       ,@direct-slots)
      ,@options))
 
+(defmethod print-object ((kernel kernel) stream)
+  "Druckt den Zustand mit aus."
+  (print-unreadable-object (kernel stream :type t :identity t)
+    (princ "State=" stream)
+    (princ (state kernel) stream)))
+
 (defmacro defkernelmethod (name (kernel-class &rest method-parameters) &body body)
   "Definiert eine neue Methode für eine Kernelklasse,
 in deren body eine lexikalische Bindung der Variable kernel
