@@ -61,6 +61,14 @@
   "Setzt die verbliebenen Reizwerte auf den Anfangszustand (also alle Werte ab 18) zurück."
   (setf (bidding-values host) (cut-away-game-point-levels 18)))
 
+(define-state-switch-function registration (host reset-registered-players-p)
+  "Geht in den Registrierungen-Entgegennahme Modus über.
+In diesem Zustand werden Registrierungsanfragen aufgenommen."
+  (when reset-registered-players-p	; Spielerliste zurücksetzen, wenn gewünscht
+    (setf (registered-players host) nil))
+  (setf (want-game-start host) nil)	; alle Registrierte müssen auf Start drücken
+  (slot-makunbound host 'dealers))	; löse die Tischrunde auf, wenn es schon eine gab
+
 ;; state: start. Alles vor dem Registrieren.
 
 (define-condition no-login-data-supplied-error (error)
@@ -76,38 +84,38 @@ Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden se
 
 (defhandler login-data (start) (host data)
     (comm:login (comm host) data)
-    (switch-state host 'registration))
+    (registration t))
 
 ;; state: registration, alles
 
-(define-state-switch-function registration (host reset-registered-players-p)
-  "Geht in den Registrierungen-Entgegennahme Modus über.
-In diesem Zustand werden Registrierungsanfragen aufgenommen."
-  (when reset-registered-players-p	; Spielerliste zurücksetzen, wenn gewünscht
-    (setf (registered-players host) nil))
-  (setf (want-game-start host) nil)	; alle Registrierte müssen auf Start drücken
-  (slot-makunbound host 'dealers))	; löse die Tischrunde auf, wenn es schon eine gab
-  
-
 (defhandler registration-request () (host)
   "Behandelt Anfragen von Spielern, ob sie sich an den Tisch setzen dürfen"
-  (case (state host)
-    (registration
-     ;; während der Registrierungsphase werden Registrierungen akzeptiert
-     (if (>= (length (registered-players host)) 3)
-	 (comm:send (comm host) sender 'registration-reply nil) ; es gibt schon drei Spieler
-	 (unless (member sender (registered-players host) :test (address-compare-function host))
-	   (send-to-players host 'server-update `(:player-join ,sender))
-	   (push sender (registered-players host)) ; Spieler aufnehmen
-	   (comm:send (comm host) sender 'registration-reply t)
-	   (when (= (length (registered-players host)) 3)
-	     (setf (dealers host) (make-ring (registered-players host))) ; setze die Spieler an einen runden Tisch
-	     ;;(start-game host)))))  	  ; erstmal warten, bis alle game-start gesendet haben
-	     ))))
-    (otherwise
-     ;; es werden keine Registrierungen akzeptiert
-     (comm:send (comm host) sender 'registration-reply nil)
-     (comm:send (comm host) sender 'message "Host is not in registration mode."))))
+  (symbol-macrolet ((accept (comm:send (comm host) sender 'registration-reply t))
+		    (decline (comm:send (comm host) sender 'registration-reply nil)))
+    (with-slots (registered-players) host
+      (case (state host)
+	(registration
+	 ;; während der Registrierungsphase werden Registrierungen akzeptiert
+	 (if (member sender registered-players :test (address-compare-function host))
+	     ;; der Witzbold ist schon registriert
+	     accept
+	     (if (>= (length registered-players) 3)
+		 decline
+		 (progn
+		   (send-to-players host 'server-update `(:player-join ,sender))
+		   (push sender registered-players) ; Spieler aufnehmen
+		   accept
+		   (when (= (length registered-players) 3)
+		     (with-slots (dealers) host
+		       (setf dealers (make-ring registered-players)) ; setze die Spieler an einen runden Tisch
+		       ;; und zeige ihnen entsprechend ihre Sitznachbarn
+		       (comm:send (comm host) (car dealers) 'playmates (cadr dealers) (caddr dealers))
+		       (comm:send (comm host) (cadr dealers) 'playmates (caddr dealers) (cadddr dealers))
+		       (comm:send (comm host) (third dealers) 'playmates (fourth dealers) (fifth dealers))))))))
+	(otherwise
+	 ;; es werden keine Registrierungen akzeptiert
+	 (comm:send (comm host) sender 'registration-reply nil)
+	 (comm:send (comm host) sender 'message "Host is not in registration mode."))))))
 
 (defhandler unregister () (host)
   "Behandelt die Nachricht eines Spielers, dass er die Runde verlässt."
@@ -373,7 +381,8 @@ fehlenden Trumpfspitzen."
 (defhandler game-start (registration game-over) (host)
   "Behandelt den Wunsch eines Spielers nach einem weiteren Spiel."
   (unless (member sender (want-game-start host) :test (address-compare-function host))
-    (push sender (want-game-start host))) ; vermerke, dass der Spieler game-start gesendet hat
-  (if (null (set-difference (want-game-start host) (registered-players host)))
+    (when (member sender (registered-players host) :test (address-compare-function host))
+      (push sender (want-game-start host)))) ; vermerke, dass der Spieler game-start gesendet hat
+  (if (null (set-difference (registered-players host) (want-game-start host)))
       (bidding-1)))    ; wenn alle Spieler fertig sind, Reizen starten
 
