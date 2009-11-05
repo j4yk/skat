@@ -41,6 +41,9 @@
   (defparameter *suit-order-jacks* '(:diamonds :hearts :spades :clubs)
     "Die Reihenfolge für die Wertigkeit der Farben der vier Buben")
 
+  (defparameter *suit-order* *suit-order-jacks*
+    "Die Reihenfolge der vier Farben fürs Sortieren")
+
   (defparameter *rank-order* '(:seven :eight :nine :queen :king :ten :ace)
     "Die Reihenfolge für die Wertigkeit der Kartenränge")
 
@@ -160,7 +163,11 @@ Ist der Wert positiv ist die erste Karte höher als die zweite."
 		(reduce #'- (list card1 card2) ; Unterschied des Kartenranges ausrechnen
 			:key (lambda (c) (position (rank c) *rank-order*)))))
 	;; die Karten sind von unterschiedlicher Spielfarbe
-	card1-wins)))
+	(if (or (jackp card1) (eq (suit card1) game))
+	    card1-wins		; Karte 1 ist Trumpf
+	    (if (or (jackp card2) (eq (suit card2) game))
+		card2-wins		; Karte 2 ist Trumpf
+		card1-wins)))))		; Karte 2 ist kein Trumpf, d. h. Karte 1 nimmt mit
 
 (deftest "compare-cards mit zwei Buben im Farbspiel" :category "Cards"
 	 :input-form (values #!HJ #!DJ :diamonds)
@@ -177,6 +184,15 @@ Ist der Wert positiv ist die erste Karte höher als die zweite."
 	 :test-fn #'compare-cards
 	 :output-form 1)
 
+(deftests "compare-cards"
+  ("Bube nimmt Farbe mit" (compare-cards #!HJ #!DA :grand) 1)
+  ("Farbe wird von Bube mitgenommen" (compare-cards #!DA #!HJ :grand) -1)
+  ("Bube nimmt Farbtrumpf mit" (compare-cards #!HJ #!DA :diamonds) 1)
+  ("Farbtrumpf wird von Bube mitgenommen" (compare-cards #!DA #!HJ :diamonds) -1)
+  ("Farbtrumpf nimmt Farbe mit" (compare-cards #!D7 #!HA :diamonds) 1)
+  ("Farbtrumpf sticht Farbe" (compare-cards #!HA #!D7 :diamonds) -1)
+  ("Farbe nimmt andere Farbe mit" (compare-cards #!D7 #!HA :grand) 1))
+
 (defun card-greater-p (card1 card2 game)
   "Gibt zurück, ob card1 höher ist als card2"
   (plusp (compare-cards card1 card2 game)))
@@ -190,6 +206,22 @@ Ist der Wert positiv ist die erste Karte höher als die zweite."
 	  (if (card-greater-p (car cards) (cadr cards) game)
 	      (apply #'greatest-card game (cons (car cards) (cddr cards)))
 	      (apply #'greatest-card game (cdr cards))))))
+
+(defun sort-cards (cards game)
+  "Sortiert die Karten für ein bestimmtes Spiel"
+  (labels ((position-in-suit-order (card)
+	     (position (suit card) *suit-order*))
+	   (lower-p (card1 card2)
+	     "Gibt t zurück, wenn card1 vor card2 einsortiert werden soll"
+	     (if (same-suit-p card1 card2 game)
+		 (not (card-greater-p card1 card2 game)) ; gleiche Farbe => Rang entscheidet
+		 (symbol-macrolet ((decide-by-suit	 ; entscheide nach Farbenrangfolge
+				    (< (reduce #'- (list card1 card2) :key #'position-in-suit-order) 0)))
+		   (if (eq game :null)
+		       decide-by-suit	; bei Nullspielen zählt nur die Farbe
+		       (and (not (jackp card1)) ; bei anderen müssen die Buben höher sein
+			    (or (jackp card2) decide-by-suit)))))))
+    (sort cards #'lower-p)))
 
 (defun card-points (card)
   "Gibt die Augenpunkte zurück, die eine Karte zählt."
