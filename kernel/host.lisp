@@ -242,30 +242,35 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
        (player-case sender
 	 (current-forehand		; Vorderhand hat gepasst
 	  ;; d. h. Geber spielt
-	  (declarer-found)
+	  (declarer-found))
 	 (current-middlehand		; Mittelhand hat gepasst
 	  ;; d. h. Geber spielt
-	  (declarer-found)
+	  (declarer-found))
 	 (current-dealer		; Geber hat gepasst
 	  (if (not (slot-boundp host 'current-declarer))
 	      ;; noch hat keiner etwas gereizt, d. h. Vorderhand entscheidet über Ramsch
 	      (bidding-3 (current-forehand host))
 	      ;; es hat schon jemand etwas gereizt und nicht gepasst, derjenige spielt
-	      (declarer-found)))))))
+	      (declarer-found)))))
       (bidding-3			; dritter Pass => Ramsch
        (ramschen)))))
 	  
 ;; state: declarer-found. Warte auf hand-decision.
 
+(defmacro from-declarer (&body body)
+  `(with-correct-sender sender ((current-declarer host))
+     ,@body))
+
 (define-state-switch-function declarer-found (host)
-  "Der Spielführer steht nun fest."
+  "Der Spielführer steht nun fest, kündigt ihn an."
   (send-to-players host 'declarer (current-declarer host)))
 
 (defhandler hand-decision (declarer-found) (host hand)
-  "Behandelt die Ansage, ob der Declarer Hand spielt."
-  (if hand
-      (await-declaration)		; warte gleich auf die Ansage
-      (skat-away)))			; verschicke den Skat
+  "Behandelt die Ansage, ob der Declarer Hand spielt und geht in den entsprechenden Folgezustand über"
+  (from-declarer
+    (if hand
+	(await-declaration)		; warte gleich auf die Ansage
+	(skat-away))))			; verschicke den Skat
 
 ;; state: skat-away. Warte auf Rückgabe des Skats.
 
@@ -276,8 +281,9 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 
 (defhandler skat (skat-away) (host skat)
   "Behandelt die Rückgabe des Skats vom Declarer."
-  (setf (skat host) skat)		; Skat nehmen
-  (await-declaration))			; Ansage abwarten
+  (from-declarer
+    (setf (skat host) skat)		; Skat nehmen
+    (await-declaration)))			; Ansage abwarten
 
 ;; state: await-declaration. Warte auf die Ansage des Declarers.
 
@@ -294,34 +300,43 @@ fehlenden Trumpfspitzen."
 
 (defhandler declaration (await-declaration) (host declaration)
   "Behandelt die Verkündung der Ansage des Declarers."
-  (in-game))				; starte das Stichespielen
+  (from-declarer
+    (setf (declarer-declaration host) declaration) ; merke sie dir für die Stichauswertungen
+    (in-game)))				; starte das Stichespielen
 
 ;; state: in-game. Das Spiel läuft, die Stiche werden mitgenommen
 
 (define-state-switch-function in-game (host)
   "Startet das Stichespielen"
+  (setf (table host) (dealers host))	; die Runde aufmachen
+  (turn-table-to host (current-forehand host)) ; und Vorderhand fängt an
   (comm:send (comm host) (current-forehand host) 'choose-card)) ; lässt Vorderhand anspielen
 
 (defhandler card (in-game) (host card)
   "Behandelt das Spielen einer Karte durch einen Spieler."
-  (unless (slot-boundp host 'current-trick)
-    (setf (current-trick host) (make-trick))) ; einen neuen Stich eröffnen
-  					      ; wenn es noch keinen gibt
-  (with-slots (current-trick tricks) host
-    (add-contribution card sender current-trick) ; die Karte zum Stich packen
-    (when (trick-complete-p current-trick)
-      (let ((trick-winner (trick-winner current-trick
-					(game-variant (declarer-declaration host)))))
-	;; über fertige Stiche werden die Spieler benachrichtigt
-	(send-to-players host 'trick (cards current-trick) trick-winner)
-	;; auf den Stapel packen
-	(push current-trick tricks)
-	;; Platz machen für den nächsten Stich
-	(slot-makunbound host 'current-trick)
-	(if (= 10 (length tricks))	; war das der letzte Stich?
-	    (game-over t)		; dann beende das Spiel
-	    ;; nein? dann sage dem Stichsieger, dass er anspielen möge
-	    (comm:send (comm host) trick-winner 'choose-card))))))
+  (with-correct-sender sender ((car (table host))) ; Karte muss vom Spieler kommen, der an der Reihe ist
+    (unless (slot-boundp host 'current-trick)
+      (setf (current-trick host) (make-trick))) ; einen neuen Stich eröffnen
+					; wenn es noch keinen gibt
+    (with-slots (current-trick tricks) host
+      (add-contribution card sender current-trick) ; die Karte zum Stich packen
+      (setf (table host) (cdr (table host)))   ; der nächste ist dran
+      (when (trick-complete-p current-trick)
+	(let ((trick-winner (trick-winner current-trick
+					  (game-variant (declarer-declaration host)))))
+	  ;; über fertige Stiche werden die Spieler benachrichtigt
+	  (send-to-players host 'trick (cards current-trick) trick-winner)
+	  ;; auf den Stapel packen
+	  (push current-trick tricks)
+	  ;; Platz machen für den nächsten Stich
+	  (slot-makunbound host 'current-trick)
+	  (if (= 10 (length tricks))	; war das der letzte Stich?
+	      (game-over t)		; dann beende das Spiel
+	      ;; nein? dann sage dem Stichsieger, dass er anspielen möge
+	      ;; und schiebe ihn an die Tischfront
+	      (progn
+		(turn-table-to host trick-winner)
+		(comm:send (comm host) trick-winner 'choose-card))))))))
 
 ;; state: game-over. Das Spiel ist vorbei
 
