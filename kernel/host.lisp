@@ -15,10 +15,16 @@
    (skat :accessor skat :documentation "Noch nicht ausgegebener Skat")
    (flush-run :accessor flush-run :documentation "Anzahl Spitzen des Spielführers und ob sie vorhanden sind oder fehlen")
    (declaration :accessor declarer-declaration :documentation "was der Spielführer angesagt hat")
-   (tricks :accessor tricks :documentation "Gespielte Stiche")
+   (table :accessor table :documentation "Ringliste der drei Spieler, wird fürs Kartenspielen gedreht")
+   (tricks :accessor tricks :initform nil :documentation "Gespielte Stiche")
    (current-trick :accessor current-trick :documentation "Der aktuell auf dem Tisch liegende Stich")
    (want-game-start :accessor want-game-start :initform nil 
 		    :documentation "Liste der Spieler, die eine neue Runde wollen")))
+
+(defmethod turn-table-to ((host host) player)
+  "Drehe die Ringliste im Slot table so lange, bis player car ist."
+  (loop until (funcall (address-compare-function host) (car (table host)) player)
+     do (setf (table host) (cdr (table host)))))
 
 (defmethod send-to-players ((host host) request-name &rest request-args)
   "Sendet einen request an alle registrierten Spieler."
@@ -39,7 +45,8 @@
 			(assert (= (length list) (length shuffled-list)))
 			(dolist (item list)
 			  (assert (member item shuffled-list))
-			  (assert (= (count item shuffled-list) (count item list)))))))
+			  (assert (= (count item shuffled-list) (count item list))))
+			t)))
 
 (defmethod current-dealer ((host host))
   (first (dealers host)))
