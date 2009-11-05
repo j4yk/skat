@@ -14,7 +14,7 @@ für einen bestimmten Zustand zurück."
 (defmacro define-state-switch-function (state (kernel-class &rest args) &body body)
   "Definiert eine Methode, die body ausführt und dann den Kernel in den angegebenen
 Zustand überführt, und ein Makro, welches diese Funktion aus einer Kernelmethode
-(defkernelmethod) oder einem Request-Handler (defhandler) heraus aufrufen kann."
+oder einem Request-Handler (defhandler) heraus aufrufen kann."
   (let ((methodname (intern (concatenate 'string "SWITCH-TO-" (symbol-name state)))))
     ;; Argumente auftrennen in normale, key-Argumente und Restargumente
     (multiple-value-bind (normal-args key-args rest-args) (separate-lambda-list args)
@@ -23,7 +23,7 @@ Zustand überführt, und ein Makro, welches diese Funktion aus einer Kernelmetho
 	     ,@(append body `((switch-state kernel ',state)))) ; die eigentliche Methode
 	 ;; jetzt noch das Makro
 	 (defmacro ,state (,@args)
-	   `(apply ,'#',methodname kernel ,,@normal-args ; normale Argumente
-		   ,,@(loop for a in key-args ; key-Argumente für den Aufruf umformen
-			append `(,(to-keyword a) ,a))
-		   ,,(car rest-args))))))) ; und den Rest fürs apply nehmen
+	   `(,',methodname kernel ,,@normal-args
+			  ,,@(loop for a in key-args ; key-Argumente für den Aufruf umformen
+				append `(,(to-keyword a) ,a))
+			  ,,(car rest-args))))))) ; und den Rest fürs apply nehmen
