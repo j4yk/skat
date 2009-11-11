@@ -13,7 +13,7 @@
    (current-declarer :accessor current-declarer :documentation "Adresse des aktuellen Spielführers")
    (score-table :accessor score-table :documentation "die Punktetabelle aus (cons Adresse Punktzahl)")
    (skat :accessor skat :documentation "Noch nicht ausgegebener Skat")
-   (flush-run :accessor flush-run :documentation "Anzahl Spitzen des Spielführers und ob sie vorhanden sind oder fehlen")
+   (jacks :accessor jacks :initform nil :documentation "Buben, die der Declarer gespielt hat.")
    (declaration :accessor declarer-declaration :documentation "was der Spielführer angesagt hat")
    (table :accessor table :documentation "Ringliste der drei Spieler, wird fürs Kartenspielen gedreht")
    (tricks :accessor tricks :initform nil :documentation "Gespielte Stiche")
@@ -65,9 +65,9 @@
   "Geht in den Registrierungen-Entgegennahme Modus über.
 In diesem Zustand werden Registrierungsanfragen aufgenommen."
   (when reset-registered-players-p	; Spielerliste zurücksetzen, wenn gewünscht
-    (setf (registered-players host) nil))
-  (setf (want-game-start host) nil)	; alle Registrierte müssen auf Start drücken
-  (slot-makunbound host 'dealers))	; löse die Tischrunde auf, wenn es schon eine gab
+    (setf (registered-players host) nil)
+    (slot-makunbound host 'dealers))	; löse die Tischrunde auf, wenn es schon eine gab
+  (setf (want-game-start host) nil))	; alle Registrierte müssen auf Start drücken)
 
 ;; state: start. Alles vor dem Registrieren.
 
@@ -84,7 +84,7 @@ Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden se
 
 (defhandler login-data (start) (host data)
     (comm:login (comm host) data)
-    (registration t))
+    (switch-to-registration host t))
 
 ;; state: registration, alles
 
@@ -176,8 +176,8 @@ Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden se
     ;; den Geber verschieben
     (setf dealers (cdr dealers))
     ;; ersten Reizauftrag erteilen: Mittelhand sagt Vorderhand
-    (symbol-macrolet ((current-forehand (current-forehand host))
-		      (current-middlehand (current-middlehand host)))
+    (symbol-macrolet ((current-forehand (current-forehand host)) ; with-slots geht nicht, 
+		      (current-middlehand (current-middlehand host))) ; weil dies keine Slots sind
       (listen-to current-forehand current-middlehand))
     (reset-bidding-values host)
     ;; und jetzt warte auf pass
@@ -205,7 +205,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
     (case (state host)
       (bidding-3
        ;; Vorderhand reizt in dritter Instanz 18, d. h. dieser Spieler wird Spielführer
-       (declarer-found)))))
+       (switch-to-declarer-found host)))))
 
 (defhandler join (bidding-1 bidding-2 bidding-3) (host value)
   "Behandelt das Mitgehen eines Spielers bei einem Reizwert."
@@ -242,16 +242,16 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
        (player-case sender
 	 (current-forehand		; Vorderhand hat gepasst
 	  ;; d. h. Geber spielt
-	  (declarer-found))
+	  (switch-to-declarer-found host))
 	 (current-middlehand		; Mittelhand hat gepasst
 	  ;; d. h. Geber spielt
-	  (declarer-found))
+	  (switch-to-declarer-found host))
 	 (current-dealer		; Geber hat gepasst
 	  (if (not (slot-boundp host 'current-declarer))
 	      ;; noch hat keiner etwas gereizt, d. h. Vorderhand entscheidet über Ramsch
 	      (bidding-3 (current-forehand host))
 	      ;; es hat schon jemand etwas gereizt und nicht gepasst, derjenige spielt
-	      (declarer-found)))))
+	      (switch-to-declarer-found host)))))
       (bidding-3			; dritter Pass => Ramsch
        (ramschen)))))
 	  
@@ -270,7 +270,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   (from-declarer
     (if hand
 	(await-declaration)		; warte gleich auf die Ansage
-	(skat-away))))			; verschicke den Skat
+	(switch-to-skat-away host))))			; verschicke den Skat
 
 ;; state: skat-away. Warte auf Rückgabe des Skats.
 
@@ -283,7 +283,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   "Behandelt die Rückgabe des Skats vom Declarer."
   (from-declarer
     (setf (skat host) skat)		; Skat nehmen
-    (await-declaration)))			; Ansage abwarten
+    (switch-to-await-declaration host))) ; Ansage abwarten
 
 ;; state: await-declaration. Warte auf die Ansage des Declarers.
 
@@ -296,25 +296,36 @@ fehlenden Trumpfspitzen."
 
 (defmethod flush-run-value ((host host))
   "Gibt die Anzahl der fehlenden oder vorhandenen Trumpfspitzen des Spielführers zurück."
-  (cdr (flush-run host)))
+  (cadr (jacks-flush-run (jacks host))))
 
 (defhandler declaration (await-declaration) (host declaration)
   "Behandelt die Verkündung der Ansage des Declarers."
   (from-declarer
     (setf (declarer-declaration host) declaration) ; merke sie dir für die Stichauswertungen
-    (in-game)))				; starte das Stichespielen
+    (switch-to-in-game host)))				; starte das Stichespielen
 
 ;; state: in-game. Das Spiel läuft, die Stiche werden mitgenommen
 
 (define-state-switch-function in-game (host)
   "Startet das Stichespielen"
-  (setf (table host) (dealers host))	; die Runde aufmachen
+  (setf (table host) (dealers host) ; die Runde aufmachen(jacks host) nil)
+	(jacks host) nil	    ; gesammelte Buben zurücksetzen
+	(tricks host) nil)	    ; Stiche zurücksetzen
   (turn-table-to host (current-forehand host)) ; und Vorderhand fängt an
   (comm:send (comm host) (current-forehand host) 'choose-card)) ; lässt Vorderhand anspielen
+
+(defkernelmethod remember-jack (host jack-suit)
+  "Merkt sich den gespielten Buben für die Flush-Run Auszählung"
+  (with-slots (jacks) host
+    (push jack-suit jacks)))
 
 (defhandler card (in-game) (host card)
   "Behandelt das Spielen einer Karte durch einen Spieler."
   (with-correct-sender sender ((car (table host))) ; Karte muss vom Spieler kommen, der an der Reihe ist
+    (when (and (jackp card)
+	       (funcall (address-compare-function host) sender (current-declarer host)))
+      ;; Spielführer spielt Buben, merke dir das für den Flush-Run
+      (remember-jack host (suit card)))
     (unless (slot-boundp host 'current-trick)
       (setf (current-trick host) (make-trick))) ; einen neuen Stich eröffnen
 					; wenn es noch keinen gibt
@@ -331,7 +342,7 @@ fehlenden Trumpfspitzen."
 	  ;; Platz machen für den nächsten Stich
 	  (slot-makunbound host 'current-trick)
 	  (if (= 10 (length tricks))	; war das der letzte Stich?
-	      (game-over t)		; dann beende das Spiel
+	      (switch-to-game-over host t) ; dann beende das Spiel
 	      ;; nein? dann sage dem Stichsieger, dass er anspielen möge
 	      ;; und schiebe ihn an die Tischfront
 	      (progn
@@ -343,13 +354,14 @@ fehlenden Trumpfspitzen."
 (defun count-card-points (tricks declarer &optional (address-compare-function #'equalp))
   "Zählt die Augen in den Stichen der beiden Spielparteien aus.
 ==> declarer-card-points, defenders-card-points"
-  (multiple-value-bind (declarer-tricks defenders-tricks)
+  (multiple-value-bind (declarer-tricks defenders-tricks) ; Stiche teilen
       (loop for trick in tricks
 	 if (funcall address-compare-function (trick-winner trick) declarer)
 	 collect trick into declarer-tricks
 	 else collect trick into defenders-tricks
 	 end
 	 finally (return (values declarer-tricks defenders-tricks)))
+    ;; Punkte aufsummieren
     (values-list (mapcar #'(lambda (tricks) (apply #'+ (mapcar #'trick-card-points tricks)))
 			 (list declarer-tricks defenders-tricks)))))
 
@@ -369,27 +381,28 @@ fehlenden Trumpfspitzen."
   "Spiel beenden und auswerten."
   (send-to-players host 'game-over prompt) ; Spieler in Kenntnis setzen
   (setf (want-game-start host) nil) ; setze die Liste der Spielwilligen zurück
-  (multiple-value-bind (declarer-score defenders-score)
+  (multiple-value-bind (declarer-score defenders-score) ; Augen auszählen
       (count-card-points (tricks host) (current-declarer host) (address-compare-function host))
-    (send-to-players host 'cards-score declarer-score defenders-score)
-    (with-slots (declaration current-declarer score-table) host
+    (send-to-players host 'cards-score declarer-score defenders-score) ; und verschicken
+    ;; nun die Augen auswerten...
+    (with-slots (jacks declaration current-declarer score-table) host
       (let ((won (> declarer-score defenders-score)))
 	(if won
 	    (progn
-	      (when (>= declarer-score 90)
+	      (when (>= declarer-score 90) ; Schneider
 		(push :played-schneider (cdr declaration))
 		(when (= declarer-score 120)
-		  (push :played-schwarz (cdr declaration))))
+		  (push :played-schwarz (cdr declaration)))) ; Schwarz
 	      (let ((game-points (game-points declaration (flush-run-value host))))
-		(send-to-players host 'game-result declaration won game-points)
+		(send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
 		(incf (gethash current-declarer score-table) game-points)))
 	    (progn
 	      (when (<= declarer-score 30)
-		(push :played-schneider (cdr declaration))
+		(push :played-schneider (cdr declaration)) ; Schneider
 		(when (= declarer-score 0)
-		  (push :played-schwarz (cdr declaration)))
+		  (push :played-schwarz (cdr declaration))) ; Schwarz
 		(let ((game-points (* 2 (game-points declaration (flush-run-value host)))))
-		  (send-to-players host 'game-result declaration won game-points)
+		  (send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
 		  (decf (gethash current-declarer score-table) game-points))))))))
   (send-score-table host))
 
@@ -399,5 +412,5 @@ fehlenden Trumpfspitzen."
     (when (member sender (registered-players host) :test (address-compare-function host))
       (push sender (want-game-start host)))) ; vermerke, dass der Spieler game-start gesendet hat
   (if (null (set-difference (registered-players host) (want-game-start host)))
-      (bidding-1)))    ; wenn alle Spieler fertig sind, Reizen starten
+      (switch-to-bidding-1 host)))    ; wenn alle Spieler fertig sind, Reizen starten
 
