@@ -16,11 +16,11 @@ für einen bestimmten Zustand zurück."
 Zustand überführt, und ein Makro, welches diese Funktion aus einer Kernelmethode
 oder einem Request-Handler (defhandler) heraus aufrufen kann."
   (let ((methodname (intern (concatenate 'string "SWITCH-TO-" (symbol-name state)))))
-    `(prog1
-	 ;; die eigentliche Methode:
-	 (defkernelmethod ,methodname (,kernel-class ,@args)
-	   ,@body
-	   (switch-state kernel ',state))
-       ;; und das Makro:
-       (defmacro ,state ,args
-	 `(,',methodname kernel ,,@args)))))
+    `(progn
+       ;; das Switch-Makro:
+;;        (defmacro ,state ,args
+;; 	 `(,',methodname kernel ,,@args))
+       ;; die eigentliche Methode:
+       (defkernelmethod ,methodname (,kernel-class ,@args)
+	 ,@body
+	 (switch-state kernel ',state)))))
