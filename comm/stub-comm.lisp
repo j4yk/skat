@@ -35,8 +35,10 @@
 
 (defmethod send ((comm stub-comm) address request-name &rest request-args)
   (stub-msg "COMM: sending ~a ~a to ~a" request-name request-args address)
-  (signal 'stub-communication-send :request request-name :args request-args
-	  :sender comm :address address)
+  ;; lasse wen will hier einhängen, damit noch was automatisiert werden kann
+  (restart-case (signal 'stub-communication-send :request request-name :args request-args
+			:sender comm :address address)
+    (continue () nil))
   (values))
 
 (defmethod stop ((comm stub-comm))

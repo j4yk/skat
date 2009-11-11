@@ -1,3 +1,4 @@
+
 (in-package skat-kernel)
 
 (defun make-stub-host ()
@@ -8,6 +9,13 @@
     (ui:start (ui host))
     host))
 
+(defparameter host nil)
+(defparameter ui nil)
+(defparameter comm nil)
+(defparameter cards1 nil)
+(defparameter cards2 nil)
+(defparameter cards3 nil)
+
 (defmacro mkstubhost ()
   `(progn
      (defparameter host (make-stub-host))
@@ -15,8 +23,29 @@
      (defparameter comm (comm host))
      (values 'host 'ui 'comm)))
 
+(defmacro with-debug-handlers (&body body)
+  `(handler-bind ((comm::stub-communication-send
+		   #'(lambda (send)
+		       (case (comm::request-name send)
+			 (cards (case (comm::address send)
+				  (1 (setq cards1 (sort-cards (car (comm::args send)) :grand)))
+				  (2 (setq cards2 (sort-cards (car (comm::args send)) :grand)))
+				  (3 (setq cards3 (sort-cards (car (comm::args send)) :grand))))
+				(format t "*** modified cards for ~a~%" (comm::address send)))
+			 (skat (macrolet ((setq-cards (var)
+					    `(setq ,var (sort-cards (nconc ,var (car (comm::args send))) :grand))))
+				 (format t "*** modifying cards for ~a~%" (comm::address send))
+				 (case (comm::address send)
+				   (1 (setq-cards cards1))
+				   (2 (setq-cards cards2))
+				   (3 (setq-cards cards3))))))
+		       (continue))))
+     ,@body))
+
 (defun ui-step ()
-  (ui::main-loop-step ui))
+  (assert (typep ui 'ui::base-ui) (ui))
+  (with-debug-handlers 
+      (ui::main-loop-step ui)))
 
 (defmacro push-request (from name &rest args)
   `(comm::push-request comm ,from ',name ,@args))
@@ -24,4 +53,20 @@
 (defmacro process-request (from name &rest args)
   `(progn
      (push-request ,from ,name ,@args)
-     (ui-step)))
+     (ui-step)
+     ,(case name
+	(card
+	 `(macrolet ((delete-card (var)
+		       `(setq ,var (delete ,',(car args) ,var :test #'equalp))))
+	    ,(case from
+	      (1 `(delete-card cards1))
+	      (2 `(delete-card cards2))
+	      (3 `(delete-card cards3)))))
+	(skat `(macrolet ((delete-cards (var)
+			    ,(destructuring-bind (quote (a b)) (car args)
+						 (declare (ignore quote))
+						 ``(setq ,var (delete ,',a (delete ,',b ,var :test #'equalp) :test #'equalp)))))
+		 ,(case from
+		   (1 `(delete-cards cards1))
+		   (2 `(delete-cards cards2))
+		   (3 `(delete-cards cards3))))))))
