@@ -237,3 +237,32 @@ Ist der Wert positiv ist die erste Karte höher als die zweite."
   ("Punkte für Ass und 10" ((lambda (&rest cards) (values-list (mapcar #'card-points cards)))
 			    #cDA #cD10)
 			   (values 11 10)))
+
+(defun jacks-flush-run (suits)
+  "Gibt eine Liste aus :WITH oder :WITHOUT und der Anzahl der Spitzen zurück.
+(Bspw. (list :WITHOUT 2))"
+  (if (member :clubs suits)
+      (values (list :with
+		    (1+ (loop for suit in '(:spades :hearts :diamonds)
+			   if (member suit suits)
+			   sum 1 into flush-run
+			   else return flush-run
+			   finally (return flush-run)))))
+      (values (list :without
+		    (1+ (loop for suit in '(:spades :hearts :diamonds)
+			   unless (member suit suits)
+			   sum 1 into flush-run
+			   else return flush-run
+			   finally (return flush-run)))))))
+
+(deftests "Karten"
+  ("Spitzen Kreuz Pik Herz Karo" (jacks-flush-run '(:clubs :spades :hearts :diamonds)) '(:with 4))
+  ("Spitzen Kreuz Pik Herz" (jacks-flush-run '(:clubs :spades :hearts)) '(:with 3))
+  ("Spitzen Kreuz Pik" (jacks-flush-run '(:clubs :spades)) '(:with 2))
+  ("Spitzen Kreuz" (jacks-flush-run '(:clubs)) '(:with 1))
+  ("Spitzen Kreuz Herz" (jacks-flush-run '(:clubs :hearts)) '(:with 1))
+  ("Spitzen Pik Herz Karo" (jacks-flush-run '(:spades :hearts :diamonds)) '(:without 1))
+  ("Spitzen Herz Karo" (jacks-flush-run '(:hearts :diamonds)) '(:without 2))
+  ("Spitzen Karo" (jacks-flush-run '(:diamonds)) '(:without 3))
+  ("keine Spitzen" (jacks-flush-run '()) '(:without 4))
+  ("Spitzen Pik Karo" (jacks-flush-run '(:spades :diamonds)) '(:without 1)))
