@@ -234,10 +234,10 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
        (player-case sender
 	 (current-forehand 		; Vorderhand hat gepasst
 	  ;; Geber sagt Mittelhand weiter
-	  (bidding-2 (current-middlehand host) (current-dealer host)))
+	  (switch-to-bidding-2 host (current-middlehand host) (current-dealer host)))
 	 (current-middlehand		; Mittelhand hat gepasst
 	  ;; Geber sagt Vorderhand weiter
-	  (bidding-2 (current-forehand host) (current-dealer host)))))
+	  (switch-to-bidding-2 host (current-forehand host) (current-dealer host)))))
       (bidding-2			; zweiter Pass
        (player-case sender
 	 (current-forehand		; Vorderhand hat gepasst
@@ -249,7 +249,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 	 (current-dealer		; Geber hat gepasst
 	  (if (not (slot-boundp host 'current-declarer))
 	      ;; noch hat keiner etwas gereizt, d. h. Vorderhand entscheidet über Ramsch
-	      (bidding-3 (current-forehand host))
+	      (switch-to-bidding-3 (current-forehand host))
 	      ;; es hat schon jemand etwas gereizt und nicht gepasst, derjenige spielt
 	      (switch-to-declarer-found host)))))
       (bidding-3			; dritter Pass => Ramsch
