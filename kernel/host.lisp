@@ -400,10 +400,10 @@ fehlenden Trumpfspitzen."
 	      (when (<= declarer-score 30)
 		(push :played-schneider (cdr declaration)) ; Schneider
 		(when (= declarer-score 0)
-		  (push :played-schwarz (cdr declaration))) ; Schwarz
-		(let ((game-points (* 2 (game-points declaration (flush-run-value host)))))
-		  (send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
-		  (decf (gethash current-declarer score-table) game-points))))))))
+		  (push :played-schwarz (cdr declaration)))) ; Schwarz
+	      (let ((game-points (* 2 (game-points declaration (flush-run-value host)))))
+		(send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
+		(decf (gethash current-declarer score-table) game-points)))))))
   (send-score-table host))
 
 (defhandler game-start (registration game-over) (host)
