@@ -269,7 +269,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   "Behandelt die Ansage, ob der Declarer Hand spielt und geht in den entsprechenden Folgezustand über"
   (from-declarer
     (if hand
-	(await-declaration)		; warte gleich auf die Ansage
+	(switch-to-await-declaration host)		; warte gleich auf die Ansage
 	(switch-to-skat-away host))))			; verschicke den Skat
 
 ;; state: skat-away. Warte auf Rückgabe des Skats.
