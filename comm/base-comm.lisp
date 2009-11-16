@@ -24,7 +24,7 @@
   (:documentation "Fundamental Communication system. Implements no useable connection.
 Meant as base class for other communication-classes."))
 
-(defmethod push-request ((comm base-comm) sender request-name &rest request-args)
+(defmethod push-request ((comm base-comm) sender request-name request-args)
   "Fügt eine Anfrage zur Queue hinzu."
   (queue-push (append (list request-name sender) request-args) (arrived-requests comm))
   (cons request-name request-args))
