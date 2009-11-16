@@ -9,7 +9,7 @@
 
 (defmethod start ((comm stub-comm))
   (stub-msg "COMM: started.")
-  (push-request comm comm 'login-parameters nil)
+  (push-request comm comm 'login-parameters (list nil))
   (values))
 
 (defmethod login ((comm stub-comm) data)
@@ -44,7 +44,7 @@
 (defmethod stop ((comm stub-comm))
   (values))
 
-(defmethod feed-comm ((comm stub-comm) sender request-name &rest request-args)
+(defmethod feed-comm ((comm stub-comm) sender request-name request-args)
   "\"Füttert\" eine Stub-Comm mit einer Anfrage. So als ob sie sie empfangen hätte."
   (apply #'push-request comm sender request-name request-args))
 
