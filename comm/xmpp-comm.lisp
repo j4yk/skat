@@ -26,7 +26,7 @@
   "Erzeugt ein let mit den Variablen vars, deren Werte aus aus assoc-list gewonnen werden.
 assoc-list ist eine Liste von cons-Zellen. Die Variable-Wert-Paare werden mit assoc gefunden."
   `(let ,(loop for name in vars
-	       collect `(,name (cdr (assoc ',name ,assoc-list))))
+	       collect `(,name (cadr (assoc ',name ,assoc-list))))
      ,@body))
 
 (define-condition login-unsuccessful (error)
@@ -68,9 +68,10 @@ Beendet die XMPP-Verbindung."
 
 (defmethod receive-requests ((comm xmpp-comm))
   "Lässt alle wartenden Anfragen abrufen"
-  (with-slots (connection) comm
-    (loop while (xmpp:stanza-waiting-p connection)
-       do (xmpp:receive-stanza connection))))
+  (when (slot-boundp comm 'connection)	; nur wenn die XMPP-Verbindung schon besteht
+    (with-slots (connection) comm
+      (loop while (xmpp:stanza-waiting-p connection)
+	 do (xmpp:receive-stanza connection)))))
 
 (defmethod xmpp:handle ((connection xmpp-skat-connection) (message xmpp:message))
   "Behandelt eingehende XMPP-Nachrichten-Stanzas. Wenn die Nachricht eine Liste ist, wird sie in die Queue gepackt. 

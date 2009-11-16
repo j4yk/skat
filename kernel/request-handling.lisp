@@ -26,6 +26,12 @@
   (unless (apply #'requests:correct-parameters-p request-name request-arg-names)
     (error 'requests:wrong-request-parameters :request-name request-name)))
 
+(define-condition request-state-mismatch (error)
+  ((state :accessor state :initarg :state)
+   (request-name :accessor request-name :initarg :request-name)
+   (request-args :accessor request-args :initarg :request-args))
+  (:documentation "Signalisiert, dass eine Anfrage eintraf, die im aktuellen Zustand des Kernels nicht erlaubt ist."))
+
 (defmacro defhandler (request-name (&rest states) (kernel-class-and-varname &rest request-args) &body body)
   "Definiert eine Handlerfunktion für diese Anfragen.
 

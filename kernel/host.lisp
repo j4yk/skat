@@ -79,12 +79,10 @@ In diesem Zustand werden Registrierungsanfragen aufgenommen."
   "Von der Kommunikation kommende Parameter zum Einwählen ins Kommunikationsmedium.
 Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden sein."
   (if (slot-boundp host 'login-data)
-      (call-handler-fn host host 'login-data (slot-value host 'login-data)) ; login-data "senden"
+      (progn
+	(comm:login (comm host) (slot-value host 'login-data))
+	(switch-to-registration host t))
       (error 'no-login-data-supplied-error :host host)))
-
-(defhandler login-data (start) (host data)
-    (comm:login (comm host) data)
-    (switch-to-registration host t))
 
 ;; state: registration, alles
 

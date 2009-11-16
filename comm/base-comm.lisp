@@ -58,7 +58,8 @@ Rückgabewerte: 1. Bezeichnung der Anfrage - ein Symbol
     (values (car top-request) (cadr top-request) (cddr top-request))))
 
 (defmethod has-request ((comm base-comm))
-  "Gibt t zurück, wenn sich Anfragen mit get-request abrufen ließen."
+  "Gibt t zurück, wenn sich Anfragen mit get-request abrufen ließen.
+Ist nicht dazu gedacht, überschrieben zu werden."
   (receive-requests comm)		; Anfragen abrufen, wenn welche vorliegen
   (not (null (queue-peek (arrived-requests comm)))))
 
