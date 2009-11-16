@@ -287,10 +287,10 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 
 (define-state-switch-function await-declaration (host))
 
-(defhandler flush-run (await-declaration) (host with-or-without run-value)
-  "Behandelt die Information des Spielführers über die vorhandenen oder
-fehlenden Trumpfspitzen."
-  (setf (flush-run host) (cons with-or-without run-value)))
+;; (defhandler flush-run (await-declaration) (host with-or-without run-value)
+;;   "Behandelt die Information des Spielführers über die vorhandenen oder
+;; fehlenden Trumpfspitzen."
+;;   (setf (flush-run host) (cons with-or-without run-value)))
 
 (defmethod flush-run-value ((host host))
   "Gibt die Anzahl der fehlenden oder vorhandenen Trumpfspitzen des Spielführers zurück."

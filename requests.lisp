@@ -197,13 +197,13 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
    "Die Übergabe des Skats. Sowohl vom Host zum Declarer als auch zurück."
    :SENDER "Host, Player" :RECEIVER "Host, Player"))
 
-(defrequest flush-run
-    ((with-or-without
-      "entweder :with oder :without (mit oder ohne)")
-     (run-value
-      "Die Anzahl der (fehlenden) Trumpfspitzen"))
-  (:documentation "Wird durch den Spielführer vor DECLARATION übermittelt, um den Spielwert auszurechnen"
-		  :sender "Player" :receiver "Host"))
+;; (defrequest flush-run
+;;     ((with-or-without
+;;       "entweder :with oder :without (mit oder ohne)")
+;;      (run-value
+;;       "Die Anzahl der (fehlenden) Trumpfspitzen"))
+;;   (:documentation "Wird durch den Spielführer vor DECLARATION übermittelt, um den Spielwert auszurechnen"
+;; 		  :sender "Player" :receiver "Host"))
 
 (DEFREQUEST DECLARATION
     ((DECLARATION "Eine Liste an Spieloptionen (zum Beispiel was Trumpf ist)"))
