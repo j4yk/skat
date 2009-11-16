@@ -14,29 +14,33 @@
 (defmethod start ((comm xmpp-comm))
   "Initialisiert dieses XMPP-Verbindungsobjekt. Fügt nur die Login-Parameterliste für Kernel zum Abruf ein."
   (push-request comm comm 'login-parameters 
-		'((username string "XMPP Benutzername") 
-		  (hostname string "Adresse des XMPP Servers") 
-		  (jid-domain-part string "Domänen-Teil der JID (z. B. \"bar.org\" in \"foo@bar.org\"), falls verschieden von der Serveradresse") 
-		  (resource string "XMPP-Ressource zum Einloggen")
-		  (password string "Passwort")
-		  (mechanism (:plain :digest-md5) "Form, in der das Passwort übermittelt wird")))
+		(list '((username string "XMPP Benutzername") 
+			(hostname string "Adresse des XMPP Servers") 
+			(jid-domain-part string "Domänen-Teil der JID (z. B. \"bar.org\" in \"foo@bar.org\"), falls verschieden von der Serveradresse") 
+			(resource string "XMPP-Ressource zum Einloggen")
+			(password string "Passwort")
+			(mechanism (:plain :sasl-plain) "Form, in der das Passwort übermittelt wird"))))
   (values))
 
-(defmacro let-from-assoc-list ((assoc-list &rest vars) &body body)
-  "Erzeugt ein let mit den Variablen vars, deren Werte aus aus assoc-list gewonnen werden.
-assoc-list ist eine Liste von cons-Zellen. Die Variable-Wert-Paare werden mit assoc gefunden."
-  `(let ,(loop for name in vars
-	       collect `(,name (cadr (assoc ',name ,assoc-list))))
-     ,@body))
+(defmacro let-multiple-getf (place (&rest indicators-and-varnames) &body body)
+  "Packt eine Property-Liste mit getf aus.
+Syntax: let-multiple-getf place ({indicator varname}*) form*"
+  (let ((indicators (loop for i from 0 to (1- (length indicators-and-varnames))
+			 when (evenp i) collect (nth i indicators-and-varnames))))
+    `(let ,(loop for indicator in indicators
+		collect `(,(getf indicators-and-varnames indicator) (getf ,place ,indicator)))
+       ,@body)))
 
 (define-condition login-unsuccessful (error)
   ((additional-information :accessor additional-information :initarg :additional-information)))
 
 (defmethod login ((comm xmpp-comm) data)
   "Stellt die XMPP-Verbindung zum Server her und loggt sich dort mit den bereitgestellten Daten ein."
-  (let-from-assoc-list (data username hostname jid-domain-part resource password mechanism)
+  (let-multiple-getf data (:hostname hostname :jid-domain-part jid-domain-part
+				     :username username :resource resource
+				     :password password :mechanism mechanism)
     ;; Verbindung herstellen und bei connection speichern
-    (setf (connection comm) (xmpp:connect-tls :hostname hostname :jid-domain-part jid-domain-part :class 'xmpp-skat-connection))
+    (setf (connection comm) (xmpp:connect :hostname hostname :jid-domain-part jid-domain-part :class 'xmpp-skat-connection))
     ;; Rückverweis im Verbindungsobjekt setzen (wichtig für xmpp:handle)
     (setf (comm-object (connection comm)) comm)
     ;; einloggen
@@ -47,9 +51,9 @@ assoc-list ist eine Liste von cons-Zellen. Die Variable-Wert-Paare werden mit as
     (setf (resource comm) resource
 	  (own-address comm) (format nil "~a@~a/~a" username jid-domain-part resource))
     ;; kernel die eigene Adresse mitteilen
-    (push-request comm comm 'own-address (own-address comm)))
+    (push-request comm comm 'own-address (list (own-address comm))))
   ;; Host instruieren, was für die Registrierung benötigt wird
-  (push-request comm comm 'registration-parameters '((host-address string "JID des Skat-Hostes"))))
+  (push-request comm comm 'registration-parameters (list '((host-address string "JID des Skat-Hostes")))))
 
 ;; Ist das hier notwendig? Sollte eigentlich Sache des Kernels sein.
 ;; (defmethod register ((comm xmpp-comm) data)

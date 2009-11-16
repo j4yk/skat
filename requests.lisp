@@ -83,7 +83,7 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 
 (DEFREQUEST LOGIN-DATA
     ((DATA
-      "Eine Liste von Assoziationen $Parametername \\rightarrow Parameterwert$"))
+      "Eine Property-Liste mit den Parameternamen als Namen und den entsprechenden Argumenten als Werten"))
   (:DOCUMENTATION
    "Enthält die der Kommunikation zur Verfügung gestellten Einwahldaten."
    :SENDER "UI" :RECEIVER "Kommunikation"))
