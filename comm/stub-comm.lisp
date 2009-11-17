@@ -16,7 +16,7 @@
   (stub-msg "COMM: logged in.")
   (values))
 
-(defmethod push-request :after ((comm stub-comm) sender request-name &rest request-args)
+(defmethod push-request :after ((comm stub-comm) sender request-name request-args)
   "Schreibt auf, was gepusht wurde"
   (stub-msg "COMM: pushed ~a ~a from ~a" request-name request-args sender))
 
