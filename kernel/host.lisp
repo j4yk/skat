@@ -84,6 +84,10 @@ Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden se
 	(switch-to-registration host t))
       (error 'no-login-data-supplied-error :host host)))
 
+(defhandler registration-parameters () (host parameters)
+  "Da Comm nichts vom Host weiß, schickt sie dem Host auch die Registrierungsparameter.
+Host ignoriert diese einfach.")
+
 ;; state: registration, alles
 
 (defhandler registration-request () (host)
