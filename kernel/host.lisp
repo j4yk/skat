@@ -413,6 +413,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   (unless (member sender (want-game-start host) :test (address-compare-function host))
     (when (member sender (registered-players host) :test (address-compare-function host))
       (push sender (want-game-start host)))) ; vermerke, dass der Spieler game-start gesendet hat
-  (if (null (set-difference (registered-players host) (want-game-start host)))
+  (if (null (set-difference (registered-players host) (want-game-start host)
+			    :test (address-compare-function host)))
       (switch-to-bidding-1 host)))    ; wenn alle Spieler fertig sind, Reizen starten
 
