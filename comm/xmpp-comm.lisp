@@ -7,7 +7,7 @@
   ((connection :accessor connection)
    (stop-working :accessor stop-working :initform nil)
    (resource :accessor resource)
-   (own-address :accessor own-address)
+   (address :accessor address)
    (address-compare-function :initform #'equalp))
   (:documentation "Communication over an XMPP-Connection. The addresses are JID-strings."))
 
@@ -49,9 +49,9 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
 	(xmpp:xmpp-protocol-error-cancel (error 'login-unsuccessful :additional-information auth-result))))
     ;; der Vollständigkeit halber die Ressource merken, alles andere steckt in connection
     (setf (resource comm) resource
-	  (own-address comm) (format nil "~a@~a/~a" username jid-domain-part resource))
+	  (address comm) (format nil "~a@~a/~a" username jid-domain-part resource))
     ;; kernel die eigene Adresse mitteilen
-    (push-request comm comm 'own-address (list (own-address comm))))
+    (push-request comm comm 'own-address (list (address comm))))
   ;; Host instruieren, was für die Registrierung benötigt wird
   (push-request comm comm 'registration-parameters (list '((host-address string "JID des Skat-Hostes")))))
 
@@ -83,6 +83,7 @@ Sonst wird received-other-content signalisiert."
   (let ((read-message (handler-case (read-from-string (xmpp:body message))
 			(end-of-file () 'malformed)))
 	(sender (xmpp:from message)))
+    (format *debug-io* "~%~a handles ~a" (address (comm-object connection)) message)
     (if (listp read-message)
 	(push-request (comm-object connection) sender (car read-message) (cdr read-message))
 	(signal 'received-other-content :message message))))
