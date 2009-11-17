@@ -18,7 +18,10 @@ Endet, wenn Slot stop-received initialisiert wird."
      (restart-case (kernel:receive-requests (kernel ui))
        (continue-main-loop ()
 	 :report "setze die Hauptschleife der Host-UI fort"
-	 (values)))	 
+	 (values))
+       (quit-main-loop ()
+	 :report "Hauptschleife der Host-UI beenden"
+	 (setf (slot-value ui 'stop-received) t)))
      (when (slot-boundp ui 'stop-received)
        (return))))
 
