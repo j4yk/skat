@@ -20,7 +20,8 @@
 				     (:file xmpp-comm)))
 	       (:module ui
 			:serial t
-			:components ((:file base-ui)
+			:components ((:file ui-request-handling)
+				     (:file base-ui)
 				     (:file stub-ui)
 				     (:file host-ui)
 				     (:module opengl-ui)))
