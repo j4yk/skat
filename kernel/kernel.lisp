@@ -45,7 +45,7 @@ etabliert wird."
 Andernfalls wird ein invalid-request-sender-error signalisiert.
 Dieses Makro sollte nur innerhalb von defhandler verwendet werden,
 da es die Bindungen der Variablen kernel und request-name voraussetzt."
-  `(if (member sender correct-senders :test (address-compare-function kernel))
+  `(if (member sender (list ,@correct-senders) :test (address-compare-function kernel))
        (progn ,@body)
        (error 'invalid-request-sender-error :sender ,sender :kernel kernel :expected-senders (list ,@correct-senders)
 	      :request request-name)))

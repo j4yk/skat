@@ -75,7 +75,7 @@ In diesem Zustand werden Registrierungsanfragen aufgenommen."
   ((host :accessor host :initarg :host))
   (:documentation "Wird signalisiert, wenn dem Hostobjekt keine Logindaten zur Verfügung gestellt wurden."))
 
-(defhandler login-parameters (start) (host parameters)
+(defhandler login-parameters (start) comm (host parameters)
   "Von der Kommunikation kommende Parameter zum Einwählen ins Kommunikationsmedium.
 Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden sein."
   (if (slot-boundp host 'login-data)
@@ -84,13 +84,13 @@ Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden se
 	(switch-to-registration host t))
       (error 'no-login-data-supplied-error :host host)))
 
-(defhandler registration-parameters () (host parameters)
+(defhandler registration-parameters () comm (host parameters)
   "Da Comm nichts vom Host weiß, schickt sie dem Host auch die Registrierungsparameter.
 Host ignoriert diese einfach.")
 
 ;; state: registration, alles
 
-(defhandler registration-request () (host)
+(defhandler registration-request () :any (host)
   "Behandelt Anfragen von Spielern, ob sie sich an den Tisch setzen dürfen"
   (symbol-macrolet ((accept (comm:send (comm host) sender 'registration-reply t))
 		    (decline (comm:send (comm host) sender 'registration-reply nil)))
@@ -119,16 +119,17 @@ Host ignoriert diese einfach.")
 	 (comm:send (comm host) sender 'registration-reply nil)
 	 (comm:send (comm host) sender 'message "Host is not in registration mode."))))))
 
-(defhandler unregister () (host)
+(defhandler unregister () :any (host)
   "Behandelt die Nachricht eines Spielers, dass er die Runde verlässt."
-  (ecase (state host)
-    (registration
-     ;; Spieler aus der Liste entfernen
-     (setf (registered-players host)
-	   (delete sender (registered-players host) :test (address-compare-function host)))
-     (slot-makunbound host 'dealers)	  ; die Tischrunde auflösen
-     (inform-players-of-leaving-player)
-     (send-to-players host 'message (format nil "Spieler ~a verlässt die Runde." sender)))))
+  (when (member sender (registered-players host) :test (address-compare-function host))
+    (ecase (state host)
+      (registration
+       ;; Spieler aus der Liste entfernen
+       (setf (registered-players host)
+	     (delete sender (registered-players host) :test (address-compare-function host)))
+       (slot-makunbound host 'dealers)	; die Tischrunde auflösen
+       (inform-players-of-leaving-player)
+       (send-to-players host 'message (format nil "Spieler ~a verlässt die Runde." sender))))))
 
 ;; game-start wird ansonsten vorrangig im game-over state behandelt
 ;; deshalb steht der Handler unten
@@ -197,26 +198,24 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   (bidder host bidder nil)
   (slot-makunbound host 'current-listener))
 
-(defhandler bid (bidding-1 bidding-2 bidding-3) (host value)
+(defhandler bid (bidding-1 bidding-2 bidding-3) current-bidder (host value)
   "Behandelt das Ansagen eines Reizwertes durch einen Spieler."
-  (with-correct-sender sender ((current-bidder host))
-    ;; Reizwerte aktualisieren
-    (setf (bidding-values host) (cut-away-game-point-levels value (bidding-values host)))
-    ;; Spieler erhebt Anspruch auf Spielführung
-    (setf (current-declarer host) sender)
-    (case (state host)
-      (bidding-3
-       ;; Vorderhand reizt in dritter Instanz 18, d. h. dieser Spieler wird Spielführer
-       (switch-to-declarer-found host)))))
+  ;; Reizwerte aktualisieren
+  (setf (bidding-values host) (cut-away-game-point-levels value (bidding-values host)))
+  ;; Spieler erhebt Anspruch auf Spielführung
+  (setf (current-declarer host) sender)
+  (case (state host)
+    (bidding-3
+     ;; Vorderhand reizt in dritter Instanz 18, d. h. dieser Spieler wird Spielführer
+     (switch-to-declarer-found host))))
 
-(defhandler join (bidding-1 bidding-2 bidding-3) (host value)
+(defhandler join (bidding-1 bidding-2 bidding-3) current-listener (host value)
   "Behandelt das Mitgehen eines Spielers bei einem Reizwert."
-  (with-correct-sender sender ((current-listener host))
-    ;; Spieler erhebt durch Mitgehen Anspruch auf Spielführung
-    (setf (current-declarer host) sender)))
+  ;; Spieler erhebt durch Mitgehen Anspruch auf Spielführung
+  (setf (current-declarer host) sender))
 
 (defmacro player-case (player &body cases)
-  "(case-player {address}
+  "(player-case {address}
   (current-dealer {form}*)?
   (current-forehand {form}*)?
   (current-middlehand {form}*)?)"
@@ -225,54 +224,46 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 	  collect `((funcall (address-compare-function host) ,player (,(car case) host))
 		    ,@(cdr case)))
      (t (error 'invalid-sender))))
-     
 
-(defhandler pass (bidding-1 bidding-2 bidding-3) (host value)
+(defhandler pass (bidding-1 bidding-2 bidding-3) (current-listener current-bidder) (host value)
   "Behandelt das Passen eines Mitspielers bei einem Reizwert."
-  (with-correct-sender sender ((current-listener host) (current-bidder host))
-    ;; sender passed
-    (ecase (state host)
-      (bidding-1			; erster Pass
-       (player-case sender
-	 (current-forehand 		; Vorderhand hat gepasst
-	  ;; Geber sagt Mittelhand weiter
-	  (switch-to-bidding-2 host (current-middlehand host) (current-dealer host)))
-	 (current-middlehand		; Mittelhand hat gepasst
-	  ;; Geber sagt Vorderhand weiter
-	  (switch-to-bidding-2 host (current-forehand host) (current-dealer host)))))
-      (bidding-2			; zweiter Pass
-       (player-case sender
-	 (current-forehand		; Vorderhand hat gepasst
-	  ;; d. h. Geber spielt
-	  (switch-to-declarer-found host))
-	 (current-middlehand		; Mittelhand hat gepasst
-	  ;; d. h. Geber spielt
-	  (switch-to-declarer-found host))
-	 (current-dealer		; Geber hat gepasst
-	  (if (not (slot-boundp host 'current-declarer))
-	      ;; noch hat keiner etwas gereizt, d. h. Vorderhand entscheidet über Ramsch
-	      (switch-to-bidding-3 (current-forehand host))
-	      ;; es hat schon jemand etwas gereizt und nicht gepasst, derjenige spielt
-	      (switch-to-declarer-found host)))))
-      (bidding-3			; dritter Pass => Ramsch
-       (ramschen)))))
+  (ecase (state host)
+    (bidding-1				; erster Pass
+     (player-case sender
+       (current-forehand 		; Vorderhand hat gepasst
+	;; Geber sagt Mittelhand weiter
+	(switch-to-bidding-2 host (current-middlehand host) (current-dealer host)))
+       (current-middlehand		; Mittelhand hat gepasst
+	;; Geber sagt Vorderhand weiter
+	(switch-to-bidding-2 host (current-forehand host) (current-dealer host)))))
+    (bidding-2				; zweiter Pass
+     (player-case sender
+       (current-forehand		; Vorderhand hat gepasst
+	;; d. h. Geber spielt
+	(switch-to-declarer-found host))
+       (current-middlehand		; Mittelhand hat gepasst
+	;; d. h. Geber spielt
+	(switch-to-declarer-found host))
+       (current-dealer			; Geber hat gepasst
+	(if (not (slot-boundp host 'current-declarer))
+	    ;; noch hat keiner etwas gereizt, d. h. Vorderhand entscheidet über Ramsch
+	    (switch-to-bidding-3 (current-forehand host))
+	    ;; es hat schon jemand etwas gereizt und nicht gepasst, derjenige spielt
+	    (switch-to-declarer-found host)))))
+    (bidding-3				; dritter Pass => Ramsch
+     (ramschen))))
 	  
 ;; state: declarer-found. Warte auf hand-decision.
-
-(defmacro from-declarer (&body body)
-  `(with-correct-sender sender ((current-declarer host))
-     ,@body))
 
 (define-state-switch-function declarer-found (host)
   "Der Spielführer steht nun fest, kündigt ihn an."
   (send-to-players host 'declarer (current-declarer host)))
 
-(defhandler hand-decision (declarer-found) (host hand)
+(defhandler hand-decision (declarer-found) current-declarer (host hand)
   "Behandelt die Ansage, ob der Declarer Hand spielt und geht in den entsprechenden Folgezustand über"
-  (from-declarer
-    (if hand
-	(switch-to-await-declaration host)		; warte gleich auf die Ansage
-	(switch-to-skat-away host))))			; verschicke den Skat
+  (if hand
+      (switch-to-await-declaration host)		; warte gleich auf die Ansage
+      (switch-to-skat-away host)))			; verschicke den Skat
 
 ;; state: skat-away. Warte auf Rückgabe des Skats.
 
@@ -281,11 +272,10 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   (comm:send (comm host) (current-declarer host) 'skat (skat host)) ; Skat verschicken
   (slot-makunbound host 'skat))					    ; der Host hat den dann nicht mehr
 
-(defhandler skat (skat-away) (host skat)
+(defhandler skat (skat-away) current-declarer (host skat)
   "Behandelt die Rückgabe des Skats vom Declarer."
-  (from-declarer
-    (setf (skat host) skat)		; Skat nehmen
-    (switch-to-await-declaration host))) ; Ansage abwarten
+  (setf (skat host) skat)		; Skat nehmen
+  (switch-to-await-declaration host)) ; Ansage abwarten
 
 ;; state: await-declaration. Warte auf die Ansage des Declarers.
 
@@ -300,11 +290,10 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   "Gibt die Anzahl der fehlenden oder vorhandenen Trumpfspitzen des Spielführers zurück."
   (cadr (jacks-flush-run (jacks host))))
 
-(defhandler declaration (await-declaration) (host declaration)
+(defhandler declaration (await-declaration) current-declarer (host declaration)
   "Behandelt die Verkündung der Ansage des Declarers."
-  (from-declarer
-    (setf (declarer-declaration host) declaration) ; merke sie dir für die Stichauswertungen
-    (switch-to-in-game host)))				; starte das Stichespielen
+  (setf (declarer-declaration host) declaration) ; merke sie dir für die Stichauswertungen
+  (switch-to-in-game host))				; starte das Stichespielen
 
 ;; state: in-game. Das Spiel läuft, die Stiche werden mitgenommen
 
@@ -321,35 +310,39 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   (with-slots (jacks) host
     (push jack-suit jacks)))
 
-(defhandler card (in-game) (host card)
+(defkernelmethod current-player (host)
+  "Gibt die Adresse des Spielers zurück, der die nächste Karte spielen muss."
+  (car (table host)))
+
+(defhandler card (in-game) current-player (host card)
   "Behandelt das Spielen einer Karte durch einen Spieler."
-  (with-correct-sender sender ((car (table host))) ; Karte muss vom Spieler kommen, der an der Reihe ist
-    (when (and (jackp card)
-	       (funcall (address-compare-function host) sender (current-declarer host)))
-      ;; Spielführer spielt Buben, merke dir das für den Flush-Run
-      (remember-jack host (suit card)))
-    (unless (slot-boundp host 'current-trick)
-      (setf (current-trick host) (make-trick))) ; einen neuen Stich eröffnen
+  ;; Karte muss vom Spieler kommen, der an der Reihe ist
+  (when (and (jackp card)
+	     (funcall (address-compare-function host) sender (current-declarer host)))
+    ;; Spielführer spielt Buben, merke dir das für den Flush-Run
+    (remember-jack host (suit card)))
+  (unless (slot-boundp host 'current-trick)
+    (setf (current-trick host) (make-trick))) ; einen neuen Stich eröffnen
 					; wenn es noch keinen gibt
-    (with-slots (current-trick tricks) host
-      (add-contribution card sender current-trick) ; die Karte zum Stich packen
-      (setf (table host) (cdr (table host)))   ; der nächste ist dran
-      (when (trick-complete-p current-trick)
-	(let ((trick-winner (trick-winner current-trick
-					  (game-variant (declarer-declaration host)))))
-	  ;; über fertige Stiche werden die Spieler benachrichtigt
-	  (send-to-players host 'trick (cards current-trick) trick-winner)
-	  ;; auf den Stapel packen
-	  (push current-trick tricks)
-	  ;; Platz machen für den nächsten Stich
-	  (slot-makunbound host 'current-trick)
-	  (if (= 10 (length tricks))	; war das der letzte Stich?
-	      (switch-to-game-over host t) ; dann beende das Spiel
-	      ;; nein? dann sage dem Stichsieger, dass er anspielen möge
-	      ;; und schiebe ihn an die Tischfront
-	      (progn
-		(turn-table-to host trick-winner)
-		(comm:send (comm host) trick-winner 'choose-card))))))))
+  (with-slots (current-trick tricks) host
+    (add-contribution card sender current-trick) ; die Karte zum Stich packen
+    (setf (table host) (cdr (table host)))   ; der nächste ist dran
+    (when (trick-complete-p current-trick)
+      (let ((trick-winner (trick-winner current-trick
+					(game-variant (declarer-declaration host)))))
+	;; über fertige Stiche werden die Spieler benachrichtigt
+	(send-to-players host 'trick (cards current-trick) trick-winner)
+	;; auf den Stapel packen
+	(push current-trick tricks)
+	;; Platz machen für den nächsten Stich
+	(slot-makunbound host 'current-trick)
+	(if (= 10 (length tricks))	; war das der letzte Stich?
+	    (switch-to-game-over host t) ; dann beende das Spiel
+	    ;; nein? dann sage dem Stichsieger, dass er anspielen möge
+	    ;; und schiebe ihn an die Tischfront
+	    (progn
+	      (turn-table-to host trick-winner)
+	      (comm:send (comm host) trick-winner 'choose-card)))))))
 
 ;; state: game-over. Das Spiel ist vorbei
 
@@ -376,8 +369,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 		     (second registered-players)
 		     (gethash (second registered-players) score-table)
 		     (third registered-players)
-		     (gethash (third registered-players) score-table))))
-		     
+		     (gethash (third registered-players) score-table))))		     
 
 (define-state-switch-function game-over (host prompt)
   "Spiel beenden und auswerten."
@@ -408,7 +400,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 		(decf (gethash current-declarer score-table) game-points)))))))
   (send-score-table host))
 
-(defhandler game-start (registration game-over) (host)
+(defhandler game-start (registration game-over) :any (host)
   "Behandelt den Wunsch eines Spielers nach einem weiteren Spiel."
   (unless (member sender (want-game-start host) :test (address-compare-function host))
     (when (member sender (registered-players host) :test (address-compare-function host))
