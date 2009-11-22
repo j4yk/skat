@@ -4,6 +4,17 @@
   ()
   (:documentation "Schritt- für Schritt UI, kann gar nichts."))
 
+(defmacro define-all-requests-handler ((ui-class data-argname) &body body)
+  "Definiert einen Handler für alle Requests..."
+  (cons 'progn
+	(loop for request in requests::*request-definitions*
+	   collect (let ((request-name (intern (symbol-name (car request))))
+			 (parameters (mapcar #'(lambda (p) (intern (symbol-name p))) (cdr request))))
+		     `(defhandler ,request-name (,ui-class ,@parameters)
+			"Kollektiver Handler für alle Requests"
+			(let ((,data-argname (list ,@parameters)))
+			  ,@body))))))
+	  
 (defun stub-ui-msg (format-str &rest format-args)
   (apply #'format t (concatenate 'string "UI: " format-str) format-args)
   (terpri))
@@ -23,3 +34,6 @@
   (declare (ignore ui to-be-ignored))
   (stub-ui-msg "started.")
   (values))
+
+(define-all-requests-handler (stub-ui request-call)
+  (format t "UI received ~a ~a from ~a" (car request-call) (cdr request-call) sender))
