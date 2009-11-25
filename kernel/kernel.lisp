@@ -67,11 +67,13 @@ da es die Bindungen der Variablen kernel und request-name voraussetzt."
 Zustand wechseln zu lassen"))
 
 (defmethod switch-state ((kernel kernel) target-state)
-  "Wechselt den Zustand des Kernelobjekts. Dies hat Auswirkungen auf die Menge der akzeptierten Anfragen."
+  "Wechselt den Zustand des Kernelobjekts. Dies hat Auswirkungen auf die Menge der akzeptierten Anfragen.
+Diese Methode verändert nur den Slot, führt aber keine mit dem Wechsel assoziierten Aktionen aus.
+Siehe [[define-state-switch-function]]."
   (if (member target-state (valid-states kernel))
       (setf (state kernel) target-state)
       (error 'invalid-kernel-state-error :kernel-class (class-of kernel) :target-state target-state)))
 
 ;; Comm teilt die eigene Adresse nach erfolgtem Login mit
-(defhandler own-address (unregistered) (kernel address)
+(defhandler own-address (unregistered) comm (kernel address)
   (setf (own-address kernel) address))
