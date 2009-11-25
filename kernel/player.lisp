@@ -11,7 +11,8 @@
    (host-address :accessor host-address)
    (left-playmate :accessor left-playmate)
    (right-playmate :accessor right-playmate)
-   (table :accessor table)))
+   (table :accessor table))
+  (:documentation "Spielerobjekt. Hält alle Komponenten zusammen."))
 
 (defmethod turn-table ((player player))
   "Bewegt die Ringliste in table einen Schritt weiter."
