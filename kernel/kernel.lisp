@@ -1,5 +1,9 @@
 (in-package :skat-kernel)
 
+(eval-when (:compile-toplevel)
+  (defparameter *kernel-states* nil
+    "Liste Kernel-Klassenname > States; wird zum Überprüfen bei define-state-switch-function benutzt"))
+
 (defclass kernel ()
   ((ui :accessor ui :initarg :ui)
    (comm :accessor comm :initarg :comm)
@@ -7,6 +11,9 @@
    (own-address :accessor own-address)))
 
 (defmacro defkernel (name (&rest states) direct-slots &rest options)
+  "Definiert eine neue Kernelklasse"
+  (eval-when (:compile-toplevel)
+    (push (cons name states) *kernel-states*)) ; für define-state-switch-function
   `(defclass ,name (kernel)
      ((valid-states :reader valid-states :allocation :class
 		    :initform ',states)

@@ -35,7 +35,14 @@ player-arg:   Name des Parameters, der das Spielerobjekt enthält
 sender-arg:   Name des Parameters, der die Repräsentation des request-Absenders enthält
 request-args: weitere Parameter für den request
 body:         forms des handlers"
-  (apply #'validate-request-handler request-name request-args)
+  (eval-when (:compile-toplevel)
+    (apply #'requests:validate-request-handler request-name request-args)
+    (unless (null states)
+      (let ((valid-states (cdr (assoc kernel-class-and-varname *kernel-states*))))
+	(if (subsetp states valid-states)
+	    (format t "%Handlerdefinition ~a für ~a ist korrekt." request-name kernel-class-and-varname)
+	    (error "~a sind keine definierten Zustände von ~a"
+		   (set-difference states valid-states) kernel-class-and-varname)))))
   (multiple-value-bind (forms docstring) (parse-function-body body)
     (let* ((handler-fn-name (handler-fn-name request-name))
 	   (allowed-senders-forms (if (listp allowed-senders)
