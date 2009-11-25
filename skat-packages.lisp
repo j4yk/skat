@@ -13,7 +13,8 @@
 	   correct-parameters-p
 	   request-parameters
 	   undefined-request-error
-	   wrong-request-parameters))
+	   wrong-request-parameters
+	   validate-request-handler))
 
 (defmacro define-skat-packages ((&rest requests-kernel-ui) (&rest requests-kernel-comm))
   `(progn

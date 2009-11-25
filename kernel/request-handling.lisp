@@ -17,15 +17,6 @@
   ;; paketbereinigt durch to-keyword
   (push (cons (to-keyword request-name) fn) *request-handlers*))
 
-(defun validate-request-handler (request-name &rest request-arg-names)
-  "Überprüft die Gültigkeit des Anfragenamens und der Namen der Parameter"
-  ;; prüfen, ob es diesen Anfragetyp überhaupt gibt
-  (unless (requests:request-exists-p request-name)
-    (error 'requests:undefined-request-error :request-name request-name))
-  ;; prüfen, ob die Parameter richtig heißen
-  (unless (apply #'requests:correct-parameters-p request-name request-arg-names)
-    (error 'requests:wrong-request-parameters :request-name request-name)))
-
 (define-condition request-state-mismatch (error)
   ((state :accessor state :initarg :state)
    (request-name :accessor request-name :initarg :request-name)
