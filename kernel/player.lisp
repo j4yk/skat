@@ -1,6 +1,10 @@
 (in-package skat-kernel)
 
-(defclass player (kernel)
+(defkernel player
+    (start
+     unregistered registration-pending registration-succeeded
+     bidding-wait bid listen preparations
+     in-game game-over)     
   ((ui :accessor ui :initarg :ui)
    (cards :accessor cards)
    (current-trick :accessor current-trick)
