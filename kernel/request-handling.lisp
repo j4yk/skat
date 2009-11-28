@@ -32,8 +32,9 @@
   ((kernel :accessor kernel :initarg :kernel))
   (:documentation "Signalisiert, dass eine Error-Condition in einem Kernel-Request-Handler auftrat."))
 
-(defun raise-error-in-kernel-handler (kernel fn-name condition)
+(defun raise-error-in-kernel-handler (kernel condition fn-name sender request-name args)
   "Signalisiert einen error-in-kernel-handler error."
+  (comm::prepend-request (comm kernel) sender request-name args) ; Anfrage zurückpacken, damit sie nicht verloren geht
   (restart-case (error 'error-in-kernel-handler :error condition :handler-fn-name fn-name :kernel kernel)
     (raise-inner-condition () (error condition))))
 
@@ -77,8 +78,9 @@ body:         forms des handlers"
 	   ;; handler function definieren
 	   (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) sender ,@request-args)
 	     ,(or docstring (format nil "Handler Funktion für Request ~a" request-name))
-	     (handler-bind ((error #'(lambda (condition) (raise-error-in-kernel-handler ,kernel-class-and-varname
-											',handler-fn-name condition))))
+	     (handler-bind ((error #'(lambda (condition) (raise-error-in-kernel-handler ,kernel-class-and-varname condition
+											',handler-fn-name sender
+											',request-name ,@request-args))))
 	       ,(if (null states) ; states = () bedeutet, Handler gilt immer
 		    encapsulated-body
 		    `(if (member (state ,kernel-class-and-varname) '(,@states)) ; vorher state abfragen

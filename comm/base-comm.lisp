@@ -10,6 +10,14 @@
       (setf (cdr (queue-end queue)) (cons obj nil)
 	    (queue-end queue) (cdr (queue-end queue)))))
 
+(defun queue-prepend (obj queue)
+  "Fügt ein neues Element VORN in die Queue ein.
+Nur für Debugging-Zwecke... (siehe prepend-request unten)"
+  (if (null (queue-elements queue))
+      (setf (queue-elements queue) (cons obj nil)
+	    (queue-end queue) (queue-elements queue))
+      (setf (queue-elements queue) (cons obj (queue-elements queue)))))
+
 (defun queue-pop (queue)
   "Holt ein Element aus der Queue heraus."
   (pop (queue-elements queue)))
@@ -27,6 +35,12 @@ Meant as base class for other communication-classes."))
 (defmethod push-request ((comm base-comm) sender request-name request-args)
   "Fügt eine Anfrage zur Queue hinzu."
   (queue-push (append (list request-name sender) request-args) (arrived-requests comm))
+  (cons request-name request-args))
+
+(defmethod prepend-request ((comm base-comm) sender request-name request-args)
+  "Fügt eine Anfrage AM ANFANG der Queue hinzu, damit sie zuerst wieder bearbeitet wird.
+Diest ist für Debugging-Zwecke gedacht."
+  (queue-prepend (append (list request-name sender) request-args) (arrived-requests comm))
   (cons request-name request-args))
 
 (defgeneric start (comm)
