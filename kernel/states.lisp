@@ -4,10 +4,12 @@
   "Gibt den Namen einer Zustandseingangsfunktion
 für einen bestimmten Zustand zurück."
   (declare (type symbol state))
+  (warn "state-entering-function ist veraltet.")
   (intern (concatenate 'string "ENTER-" (symbol-name state) "-STATE") 'skat-kernel))
 
 (defmacro define-state-entering-function (state kernel-class &body body)
   "Definiert eine neue Zustandseingangsfunktion."
+  (warn "define-state-entering-function ist veraltet.")
   `(defmethod ,(state-entering-function state) ((,kernel-class ,kernel-class))
      ,@body))
 
