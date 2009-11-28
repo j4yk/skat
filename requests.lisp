@@ -179,6 +179,11 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
   (:DOCUMENTATION "Ansage eines Reizwertes" :SENDER "Player" :RECEIVER
 		  "Player, Host"))
 
+(defrequest reply-to-bid
+    ((value "der Reizwert"))
+  (:documentation "Fordert die UI dazu auf, einen Reizwert mit JOIN oder PASS zu beantworten"
+		  :sender "Kernel" :receiver "UI"))
+
 (DEFREQUEST JOIN
     ((VALUE "der Reizwert"))
   (:DOCUMENTATION "Mitgehen bei einem Reizwert" :SENDER "Player," :RECEIVER
