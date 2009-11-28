@@ -64,6 +64,10 @@ da es die Bindungen der Variablen kernel und request-name voraussetzt."
 (defmethod address-compare-function ((kernel kernel))
   (comm:address-compare-function (comm kernel)))
 
+(defmethod address-equal ((kernel kernel) address1 address2)
+  "Gibt t zurück, wenn die Adressen laut address-compare-function gleich sind."
+  (funcall (address-compare-function kernel) address1 address2))
+
 (defmethod receive-requests ((kernel kernel))
   "Holt alle vorliegenden Anfragen aus dem Kommunikationsobjekt heraus und ruft entsprechende Anfragehandler auf."
   (loop while (comm:has-request (comm kernel))
