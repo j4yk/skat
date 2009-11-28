@@ -23,6 +23,20 @@
    (request-args :accessor request-args :initarg :request-args))
   (:documentation "Signalisiert, dass eine Anfrage eintraf, die im aktuellen Zustand des Kernels nicht erlaubt ist."))
 
+(define-condition error-in-handler (error)
+  ((inner-condition :accessor inner-condition :initarg :error)
+   (handler-function-name :accessor handler-function-name :initarg :handler-fn-name))
+  (:documentation "Signalisiert, dass eine Error-Condition in einem Request-Handler auftrat."))
+
+(define-condition error-in-kernel-handler (error-in-handler)
+  ((kernel :accessor kernel :initarg :kernel))
+  (:documentation "Signalisiert, dass eine Error-Condition in einem Kernel-Request-Handler auftrat."))
+
+(defun raise-error-in-kernel-handler (kernel fn-name condition)
+  "Signalisiert einen error-in-kernel-handler error."
+  (restart-case (error 'error-in-kernel-handler :error condition :handler-fn-name fn-name :kernel kernel)
+    (raise-inner-condition () (error condition))))
+
 (defmacro defhandler (request-name (&rest states) allowed-senders (kernel-class-and-varname &rest request-args) &body body)
   "Definiert eine Handlerfunktion für diese Anfragen.
 
@@ -63,12 +77,14 @@ body:         forms des handlers"
 	   ;; handler function definieren
 	   (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) sender ,@request-args)
 	     ,(or docstring (format nil "Handler Funktion für Request ~a" request-name))
-	     ,(if (null states) ; states = () bedeutet, Handler gilt immer
-		  encapsulated-body
-		  `(if (member (state ,kernel-class-and-varname) '(,@states)) ; vorher state abfragen
-		       ,encapsulated-body
-		       (signal 'request-state-mismatch :state (state ,kernel-class-and-varname) 
-			       :request-name ',request-name :request-args ,@request-args))))
+	     (handler-bind ((error #'(lambda (condition) (raise-error-in-kernel-handler ,kernel-class-and-varname
+											',handler-fn-name condition))))
+	       ,(if (null states) ; states = () bedeutet, Handler gilt immer
+		    encapsulated-body
+		    `(if (member (state ,kernel-class-and-varname) '(,@states)) ; vorher state abfragen
+			 ,encapsulated-body
+			 (signal 'request-state-mismatch :state (state ,kernel-class-and-varname) 
+				 :request-name ',request-name :request-args ,@request-args)))))
 	 ;; handler function registrieren
 	 (register-handler-fn ',request-name #',handler-fn-name)))))
 
