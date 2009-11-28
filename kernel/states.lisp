@@ -30,3 +30,18 @@ oder einem Request-Handler (defhandler) heraus aufrufen kann."
        (defkernelmethod ,methodname (,kernel-class ,@args)
 	 ,@body
 	 (switch-state kernel ',state)))))
+
+(defmacro case-state (kernel-classname &body cases)
+  "Erstellt ein Case-Statement über (state player) und prüft aber,
+ob alle States gültig sind für diesen Kerneltyp.
+Voraussetzungen:
+- Variable Kernel muss mit dem Kernelobjekt gebunden sein."
+  (declare (ignorable kernel-classname))
+  (eval-when (:compile-toplevel)
+    (dolist (state (mapcar #'car cases))
+      (format t "~%checking ~a as state for ~a... state-is-valid-p == " state kernel-classname)
+      (unless (princ (state-is-valid-p state kernel-classname))
+	(error "~a ist kein definierter Zustand für ~a" state kernel-classname))
+      (terpri)))
+  `(ecase (state kernel)
+     ,@cases))
