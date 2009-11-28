@@ -25,6 +25,7 @@
 		handler-fn
 		receive-requests
 		call-handler-fn
+		error-in-handler
 		,@requests-kernel-ui
 		,@requests-kernel-comm))
      (defpackage skat-ui
@@ -34,6 +35,10 @@
 		handler-fn
 		call-handler-fn
 		start
+		stop
+		stub-ui
+		host-ui
+		just-one-step
 		,@requests-kernel-ui))
      (defpackage skat-communication
        (:nicknames :skat-comm :comm)
@@ -47,6 +52,7 @@
 		stop  ; gibt ihm das Signal, die Arbeit einzustellen
 		received-other-content ; Condition für den Fall, dass Daten empfangen wurden, die nicht als Anfragen interpretiert werden konnten
 		address-compare-function ; Slot-Accessor für die Adressenvergleichende Funktion
+		xmpp-comm
 		,@requests-kernel-comm))))
 
 
