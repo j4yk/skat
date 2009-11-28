@@ -72,8 +72,8 @@ da es die Bindungen der Variablen kernel und request-name voraussetzt."
   "Holt alle vorliegenden Anfragen aus dem Kommunikationsobjekt heraus und ruft entsprechende Anfragehandler auf."
   (loop while (comm:has-request (comm kernel))
      do (multiple-value-bind (request-name sender request-args) (comm:get-request (comm kernel))
-	  (format *debug-io* "processing ~a (~{~a ~}) from ~a" request-name request-args sender)
-	  (apply (handler-fn request-name) kernel sender request-args))))
+	  (unwind-protect (format *debug-io* "~%processing ~a ~a from ~a" request-name request-args sender)
+	    (apply (handler-fn request-name) kernel sender request-args)))))
 
 (define-condition invalid-kernel-state-error (error)
   ((kernel-class :accessor kernel-class :initarg :kernel-class)
