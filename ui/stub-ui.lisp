@@ -24,6 +24,9 @@
   (stub-ui-msg "doing step.")
   (kernel:receive-requests (kernel ui)))
 
+(defmethod just-one-step ((ui stub-ui))
+  (main-loop-step ui))
+
 (defmethod send-request-to-kernel ((ui stub-ui) request-name &rest arguments)
   "Sendet eine Anfrage an den Kernel, der sie in den meisten Fällen dann verschicken wird."
   (stub-ui-msg "sending ~a ~a to kernel" request-name arguments)
