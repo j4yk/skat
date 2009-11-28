@@ -19,3 +19,6 @@ Das erste Element der zurückgegebenen Liste ist der angegebene Reizwert."
   (if (<= bid (car point-levels))
       point-levels
       (cut-away-game-point-levels bid (cdr point-levels))))
+
+(deftests "Bidding"
+  ("cut-away" (cut-away-game-point-levels 22) (cddr *game-point-levels*)))

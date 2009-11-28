@@ -10,20 +10,27 @@
 ;;; Benutzerschnittstellenschicht weitergeleitet werden sollten.
 ;;; Jedoch muss in dieser Komponente hier die Hauptschleife laufen.
 
+(defmethod main-loop-once ((ui host-ui))
+  (restart-case (kernel:receive-requests (kernel ui))
+    (continue-main-loop ()
+      :report "setze die Hauptschleife der Host-UI fort"
+      (values))
+    (quit-main-loop ()
+      :report "Hauptschleife der Host-UI beenden"
+      (setf (slot-value ui 'stop-received) t)))
+  (when (slot-boundp ui 'stop-received)
+    'STOP-RECEIVED))
+
 (defmethod main-loop ((ui host-ui))
   "Führt die Hauptschleife für den Host aus.
 Endet, wenn Slot stop-received initialisiert wird."
   (loop
      (sleep 0.5)
-     (restart-case (kernel:receive-requests (kernel ui))
-       (continue-main-loop ()
-	 :report "setze die Hauptschleife der Host-UI fort"
-	 (values))
-       (quit-main-loop ()
-	 :report "Hauptschleife der Host-UI beenden"
-	 (setf (slot-value ui 'stop-received) t)))
-     (when (slot-boundp ui 'stop-received)
+     (when (eq (main-loop-once ui) 'STOP-RECEIVED)
        (return))))
+
+(defmethod just-one-step ((ui host-ui))
+  (main-loop-once ui))
 
 (defmethod main-loop-in-other-thread ((ui host-ui))
   "Startet die Hauptschleife für den Host. Soll aus einem anderen Thread heraus gestartet werden."

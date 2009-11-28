@@ -12,3 +12,6 @@ durch setzen von no-new-thread-p auf t signalisiert werden, dass sie davon abseh
 (defgeneric stop (ui)
   (:documentation "Signalisiert einer UI, dass sie ihre Arbeit so bald wie möglich
 einstellen soll."))
+
+(defgeneric just-one-step (ui)
+  (:documentation "Wenn eine UI dies implementiert, weist man sie hiermit an, nur eine Hauptschleifenausführung vorzunehmen."))
