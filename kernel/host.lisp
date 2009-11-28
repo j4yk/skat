@@ -292,13 +292,13 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 
 (defhandler declaration (await-declaration) current-declarer (host declaration)
   "Behandelt die Verkündung der Ansage des Declarers."
-  (setf (declarer-declaration host) declaration) ; merke sie dir für die Stichauswertungen
   (switch-to-in-game host))				; starte das Stichespielen
 
 ;; state: in-game. Das Spiel läuft, die Stiche werden mitgenommen
 
-(define-state-switch-function in-game (host)
+(define-state-switch-function in-game (host declaration)
   "Startet das Stichespielen"
+  (setf (declarer-declaration host) declaration) ; merke sie dir für die Stichauswertungen
   (setf (table host) (dealers host) ; die Runde aufmachen(jacks host) nil)
 	(jacks host) nil	    ; gesammelte Buben zurücksetzen
 	(tricks host) nil)	    ; Stiche zurücksetzen
