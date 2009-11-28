@@ -1,8 +1,12 @@
 (in-package :skat-kernel)
 
 (eval-when (:compile-toplevel)
-  (defparameter *kernel-states* nil
-    "Liste Kernel-Klassenname > States; wird zum Überprüfen bei define-state-switch-function benutzt"))
+  (defvar *kernel-states* nil
+    "Liste Kernel-Klassenname > States; wird zum Überprüfen bei define-state-switch-function benutzt")
+
+  (defun state-is-valid-p (state kernel-classname)
+    "Überprüft, ob state ein Zustand für diese Kernel-Klasse ist."
+    (member state (cdr (assoc kernel-classname *kernel-states*)))))
 
 (defclass kernel ()
   ((ui :accessor ui :initarg :ui)
