@@ -122,15 +122,16 @@ vom Host wünscht."
 
 (define-state-switch-function bidding-wait (player)
   "Wechelt in den Zustand bidding-wait."
-  (SLOT-MAKUNBOUND PLAYER 'BIDDING-MATE)
-  (call-ui 'game-start player (host player)))
+  (SLOT-MAKUNBOUND PLAYER 'BIDDING-MATE))
   
 (DEFHANDLER GAME-START (REGISTRATION-SUCCEEDED) (ui host) (PLAYER)
   "Behandelt die Nachricht vom Host, dass die Runde beginnt und soll von
 UI aufgerufen werden, wenn der Spieler die nächste Runde zu beginnen wünscht."
   (if (equalp sender (ui player))
       (comm:send (comm player) (host player) 'game-start) ; von der UI
-      (switch-to-bidding-wait player)))			  ; vom Host
+      (progn
+	(call-ui 'game-start player sender) ; kann nicht in die switch-fn, da die auch bei PASS aufgerufen wird
+	(switch-to-bidding-wait player))))  ; vom Host
 
 (DEFHANDLER CARDS (BIDDING-wait) host (PLAYER CARDS)
    "Behandelt die Überreichung der Karten durch den Host."
