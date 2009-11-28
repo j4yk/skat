@@ -61,6 +61,14 @@
   "Setzt die verbliebenen Reizwerte auf den Anfangszustand (also alle Werte ab 18) zurück."
   (setf (bidding-values host) (cut-away-game-point-levels 18)))
 
+(defmethod receive-requests ((host host))
+  "Entschärft invalid-request-sender-error, indem immer Gemecker zurückgeschickt wird."
+  (handler-bind ((invalid-request-sender-error
+		  #'(lambda (condition)
+		      (comm:send (comm host) (sender condition) 'message
+				 (format nil "You are not allowed to send me ~a" (request-name condition))))))
+    (call-next-method)))
+
 (define-state-switch-function registration (host reset-registered-players-p)
   "Geht in den Registrierungen-Entgegennahme Modus über.
 In diesem Zustand werden Registrierungsanfragen aufgenommen."
