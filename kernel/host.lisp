@@ -220,7 +220,9 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 (defhandler join (bidding-1 bidding-2 bidding-3) current-listener (host value)
   "Behandelt das Mitgehen eines Spielers bei einem Reizwert."
   ;; Spieler erhebt durch Mitgehen Anspruch auf Spielführung
-  (setf (current-declarer host) sender))
+  (setf (current-declarer host) sender)
+  ;; der nächste Reizwert muss höher sein als der letzte
+  (setf (bidding-values host) (cdr (bidding-values host))))
 
 (defmacro player-case (player &body cases)
   "(player-case {address}
