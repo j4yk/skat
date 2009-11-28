@@ -151,16 +151,16 @@ Host ignoriert diese einfach.")
   (setf (current-listener host) listener)
   (comm:send (comm host) listener 'listen bidder))
 
-(defkernelmethod bidder (host bidder listener)
+(defkernelmethod bidder (host bidder listener min-value)
   "Nominiert einen Reizansager und sendet ihm den entsprechenden Auftrag."
   (setf (current-bidder host) bidder)
-  (comm:send (comm host) bidder 'start-bidding listener))
+  (comm:send (comm host) bidder 'start-bidding listener min-value))
 
-(defmacro listen-to (listener bidder)
+(defmacro listen-to (listener bidder min-value)
   "Sendet zwei Spielern die Befehle zum gegenseitigen Reizen."
   `(progn
      (listener host ,listener ,bidder)
-     (bidder host ,bidder ,listener)))
+     (bidder host ,bidder ,listener ,min-value)))
 
 (defmethod init-score-table ((host host))
   "Initialisiert die Punktetabelle, sofern sie noch nicht besteht"
@@ -189,7 +189,7 @@ Host ignoriert diese einfach.")
     ;; ersten Reizauftrag erteilen: Mittelhand sagt Vorderhand
     (symbol-macrolet ((current-forehand (current-forehand host)) ; with-slots geht nicht, 
 		      (current-middlehand (current-middlehand host))) ; weil dies keine Slots sind
-      (listen-to current-forehand current-middlehand))
+      (listen-to current-forehand current-middlehand 18))
     (reset-bidding-values host)
     ;; und jetzt warte auf pass
     ))
@@ -197,13 +197,13 @@ Host ignoriert diese einfach.")
 (define-state-switch-function bidding-2 (host listener bidder)
   "Zweite Reizinstanz starten.
 bidder (normalerweise current-dealer) sagt listener weiter."
-  (listen-to listener bidder))
+  (listen-to listener bidder (car (bidding-values host))))
 
 (define-state-switch-function bidding-3 (host bidder)
   "Wechselt den Host in den Zustand bidding-3.
 Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   ;; der Spieler soll entscheiden, ob er 18 reizt oder geramscht werden soll
-  (bidder host bidder nil)
+  (bidder host bidder nil (car (bidding-values host)))
   (slot-makunbound host 'current-listener))
 
 (defhandler bid (bidding-1 bidding-2 bidding-3) current-bidder (host value)
