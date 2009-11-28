@@ -122,8 +122,10 @@ vom Host wünscht."
 
 (define-state-switch-function bidding-wait (player)
   "Wechelt in den Zustand bidding-wait."
-  (call-ui 'game-start player (host player))
-  (SLOT-MAKUNBOUND PLAYER 'BIDDING-MATE))
+  (SLOT-MAKUNBOUND PLAYER 'BIDDING-MATE)
+  (setf (bidding-values player) *game-point-levels*) ; Reizwerte aufstellen
+  (call-ui 'game-start player (host player)))
+  
 
 (DEFHANDLER GAME-START (REGISTRATION-SUCCEEDED) host (PLAYER)
   "Behandelt die Nachricht vom Host, dass die Runde beginnt."
@@ -133,9 +135,6 @@ vom Host wünscht."
    "Behandelt die Überreichung der Karten durch den Host."
    (SETF (CARDS PLAYER) CARDS)
    (CALL-UI 'CARDS PLAYER SENDER CARDS))
-
-(eval-when (:compile-toplevel)
-  (warn "Reizwerte werden noch nicht verarbeitet."))
 
 (define-state-switch-function bid (player listener min-value)
   "Wechelt in den Zustand bid."
@@ -160,12 +159,10 @@ vom Host wünscht."
   "Behandelt einen angesagten Reizwert"
   (case-state player
     (bidding-wait			; als Dritter
-     (CALL-UI 'BID PLAYER SENDER VALUE)
-     (warn "TODO: Reizwerte!"))
+     (CALL-UI 'BID PLAYER SENDER VALUE))
     (listen				; als Hörer
      (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
-       (CALL-UI 'BID PLAYER SENDER VALUE)
-       (ERROR "TODO: Reizwerte!")))))
+       (CALL-UI 'BID PLAYER SENDER VALUE)))))
 
 (DEFHANDLER JOIN (BIDDING-wait BID) (left-playmate right-playmate) (PLAYER VALUE)
   "Behandelt das Mitgehen des Hörers."
