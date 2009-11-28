@@ -22,35 +22,70 @@
   "Bewegt die Ringliste in table einen Schritt weiter."
   (setf (table player) (cdr (table player))))
 
+(defmethod send-to-all-others ((player player) request-name &rest request-args)
+  "Ruft comm:send mit gleicher Anfrage für Host, linken und rechten Mitspieler auf."
+  (dolist (receiver (list (host player) (left-playmate player) (right-playmate player)))
+    (apply #'comm:send (comm player) receiver request-name request-args)))
+
+(defmethod (setf cards) (cards (player player))
+  "Sortiert Karten automatisch nach jeder Zuweisung"
+  (if (slot-boundp player 'game-declaration)
+      (setf (slot-value player 'cards) (sort-cards cards (game-variant (game-declaration player))))
+      (setf (slot-value player 'cards) (sort-cards cards :grand))))
+
+(deftests "Player"
+  ("Automatisches Sortieren bei (setf (cards player) ...) ohne Declaration"
+   ((lambda () (let ((player (make-instance 'player)))
+		 (setf (cards player) '(#cCA #cDA #cHJ #cD7))
+		 (equalp (cards player) '(#cD7 #cDA #cCA #cHJ)))))
+   t)
+  ("Automatisches Sortieren bei (setf (cards player) ...) mit Declaration"
+   ((lambda () (let ((player (make-instance 'player)))
+		 (setf (game-declaration player) '(:null :hand :ouvert))
+		 (setf (cards player) '(#cCA #cDA #cHJ #cD7))
+		 (equalp (cards player) '(#cD7 #cDA #cHJ #cCA)))))
+   t))
+
+;;;;  Handler und State-Switch-Functions
+
 (defhandler login-parameters (start) comm (player parameters)
    "Behandelt die Loginparameterliste der Comm. Gibt sie an die UI weiter."
    (call-ui 'login-parameters player sender parameters))
+
+(define-state-switch-function unregistered (player)
+  "Wechselt den Zustand zu unregistered."
+  (SLOT-MAKUNBOUND PLAYER 'HOST))
 
 (defhandler login-data (start) ui (player data)
   "Soll durch die UI aufgerufen werden.
 Weist Comm an sich mit den Daten einzuloggen."
   (comm:login (comm player) data)
-  (switch-state player 'unregistered))
+  (switch-to-unregistered player))
 
 (DEFHANDLER REGISTRATION-PARAMETERS (UNREGISTERED) comm (PLAYER PARAMETERS)
   "Behandelt die Parameterliste für die Registrierung von der Comm."
   (LET ((COMM SENDER))
     (CALL-UI 'REGISTRATION-PARAMETERS PLAYER COMM PARAMETERS)))
 
+(define-state-switch-function registration-pending (player)
+  "Wechelst in den Zustand registration-pending.")
+
 (DEFHANDLER REGISTRATION-DATA (UNREGISTERED) ui (PLAYER DATA)
   "Soll durch die UI aufgerufen werden.
 Weist comm an sich mit den Daten bei einem Host zu registrieren."
   (SKAT-COMMUNICATION:REGISTER (COMM PLAYER) DATA)
-  (SWITCH-STATE PLAYER 'REGISTRATION-PENDING))
+  (switch-to-registration-pending player))
 
-(DEFHANDLER REGISTRATION-REPLY (REGISTRATION-PENDING) host (PLAYER ACCEPTED)
+(define-state-switch-function registration-succeeded (player host)
+  "Wechelt in den Zustand registration-succeeded."
+  (setf (host player) host))
+
+(DEFHANDLER REGISTRATION-REPLY (REGISTRATION-PENDING) :any (PLAYER ACCEPTED)
   "Behandelt die Antwort auf die Registrierungsanfrage vom Host."
   (IF ACCEPTED
-      (PROGN
-	(SETF (HOST PLAYER) SENDER)
-	(SWITCH-STATE PLAYER 'REGISTRATION-SUCCEEDED))
-      (SWITCH-STATE PLAYER 'UNREGISTERED))
-  (CALL-UI 'LOGIN-PARAMETERS PLAYER SENDER ACCEPTED))
+      (switch-to-registration-succeeded player sender)
+      (switch-to-unregistered player))
+  (CALL-UI 'registration-reply PLAYER SENDER ACCEPTED))
 
 (DEFHANDLER SERVER-UPDATE (REGISTRATION-SUCCEEDED) host (PLAYER EVENTS)
   "Behandelt Neuigkeiten vom Host."
@@ -59,10 +94,8 @@ Weist comm an sich mit den Daten bei einem Host zu registrieren."
 (DEFHANDLER UNREGISTER (REGISTRATION-SUCCEEDED) ui (PLAYER)
   "Soll von der UI aufgerufen werden, wenn der Spieler eine Loslösung
 vom Host wünscht."
-  (SKAT-COMMUNICATION:SEND (COMM PLAYER) (HOST PLAYER)
-			   'UNREGISTER)
-  (SLOT-MAKUNBOUND PLAYER 'HOST-ADDRESS)
-  (SWITCH-STATE PLAYER 'UNREGISTERED))
+  (SKAT-COMMUNICATION:SEND (COMM PLAYER) (HOST PLAYER) 'UNREGISTER)
+  (switch-to-unregistered player))
 
 (DEFHANDLER PLAYMATES (REGISTRATION-SUCCEEDED) host (PLAYER LEFT RIGHT)
   "Behandelt die Bekanntmachung der Mitspieler durch den Host."
@@ -74,111 +107,118 @@ vom Host wünscht."
 	(MAKE-RING (LIST (OWN-ADDRESS PLAYER) LEFT RIGHT)))
   (CALL-UI 'PLAYMATES PLAYER SENDER LEFT RIGHT))
 
+(define-state-switch-function bidding-wait (player)
+  "Wechelt in den Zustand bidding-wait."
+  (call-ui 'game-start player (host player))
+  (SLOT-MAKUNBOUND PLAYER 'BIDDING-MATE))
+
 (DEFHANDLER GAME-START (REGISTRATION-SUCCEEDED) host (PLAYER)
   "Behandelt die Nachricht vom Host, dass die Runde beginnt."
-  (SWITCH-STATE PLAYER 'BIDDING)
-  (CALL-UI 'GAME-START PLAYER SENDER))
+  (switch-to-bidding-wait player))
 
 (DEFHANDLER CARDS (BIDDING-wait) host (PLAYER CARDS)
    "Behandelt die Überreichung der Karten durch den Host."
    (SETF (CARDS PLAYER) CARDS)
-   (CALL-UI CARDS PLAYER SENDER CARDS))
+   (CALL-UI 'CARDS PLAYER SENDER CARDS))
+
+(eval-when (:compile-toplevel)
+  (warn "Reizwerte werden noch nicht verarbeitet."))
+
+(define-state-switch-function bid (player listener min-value)
+  "Wechelt in den Zustand bid."
+  (setf (bidding-mate player) listener)
+  (call-ui 'start-bidding player (host player) listener min-value)
+  (error "Reizwerte fehlen noch."))
 
 (DEFHANDLER START-BIDDING (BIDDING-wait) host (PLAYER LISTENER MIN-VALUE)
   "Behandelt die Anweisung vom Host, Reizwerte anzusagen."
-  (SETF (BIDDING-MATE PLAYER) LISTENER) (SWITCH-STATE PLAYER 'BID)
-  (CALL-UI 'START-BIDDING PLAYER SENDER LISTENER MIN-VALUE)
-  (ERROR "Reizwerte fehlen noch."))
+  (switch-to-bid player listener min-value))
+
+(define-state-switch-function listen (player bidder)
+  "Wechelt in den Zustand listen."
+  (setf (bidding-mate player) bidder)
+  (call-ui 'listen player (host player) bidder))
 
 (DEFHANDLER LISTEN (BIDDING-wait) host (PLAYER BIDDER)
   "Behandelt die Anweisung vom Host, sich Reizwerte sagen zu lassen."
-  (SETF (BIDDING-MATE PLAYER) BIDDER) (SWITCH-STATE PLAYER 'LISTEN)
-  (CALL-UI 'LISTEN PLAYER SENDER BIDDER))
-
-;; (defmacro with-correct-sender (sender correct-sender request-name &body body)
-;;   "Führt body nur aus, wenn sender und correct-sender equal sind, andernfalls wird eine invalid-request-sender Condition signalisiert."
-;;   `(if (equal ,sender ,correct-sender)
-;;        (progn ,@body)
-;;        (signal 'invalid-request-sender :sender ,sender :player-state (state player) :expected-sender ,correct-sender :request-name ',request-name)))
+  (switch-to-listen player bidder))
 
 (DEFHANDLER BID (BIDDING-wait LISTEN) (left-playmate right-playmate) (PLAYER VALUE)
   "Behandelt einen angesagten Reizwert"
-  (ECASE (STATE PLAYER)
-    (BIDDING
+  (case-state player
+    (bidding-wait			; als Dritter
      (CALL-UI 'BID PLAYER SENDER VALUE)
-     (ERROR "TODO: Reizwerte!"))
-    (LISTEN
+     (warn "TODO: Reizwerte!"))
+    (listen				; als Hörer
      (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
-	 (CALL-UI 'BID PLAYER SENDER VALUE)
+       (CALL-UI 'BID PLAYER SENDER VALUE)
        (ERROR "TODO: Reizwerte!")))))
 
 (DEFHANDLER JOIN (BIDDING-wait BID) (left-playmate right-playmate) (PLAYER VALUE)
   "Behandelt das Mitgehen des Hörers."
-  (ECASE (STATE PLAYER)
-    (BIDDING (CALL-UI 'JOIN PLAYER SENDER VALUE))
-    (LISTEN
+  (case-state player
+    (BIDDING-wait			; als Dritter
+     (CALL-UI 'JOIN PLAYER SENDER VALUE))
+    (bid				; als Sager
      (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
 	 (CALL-UI 'JOIN PLAYER SENDER VALUE)))))
 
 (DEFHANDLER PASS (BIDDING-wait BID LISTEN) (left-playmate right-playmate) (PLAYER VALUE)
   "Behandelt das Passen des Sagers oder Hörers."
-  (ECASE (STATE PLAYER)
-    (BIDDING (CALL-UI 'PASS PLAYER SENDER VALUE))
+  (case-state player
+    (BIDDING-wait
+     (CALL-UI 'PASS PLAYER SENDER VALUE))
     (BID
      (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
-	 (CALL-UI 'PASS PLAYER SENDER VALUE)
-       (SLOT-MAKUNBOUND PLAYER 'BIDDING-MATE)
-       (SWITCH-STATE PLAYER 'BIDDING)))
+       (CALL-UI 'PASS PLAYER SENDER VALUE)
+       (SWITCH-to-bidding-wait PLAYER)))
     (LISTEN
      (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
-	 (CALL-UI 'PASS PLAYER SENDER VALUE)
-       (SLOT-MAKUNBOUND PLAYER 'BIDDING-MATE)
-       (SWITCH-STATE PLAYER 'BIDDING)))))
+       (CALL-UI 'PASS PLAYER SENDER VALUE)
+       (switch-to-bidding-wait player)))))
+
+(define-state-switch-function preparations (player declarer)
+  "Wechselt in den Zustand preparations."
+  (SETF (DECLARER PLAYER) DECLARER)
+  (CALL-UI 'DECLARER PLAYER (host player) DECLARER))
 
 (DEFHANDLER DECLARER (BIDDING-wait) host (PLAYER DECLARER)
-   "Behandelt die Bekanntgabe des Spielführers durch den Host."
-   (SWITCH-STATE 'PREPARATIONS)
-   (SETF (DECLARER PLAYER) DECLARER)
-   (CALL-UI 'DECLARER PLAYER SENDER DECLARER))
+  "Behandelt die Bekanntgabe des Spielführers durch den Host."
+  (SWITCH-to-PREPARATIONS player declarer))
 
-(defmethod send-to-all-others ((player player) request-name &rest request-args)
-  "Ruft comm:send mit gleicher Anfrage für Host, linken und rechten Mitspieler auf."
-  (dolist (receiver (list (host player) (left-playmate player) (right-playmate player)))
-    (apply #'comm:send (comm player) receiver request-name request-args)))
-
-(DEFHANDLER HAND-DECISION (PREPARATIONS) declarer (PLAYER HAND)
-  "Behandelt die Handspielentscheidung des Spielführers."
-  (IF (EQUAL SENDER (OWN-ADDRESS PLAYER))
-      (SEND-TO-ALL-OTHERS PLAYER 'HAND-DECISION HAND)
-      (WITH-CORRECT-SENDER SENDER ((DECLARER PLAYER))
-	  (CALL-UI 'HAND-DECISION PLAYER SENDER HAND))))
+(DEFHANDLER HAND-DECISION (PREPARATIONS) (ui declarer) (PLAYER HAND)
+  "Behandelt die Handspielentscheidung des Spielführers und soll durch die
+UI aufgerufen werden, wenn der Spieler sich entschieden hat, ob er den Skat
+nehmen will."
+  (cond ((equalp sender (ui player))	; von der UI
+	 (send-to-all-others PLAYER 'HAND-DECISION HAND))
+	(t 				; von draußen
+	 (call-ui 'hand-decision player sender hand))))
 
 (DEFHANDLER SKAT (PREPARATIONS) (host ui) (PLAYER SKAT)
   "Behandelt die Ausgabe des Skats durch den Host UND
 soll durch die UI aufgerufen werden, wenn Karten in den Skat gedrückt werden."
-  (COND
-    ((EQUAL SENDER (HOST PLAYER))
-     (SETF (CARDS PLAYER) (APPEND SKAT (CARDS PLAYER)))
-     (CALL-UI 'SKAT PLAYER SENDER SKAT))
-    ((EQUAL SENDER (OWN-ADDRESS PLAYER))
-     (DOLIST (CARD SKAT)
-       (SETF (CARDS PLAYER)
-	     (DELETE CARD (CARDS PLAYER) :KEY #'EQUAL)))
-     (SKAT-COMMUNICATION:SEND (COMM PLAYER) (HOST PLAYER)
-			      'SKAT SKAT))
-    (T
-     (SIGNAL 'INVALID-REQUEST-SENDER :SENDER SENDER :EXPECTED-SENDER
-	     (BIDDING-MATE PLAYER) :PLAYER-STATE (STATE PLAYER)
-	     :REQUEST-NAME 'JOIN))))
+  (if (equalp sender (ui player))	; von der UI
+      (progn
+	(DOLIST (CARD SKAT)	       ; gedrückte Karten aussortieren
+	  (SETF (CARDS PLAYER)
+		(DELETE CARD (CARDS PLAYER) :KEY #'EQUALp)))
+	(SKAT-COMMUNICATION:SEND (COMM PLAYER) (HOST PLAYER)
+				 'SKAT SKAT))
+      (progn						   ; vom Host
+	(SETF (CARDS PLAYER) (APPEND SKAT (CARDS PLAYER))) ; Skat zu Karten hinzufügen
+	(CALL-UI 'SKAT PLAYER SENDER SKAT))))
 
-(DEFHANDLER DECLARATION (PREPARATIONS) declarer (PLAYER DECLARATION)
+(define-state-switch-function in-game (player declaration)
+  "Wechelt in den Zustand in-game. Verschickt ggf. die Ansage."
+  (setf (game-declaration declaration) declaration)
+  (if (address-equal player (own-address player) (declarer player)) ; selbst Spielführer?
+      (SEND-TO-ALL-OTHERS PLAYER 'DECLARATION DECLARATION) ; Ansage verschicken
+      (CALL-UI 'DECLARATION PLAYER (declarer player) DECLARATION))) ; UI Bescheid sagen
+
+(DEFHANDLER DECLARATION (PREPARATIONS) (ui declarer) (PLAYER DECLARATION)
   "Behandelt die Ansage des Spielführers."
-  (WITH-CORRECT-SENDER SENDER ((DECLARER PLAYER))
-      (SETF (GAME-DECLARATION PLAYER) DECLARATION)
-    (IF (EQUAL SENDER (OWN-ADDRESS PLAYER))
-	(SEND-TO-ALL-OTHERS PLAYER 'DECLARATION DECLARATION)
-	(CALL-UI 'DECLARATION PLAYER SENDER DECLARATION))
-    (SWITCH-STATE 'IN-GAME)))
+  (switch-to-in-game player declaration))
 
 (DEFHANDLER CHOOSE-CARD (IN-GAME) host (PLAYER)
   "Behandelt die Mitteilung des Hosts, dass man am Stich ist."
