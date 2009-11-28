@@ -22,6 +22,19 @@
   "Bewegt die Ringliste in table einen Schritt weiter."
   (setf (table player) (cdr (table player))))
 
+(deftests "Player"
+  ("turn-table" ((lambda () (let ((player (make-instance 'player)))
+			      (setf (table player) (make-ring '(1 2 3)))
+			      (turn-table player)
+			      (values (first (table player))
+				      (second (table player))
+				      (third (table player))))))
+		(values 2 3 1)))
+
+(defmethod current-player ((player player))
+  "Gibt die Adresse des Spielers zurück, dessen Aufgabe es zur Zeit ist, ein Karte zu spielen."
+  (car (table player)))
+
 (defmethod send-to-all-others ((player player) request-name &rest request-args)
   "Ruft comm:send mit gleicher Anfrage für Host, linken und rechten Mitspieler auf."
   (dolist (receiver (list (host player) (left-playmate player) (right-playmate player)))
@@ -222,24 +235,28 @@ soll durch die UI aufgerufen werden, wenn Karten in den Skat gedrückt werden."
 
 (DEFHANDLER CHOOSE-CARD (IN-GAME) host (PLAYER)
   "Behandelt die Mitteilung des Hosts, dass man am Stich ist."
-  (WITH-CORRECT-SENDER SENDER ((HOST PLAYER))
-      (LOOP UNTIL
-	   (EQUAL (CAR (TABLE PLAYER)) (OWN-ADDRESS PLAYER)) DO
-	   (TURN-TABLE PLAYER))
-    (CALL-UI 'CHOOSE-CARD PLAYER SENDER)))
+  (LOOP UNTIL (address-equal player (CAR (TABLE PLAYER)) (OWN-ADDRESS PLAYER))
+     DO (TURN-TABLE PLAYER))		; Tisch zu sich selbst drehen
+  (CALL-UI 'CHOOSE-CARD PLAYER SENDER))	; und UI in die Spur schicken
 
 ;(defhandler card ;; ... UI->Komm, richter-Spieler->UI, turn table nicht vergessen
 
-(defhandler card (in-game) (left-playmate right-playmate) (player card)
-  "Behandelt eine gespielte Karte."
-  (call-ui 'card player sender card))
+(defhandler card (in-game) (ui current-player) (player card)
+  "Behandelt eine gespielte Karte und soll von der UI aufgerufen werden,
+wenn der Benutzer eine Karte spielt."
+  (if (equalp sender (ui player))
+      (send-to-all-others player 'card card) ; von UI
+      (call-ui 'card player sender card))    ; von draußen
+  (turn-table player)		       ; nächster Spieler
+  (if (address-equal player (own-address player) (current-player player))
+      ;; Spieler ist nun an der Reihe
+      (call-ui 'choose-card player player))) ; Karte auswählen lassen
 
 (DEFHANDLER TRICK (IN-GAME) host (PLAYER CARDS WINNER)
   "Behandelt die Auswertung des Stiches durch den Host."
-  (WITH-CORRECT-SENDER SENDER ((HOST PLAYER))
-      (IF (EQUAL WINNER (OWN-ADDRESS PLAYER))
-	  (CONS CARDS (WON-TRICKS PLAYER)))
-    (CALL-UI 'TRICK PLAYER SENDER CARDS WINNER)))
+  (IF (address-equal player winner (own-address player))
+      (CONS CARDS (WON-TRICKS PLAYER)))	; zu den gewonnenen Stichen dazupacken
+  (CALL-UI 'TRICK PLAYER SENDER CARDS WINNER)) ; UI benachrichtigen
 
 (defhandler game-over (in-game) host (player prompt)
   "Behandlet die Beendigung der Runde durch den Host."
