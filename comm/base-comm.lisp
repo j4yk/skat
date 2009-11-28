@@ -66,3 +66,26 @@ Ist nicht dazu gedacht, überschrieben zu werden."
 (defgeneric stop (comm)
   (:documentation "Beendet das Kommunikationsobjekt
 indem es zum Beispiel die Auswahl (Logout) aus dem Kommunikationsmedium vornimmt."))
+
+(define-condition error-in-comm (error)
+  ((comm :accessor comm :initarg :comm)
+   (inner-condition :accessor inner-condition :initarg :error)
+   (fn-name :accessor function-name :initarg fn-name))
+  (:documentation "Signalisiert einen innerhalb des Kommunikationscodes aufgetretenen Fehler."))
+
+(defun raise-error-in-comm (comm fn-name condition)
+  "Signalisiert einen error-in-comm"
+  (restart-case (error 'error-in-comm :comm comm :error condition :fn-name fn-name)
+    (raise-inner-condition () (error condition))))
+
+(defmacro establish-error-handler (method &rest lambda-list)
+  `(defmethod ,method :around ,lambda-list
+     "Etabliert den Error-Handler"
+     (handler-bind ((error #'(lambda (condition) (raise-error-in-comm comm ',method condition))))
+       (call-next-method))))
+
+(establish-error-handler send (comm base-comm) address request-name &rest request-args)
+(establish-error-handler has-request (comm base-comm))
+(establish-error-handler get-request (comm base-comm))
+(establish-error-handler login (comm base-comm) data)
+(establish-error-handler register (comm base-comm) data)
