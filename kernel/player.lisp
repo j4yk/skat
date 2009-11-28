@@ -197,9 +197,9 @@ wenn der Benutzer passen möchte."
     (LISTEN
      (if (equalp sender (ui player))	; selbst gepasst
 	 (send-to-all-others player 'pass value) ; weiterschicken
-     (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
-       (CALL-UI 'PASS PLAYER SENDER VALUE)
-       (switch-to-bidding-wait player)))))
+	 (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
+	   (CALL-UI 'PASS PLAYER SENDER VALUE)))
+     (switch-to-bidding-wait player))))
 
 (define-state-switch-function preparations (player declarer)
   "Wechselt in den Zustand preparations."
