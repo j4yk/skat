@@ -123,24 +123,24 @@ vom Host wünscht."
 (define-state-switch-function bidding-wait (player)
   "Wechelt in den Zustand bidding-wait."
   (SLOT-MAKUNBOUND PLAYER 'BIDDING-MATE)
-  (setf (bidding-values player) *game-point-levels*) ; Reizwerte aufstellen
   (call-ui 'game-start player (host player)))
   
-
-(DEFHANDLER GAME-START (REGISTRATION-SUCCEEDED) host (PLAYER)
-  "Behandelt die Nachricht vom Host, dass die Runde beginnt."
-  (switch-to-bidding-wait player))
+(DEFHANDLER GAME-START (REGISTRATION-SUCCEEDED) (ui host) (PLAYER)
+  "Behandelt die Nachricht vom Host, dass die Runde beginnt und soll von
+UI aufgerufen werden, wenn der Spieler die nächste Runde zu beginnen wünscht."
+  (if (equalp sender (ui player))
+      (comm:send (comm player) (host player) 'game-start) ; von der UI
+      (switch-to-bidding-wait player)))			  ; vom Host
 
 (DEFHANDLER CARDS (BIDDING-wait) host (PLAYER CARDS)
    "Behandelt die Überreichung der Karten durch den Host."
    (SETF (CARDS PLAYER) CARDS)
-   (CALL-UI 'CARDS PLAYER SENDER CARDS))
+   (CALL-UI 'CARDS PLAYER SENDER (cards player))) ; (cards player), da beim (setf) cards destruktiv sortiert wurde
 
 (define-state-switch-function bid (player listener min-value)
   "Wechelt in den Zustand bid."
   (setf (bidding-mate player) listener)
-  (call-ui 'start-bidding player (host player) listener min-value)
-  (error "Reizwerte fehlen noch."))
+  (call-ui 'start-bidding player (host player) listener min-value))
 
 (DEFHANDLER START-BIDDING (BIDDING-wait) host (PLAYER LISTENER MIN-VALUE)
   "Behandelt die Anweisung vom Host, Reizwerte anzusagen."
@@ -155,34 +155,47 @@ vom Host wünscht."
   "Behandelt die Anweisung vom Host, sich Reizwerte sagen zu lassen."
   (switch-to-listen player bidder))
 
-(DEFHANDLER BID (BIDDING-wait LISTEN) (left-playmate right-playmate) (PLAYER VALUE)
-  "Behandelt einen angesagten Reizwert"
+(DEFHANDLER BID (BIDDING-wait bid LISTEN) (ui left-playmate right-playmate) (PLAYER VALUE)
+  "Behandelt einen angesagten Reizwert und soll von der UI aufgerufen werden,
+wenn der Benutzer einen Spielwert reizt."
   (case-state player
+    (bid 				; als Sager, also von der UI
+     (with-correct-sender sender ((ui player))
+       (send-to-all-others player 'bid value))) ; weiterschicken
     (bidding-wait			; als Dritter
      (CALL-UI 'BID PLAYER SENDER VALUE))
     (listen				; als Hörer
      (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
-       (CALL-UI 'BID PLAYER SENDER VALUE)))))
+       (CALL-UI 'reply-to-BID PLAYER SENDER VALUE))))) ; Antwort von der UI verlangen
 
-(DEFHANDLER JOIN (BIDDING-wait BID) (left-playmate right-playmate) (PLAYER VALUE)
-  "Behandelt das Mitgehen des Hörers."
+(DEFHANDLER JOIN (BIDDING-wait listen BID) (ui left-playmate right-playmate) (PLAYER VALUE)
+  "Behandelt das Mitgehen des Hörers und soll von der UI aufgerufen werden, wenn der
+Benutzer mitgeht."
   (case-state player
+    (listen				; als Hörer, also von UI
+     (with-correct-sender sender ((ui player))
+       (send-to-all-others player 'join value))) ; weiterschicken
     (BIDDING-wait			; als Dritter
      (CALL-UI 'JOIN PLAYER SENDER VALUE))
     (bid				; als Sager
      (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
-	 (CALL-UI 'JOIN PLAYER SENDER VALUE)))))
+	 (CALL-UI 'join PLAYER SENDER VALUE)))))
 
-(DEFHANDLER PASS (BIDDING-wait BID LISTEN) (left-playmate right-playmate) (PLAYER VALUE)
-  "Behandelt das Passen des Sagers oder Hörers."
+(DEFHANDLER PASS (BIDDING-wait BID LISTEN) (ui left-playmate right-playmate) (PLAYER VALUE)
+  "Behandelt das Passen des Sagers oder Hörers und soll von der UI aufgerufen werden,
+wenn der Benutzer passen möchte."
   (case-state player
     (BIDDING-wait
      (CALL-UI 'PASS PLAYER SENDER VALUE))
     (BID
-     (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
-       (CALL-UI 'PASS PLAYER SENDER VALUE)
-       (SWITCH-to-bidding-wait PLAYER)))
+     (if (equalp sender (ui player))	; selbst gepasst
+	 (send-to-all-others player 'pass value) ; weiterschicken
+	 (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER)) ; Hörer hat gepasst
+	   (CALL-UI 'PASS PLAYER SENDER VALUE)))
+     (SWITCH-to-bidding-wait PLAYER))
     (LISTEN
+     (if (equalp sender (ui player))	; selbst gepasst
+	 (send-to-all-others player 'pass value) ; weiterschicken
      (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
        (CALL-UI 'PASS PLAYER SENDER VALUE)
        (switch-to-bidding-wait player)))))
