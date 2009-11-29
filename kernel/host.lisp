@@ -302,7 +302,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 
 (defhandler declaration (await-declaration) current-declarer (host declaration)
   "Behandelt die Verkündung der Ansage des Declarers."
-  (switch-to-in-game host))				; starte das Stichespielen
+  (switch-to-in-game host declaration))				; starte das Stichespielen
 
 ;; state: in-game. Das Spiel läuft, die Stiche werden mitgenommen
 
