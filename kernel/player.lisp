@@ -226,7 +226,7 @@ soll durch die UI aufgerufen werden, wenn Karten in den Skat gedrückt werden."
       (progn
 	(DOLIST (CARD SKAT)	       ; gedrückte Karten aussortieren
 	  (SETF (CARDS PLAYER)
-		(DELETE CARD (CARDS PLAYER) :KEY #'EQUALp)))
+		(DELETE CARD (CARDS PLAYER) :test #'equalp)))
 	(SKAT-COMMUNICATION:SEND (COMM PLAYER) (HOST PLAYER)
 				 'SKAT SKAT))
       (progn						   ; vom Host
