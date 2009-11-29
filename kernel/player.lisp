@@ -255,6 +255,7 @@ soll durch die UI aufgerufen werden, wenn Karten in den Skat gedrückt werden."
 (define-state-switch-function in-game (player declaration)
   "Wechelt in den Zustand in-game. Verschickt ggf. die Ansage."
   (assert (not (null (car (table player)))) ((table player))) ; Mittlerweile dürfte klar sein, wer vorn ist
+  (setf (won-tricks player) nil)
   (setf (game-declaration player) declaration)
   (if (address-equal player (own-address player) (declarer player)) ; selbst Spielführer?
       (SEND-TO-ALL-OTHERS PLAYER 'DECLARATION DECLARATION) ; Ansage verschicken
