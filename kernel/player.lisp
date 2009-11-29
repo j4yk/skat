@@ -22,6 +22,14 @@
   "Bewegt die Ringliste in table einen Schritt weiter."
   (setf (table player) (cdr (table player))))
 
+(defmethod turn-table-to ((player player) target-player)
+  "Bewegt die Ringliste in Table zum angegebenen Spieler"
+  (do ((counter 0 (1+ counter)))
+      ((address-equal player (current-player player) target-player))
+    (turn-table player)
+    (if (> counter 3)
+	(error "~a spielt nicht mit!" target-player))))
+
 (deftests "Player"
   ("turn-table" ((lambda () (let ((player (make-instance 'player)))
 			      (setf (table player) (make-ring '(1 2 3)))
@@ -130,6 +138,7 @@ UI aufgerufen werden, wenn der Spieler die nächste Runde zu beginnen wünscht."
   (if (equalp sender (ui player))
       (comm:send (comm player) (host player) 'game-start) ; von der UI
       (progn
+	(setf (table player) (cons nil (table player))) ; packe nil an den Tisch, als "keine Ahnung, wer dran ist"
 	(call-ui 'game-start player sender) ; kann nicht in die switch-fn, da die auch bei PASS aufgerufen wird
 	(switch-to-bidding-wait player))))  ; vom Host
 
@@ -145,6 +154,10 @@ UI aufgerufen werden, wenn der Spieler die nächste Runde zu beginnen wünscht."
 
 (DEFHANDLER START-BIDDING (BIDDING-wait) host (PLAYER LISTENER MIN-VALUE)
   "Behandelt die Anweisung vom Host, Reizwerte anzusagen."
+  (if (null (car (table player)))	; bisher keine Ahnung, wer vorn ist
+      ;; jetzt aber schon, da man als erster Sager Mittelhand ist
+      ;; und Vorderhand sitzt rechts neben Mittelhand
+      (turn-table-to player (right-playmate player)))
   (switch-to-bid player listener min-value))
 
 (define-state-switch-function listen (player bidder)
@@ -154,6 +167,9 @@ UI aufgerufen werden, wenn der Spieler die nächste Runde zu beginnen wünscht."
 
 (DEFHANDLER LISTEN (BIDDING-wait) host (PLAYER BIDDER)
   "Behandelt die Anweisung vom Host, sich Reizwerte sagen zu lassen."
+  (if (null (car (table player)))	; bisher keine Ahnung, wer vorn ist
+      ;; jetzt aber schon, da man als erster Hörer selbst vorn sein wird
+      (turn-table-to player (own-address player)))
   (switch-to-listen player bidder))
 
 (DEFHANDLER BID (BIDDING-wait bid LISTEN) (ui left-playmate right-playmate) (PLAYER VALUE)
@@ -164,6 +180,9 @@ wenn der Benutzer einen Spielwert reizt."
      (with-correct-sender sender ((ui player))
        (send-to-all-others player 'bid value))) ; weiterschicken
     (bidding-wait			; als Dritter
+     (if (null (car (table player)))	; bisher keine Ahnung wer vorn ist
+	 ;; jetzt aber schon, da man als erster Unbeteiligter der Geber ist, also Hinterhand
+	 (turn-table-to player (left-playmate player)))
      (CALL-UI 'BID PLAYER SENDER VALUE))
     (listen				; als Hörer
      (WITH-CORRECT-SENDER SENDER ((BIDDING-MATE PLAYER))
@@ -235,6 +254,7 @@ soll durch die UI aufgerufen werden, wenn Karten in den Skat gedrückt werden."
 
 (define-state-switch-function in-game (player declaration)
   "Wechelt in den Zustand in-game. Verschickt ggf. die Ansage."
+  (assert (not (null (car (table player)))) ((table player))) ; Mittlerweile dürfte klar sein, wer vorn ist
   (setf (game-declaration player) declaration)
   (if (address-equal player (own-address player) (declarer player)) ; selbst Spielführer?
       (SEND-TO-ALL-OTHERS PLAYER 'DECLARATION DECLARATION) ; Ansage verschicken
