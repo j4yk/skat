@@ -80,7 +80,7 @@ body:         forms des handlers"
 	     ,(or docstring (format nil "Handler Funktion für Request ~a" request-name))
 	     (handler-bind ((error #'(lambda (condition) (raise-error-in-kernel-handler ,kernel-class-and-varname condition
 											',handler-fn-name sender
-											',request-name ,@request-args))))
+											',request-name (list ,@request-args)))))
 	       ,(if (null states) ; states = () bedeutet, Handler gilt immer
 		    encapsulated-body
 		    `(if (member (state ,kernel-class-and-varname) '(,@states)) ; vorher state abfragen
