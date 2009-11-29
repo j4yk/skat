@@ -292,9 +292,10 @@ wenn der Benutzer eine Karte spielt."
 (DEFHANDLER TRICK (IN-GAME) host (PLAYER CARDS WINNER)
   "Behandelt die Auswertung des Stiches durch den Host."
   (IF (address-equal player winner (own-address player))
-      (CONS CARDS (WON-TRICKS PLAYER)))	; zu den gewonnenen Stichen dazupacken
+      (push CARDS (WON-TRICKS PLAYER)))	; zu den gewonnenen Stichen dazupacken
   (setf (current-trick player) nil)	; aktuellen Stich zurücksetzen
-  (CALL-UI 'TRICK PLAYER SENDER CARDS WINNER)) ; UI benachrichtigen
+  (CALL-UI 'TRICK PLAYER SENDER CARDS WINNER) ; UI benachrichtigen
+  (turn-table-to player winner))	      ; der Gewinner ist nun am Stich
 
 (defhandler game-over (in-game) host (player prompt)
   "Behandlet die Beendigung der Runde durch den Host."
