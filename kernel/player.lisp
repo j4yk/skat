@@ -255,8 +255,9 @@ soll durch die UI aufgerufen werden, wenn Karten in den Skat gedrückt werden."
 (define-state-switch-function in-game (player declaration)
   "Wechelt in den Zustand in-game. Verschickt ggf. die Ansage."
   (assert (not (null (car (table player)))) ((table player))) ; Mittlerweile dürfte klar sein, wer vorn ist
-  (setf (won-tricks player) nil)
-  (setf (game-declaration player) declaration)
+  (setf (won-tricks player) nil	      ; gewonnene Stiche zurücksetzen
+	(current-trick player) nil    ; aktuellen Stich initialisieren
+	(game-declaration player) declaration)			    ; und sich die Ansage merken
   (if (address-equal player (own-address player) (declarer player)) ; selbst Spielführer?
       (SEND-TO-ALL-OTHERS PLAYER 'DECLARATION DECLARATION) ; Ansage verschicken
       (CALL-UI 'DECLARATION PLAYER (declarer player) DECLARATION))) ; UI Bescheid sagen
@@ -277,17 +278,22 @@ soll durch die UI aufgerufen werden, wenn Karten in den Skat gedrückt werden."
   "Behandelt eine gespielte Karte und soll von der UI aufgerufen werden,
 wenn der Benutzer eine Karte spielt."
   (if (equalp sender (ui player))
-      (send-to-all-others player 'card card) ; von UI
+      (progn
+	(setf (cards player) (delete card (cards player) :test #'equalp))
+	(send-to-all-others player 'card card)) ; von UI
       (call-ui 'card player sender card))    ; von draußen
+  (push card (current-trick player))	     ; Karte für den aktuellen Stich eintragen
   (turn-table player)		       ; nächster Spieler
-  (if (address-equal player (own-address player) (current-player player))
-      ;; Spieler ist nun an der Reihe
-      (call-ui 'choose-card player player))) ; Karte auswählen lassen
+  (when (and (address-equal player (own-address player) (current-player player))
+	     (< (length (current-trick player)) 3))
+    ;; Spieler ist nun an der Reihe und der Stich ist noch nicht voll
+    (call-ui 'choose-card player player))) ; Karte auswählen lassen
 
 (DEFHANDLER TRICK (IN-GAME) host (PLAYER CARDS WINNER)
   "Behandelt die Auswertung des Stiches durch den Host."
   (IF (address-equal player winner (own-address player))
       (CONS CARDS (WON-TRICKS PLAYER)))	; zu den gewonnenen Stichen dazupacken
+  (setf (current-trick player) nil)	; aktuellen Stich zurücksetzen
   (CALL-UI 'TRICK PLAYER SENDER CARDS WINNER)) ; UI benachrichtigen
 
 (defhandler game-over (in-game) host (player prompt)
