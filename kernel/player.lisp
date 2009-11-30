@@ -206,6 +206,11 @@ Benutzer mitgeht."
 wenn der Benutzer passen möchte."
   (case-state player
     (BIDDING-wait
+     (when (null (car (table player)))	; bisher keine Ahnung wer vorn ist
+       ;; wenn wir bis hierher kommen, dann muss der erste Sager sofort gepasst haben
+       ;; sonst wäre dies schon beim BID oben erledigt worden
+       ;; Der Spieler ist Geber. D. h. sein linker Mann spielt aus
+       (turn-table-to player (left-playmate player)))
      (CALL-UI 'PASS PLAYER SENDER VALUE))
     (BID
      (if (equalp sender (ui player))	; selbst gepasst
