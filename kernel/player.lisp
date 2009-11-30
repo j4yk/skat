@@ -132,15 +132,15 @@ vom Host wünscht."
   "Wechelt in den Zustand bidding-wait."
   (SLOT-MAKUNBOUND PLAYER 'BIDDING-MATE))
   
-(DEFHANDLER GAME-START (REGISTRATION-SUCCEEDED) (ui host) (PLAYER)
+(DEFHANDLER GAME-START (REGISTRATION-SUCCEEDED game-over) (ui host) (PLAYER)
   "Behandelt die Nachricht vom Host, dass die Runde beginnt und soll von
 UI aufgerufen werden, wenn der Spieler die nächste Runde zu beginnen wünscht."
   (if (equalp sender (ui player))
       (comm:send (comm player) (host player) 'game-start) ; von der UI
-      (progn
+      (progn						  ; vom Host
 	(setf (table player) (cons nil (table player))) ; packe nil an den Tisch, als "keine Ahnung, wer dran ist"
 	(call-ui 'game-start player sender) ; kann nicht in die switch-fn, da die auch bei PASS aufgerufen wird
-	(switch-to-bidding-wait player))))  ; vom Host
+	(switch-to-bidding-wait player))))
 
 (DEFHANDLER CARDS (BIDDING-wait) host (PLAYER CARDS)
    "Behandelt die Überreichung der Karten durch den Host."
@@ -297,9 +297,13 @@ wenn der Benutzer eine Karte spielt."
   (CALL-UI 'TRICK PLAYER SENDER CARDS WINNER) ; UI benachrichtigen
   (turn-table-to player winner))	      ; der Gewinner ist nun am Stich
 
+(define-state-switch-function game-over (player prompt)
+  "Wechselt in den game-over Zustand."
+  (call-ui 'game-over player (host player) prompt))
+
 (defhandler game-over (in-game) host (player prompt)
   "Behandlet die Beendigung der Runde durch den Host."
-  (call-ui 'game-over player sender prompt))
+  (switch-to-game-over player prompt))
 
 (defhandler cards-score (game-over) host (player declarer-score defenders-score)
   "Behandelt die Punkteauszählung des Hostes."
