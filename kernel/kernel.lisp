@@ -73,7 +73,8 @@ da es die Bindungen der Variablen kernel und request-name voraussetzt."
   (loop while (comm:has-request (comm kernel))
      do (multiple-value-bind (request-name sender request-args) (comm:get-request (comm kernel))
 	  (unwind-protect (format *debug-io* "~%processing ~a ~a from ~a" request-name request-args sender)
-	    (apply (handler-fn request-name) kernel sender request-args)))))
+	    (restart-case (apply (handler-fn request-name) kernel sender request-args)
+	      (next-request () :report "Anfrage überspringen und weitermachen"))))))
 
 (define-condition invalid-kernel-state-error (error)
   ((kernel-class :accessor kernel-class :initarg :kernel-class)
