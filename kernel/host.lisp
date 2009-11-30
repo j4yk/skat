@@ -392,28 +392,29 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   (slot-makunbound host 'current-trick)			; aufräumen
   (multiple-value-bind (declarer-score defenders-score) ; Augen auszählen
       (count-card-points (tricks host) (current-declarer host) (address-compare-function host))
-    (send-to-players host 'cards-score declarer-score defenders-score) ; und verschicken
-    ;; nun die Augen auswerten...
-    (with-slots (jacks declaration current-declarer score-table) host
-      (let ((won (> declarer-score 60))) ; mind. 61 Augen zum Gewinnen
-	(if won
-	    (progn
-	      (when (>= declarer-score 90) ; Schneider
-		(push :played-schneider (cdr declaration))
-		(when (= declarer-score 120)
-		  (push :played-schwarz (cdr declaration)))) ; Schwarz
-	      (let ((game-points (game-points declaration (flush-run-value host))))
+    (let ((declarer-score (apply #'+ declarer-score (mapcar #'card-points (skat host))))) ; Augen im Skat nicht vergessen
+      (send-to-players host 'cards-score declarer-score defenders-score) ; und verschicken
+      ;; nun die Augen auswerten...
+      (with-slots (jacks declaration current-declarer score-table) host
+	(let ((won (> declarer-score 60))) ; mind. 61 Augen zum Gewinnen
+	  (if won
+	      (progn
+		(when (>= declarer-score 90) ; Schneider
+		  (push :played-schneider (cdr declaration))
+		  (when (= declarer-score 120)
+		    (push :played-schwarz (cdr declaration)))) ; Schwarz
+		(let ((game-points (game-points declaration (flush-run-value host))))
 		(send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
 		(incf (gethash current-declarer score-table) game-points)))
-	    (progn
-	      (when (<= declarer-score 30)
-		(push :played-schneider (cdr declaration)) ; Schneider
-		(when (= declarer-score 0)
-		  (push :played-schwarz (cdr declaration)))) ; Schwarz
-	      (let ((game-points (* 2 (game-points declaration (flush-run-value host)))))
-		(send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
-		(decf (gethash current-declarer score-table) game-points)))))))
-  (send-score-table host))
+	      (progn
+		(when (<= declarer-score 30)
+		  (push :played-schneider (cdr declaration)) ; Schneider
+		  (when (= declarer-score 0)
+		    (push :played-schwarz (cdr declaration)))) ; Schwarz
+		(let ((game-points (* 2 (game-points declaration (flush-run-value host)))))
+		  (send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
+		  (decf (gethash current-declarer score-table) game-points)))))))
+    (send-score-table host)))
 
 (defhandler game-start (registration game-over) :any (host)
   "Behandelt den Wunsch eines Spielers nach einem weiteren Spiel."
