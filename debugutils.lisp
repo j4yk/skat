@@ -12,7 +12,10 @@
 (defun standard-xmpp-credentials (resource)
   (comm::make-xmpp-login-data "jakob" "localhost" "localhost" resource "habaladings" :sasl-plain))
 
-(defun make-host (ui-class comm-class login-data)
+(defun standard-registration-data ()
+  (comm::make-xmpp-registration-data "jakob@localhost/host"))
+
+(defun make-host (ui-class comm-class &optional (login-data (standard-xmpp-credentials "host")))
   (let ((host (make-instance 'host :ui (make-instance ui-class) :comm (make-instance comm-class)
 			     :login-data login-data)))
     (setf (ui::kernel (ui host)) host)
