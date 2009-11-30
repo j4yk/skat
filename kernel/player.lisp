@@ -284,6 +284,9 @@ soll durch die UI aufgerufen werden, wenn Karten in den Skat gedrückt werden."
 wenn der Benutzer eine Karte spielt."
   (if (equalp sender (ui player))
       (progn
+	(unless (address-equal player (current-player player) (own-address player))
+	  ;; vor allem in der Debugzeit absichern, dass nur Spieler an der Reihe senden
+	  (error "Spieler ist momentan nicht an der Reihe! Karte nicht gesendet!"))
 	(setf (cards player) (delete card (cards player) :test #'equalp))
 	(send-to-all-others player 'card card)) ; von UI
       (call-ui 'card player sender card))    ; von draußen
