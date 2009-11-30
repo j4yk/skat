@@ -389,6 +389,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   "Spiel beenden und auswerten."
   (send-to-players host 'game-over prompt) ; Spieler in Kenntnis setzen
   (setf (want-game-start host) nil) ; setze die Liste der Spielwilligen zurück
+  (slot-makunbound host 'current-trick)			; aufräumen
   (multiple-value-bind (declarer-score defenders-score) ; Augen auszählen
       (count-card-points (tricks host) (current-declarer host) (address-compare-function host))
     (send-to-players host 'cards-score declarer-score defenders-score) ; und verschicken
