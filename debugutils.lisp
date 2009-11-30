@@ -9,6 +9,29 @@
     (ui:start (ui host))
     host))
 
+(defun standard-xmpp-credentials (resource)
+  (comm::make-xmpp-login-data "jakob" "localhost" "localhost" resource "habaladings" :sasl-plain))
+
+(defun make-host (ui-class comm-class login-data)
+  (let ((host (make-instance 'host :ui (make-instance ui-class) :comm (make-instance comm-class)
+			     :login-data login-data)))
+    (setf (ui::kernel (ui host)) host)
+    host))
+
+(defun make-player (ui-class comm-class)
+  (let ((p (make-instance 'player :ui (make-instance ui-class) :comm (make-instance comm-class))))
+    (setf (ui::kernel (ui p)) p)
+    p))
+
+(defmacro -send (kernel request &rest args)
+  `(ui::send-request-to-kernel (ui ,kernel) ',request ,@args))
+
+(defmacro -do (kernel)
+  `(ui:just-one-step (ui ,kernel)))
+
+
+
+
 (defparameter host nil)
 (defparameter ui nil)
 (defparameter comm nil)
