@@ -92,6 +92,10 @@ Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden se
 	(switch-to-registration host t))
       (error 'no-login-data-supplied-error :host host)))
 
+(defhandler own-address (registration) comm (kernel address)
+  "Host empfängt own-address im State registration. Daher dieser Extra-Handler."
+  (setf (own-address host) address))
+
 (defhandler registration-parameters () comm (host parameters)
   "Da Comm nichts vom Host weiß, schickt sie dem Host auch die Registrierungsparameter.
 Host ignoriert diese einfach.")
