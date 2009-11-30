@@ -389,12 +389,13 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   "Spiel beenden und auswerten."
   (send-to-players host 'game-over prompt) ; Spieler in Kenntnis setzen
   (setf (want-game-start host) nil) ; setze die Liste der Spielwilligen zurück
+  (slot-makunbound host 'current-trick)			; aufräumen
   (multiple-value-bind (declarer-score defenders-score) ; Augen auszählen
       (count-card-points (tricks host) (current-declarer host) (address-compare-function host))
     (send-to-players host 'cards-score declarer-score defenders-score) ; und verschicken
     ;; nun die Augen auswerten...
     (with-slots (jacks declaration current-declarer score-table) host
-      (let ((won (> declarer-score defenders-score)))
+      (let ((won (> declarer-score 60))) ; mind. 61 Augen zum Gewinnen
 	(if won
 	    (progn
 	      (when (>= declarer-score 90) ; Schneider
