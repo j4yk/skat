@@ -394,7 +394,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
     (send-to-players host 'cards-score declarer-score defenders-score) ; und verschicken
     ;; nun die Augen auswerten...
     (with-slots (jacks declaration current-declarer score-table) host
-      (let ((won (> declarer-score defenders-score)))
+      (let ((won (> declarer-score 60))) ; mind. 61 Augen zum Gewinnen
 	(if won
 	    (progn
 	      (when (>= declarer-score 90) ; Schneider
