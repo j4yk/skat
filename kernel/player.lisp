@@ -238,10 +238,9 @@ wenn der Benutzer passen möchte."
   "Behandelt die Handspielentscheidung des Spielführers und soll durch die
 UI aufgerufen werden, wenn der Spieler sich entschieden hat, ob er den Skat
 nehmen will."
-  (cond ((equalp sender (ui player))	; von der UI
-	 (send-to-all-others PLAYER 'HAND-DECISION HAND))
-	(t 				; von draußen
-	 (call-ui 'hand-decision player sender hand))))
+  (if (equalp sender (ui player))
+      (send-to-all-others PLAYER 'HAND-DECISION HAND) ; von der UI
+      (call-ui 'hand-decision player sender hand)))   ; von draußen
 
 (DEFHANDLER SKAT (PREPARATIONS) (host ui) (PLAYER SKAT)
   "Behandelt die Ausgabe des Skats durch den Host UND
@@ -287,6 +286,9 @@ wenn der Benutzer eine Karte spielt."
 	(unless (address-equal player (current-player player) (own-address player))
 	  ;; vor allem in der Debugzeit absichern, dass nur Spieler an der Reihe senden
 	  (error "Spieler ist momentan nicht an der Reihe! Karte nicht gesendet!"))
+	(unless (member card (cards player) :test #'equalp)
+	  ;; absichern, dass Spieler nur Karten spielen, die sie auf der Hand haben
+	  (error "Spieler besitzt diese Karte nicht! Karte nicht gesendet!"))
 	(setf (cards player) (delete card (cards player) :test #'equalp))
 	(send-to-all-others player 'card card)) ; von UI
       (call-ui 'card player sender card))    ; von draußen
