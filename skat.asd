@@ -13,12 +13,14 @@
   :components ((:file skat-packages)
 	       (:file utils)
 	       (:file requests)
+	       (:file request-handling)
 	       (:module comm
 			:serial t
 			:components ((:file base-comm)
 				     (:file stub-comm)
 				     (:file xmpp-comm)))
 	       (:module ui
+			:depends-on (request-handling)
 			:serial t
 			:components ((:file ui-request-handling)
 				     (:file base-ui)
@@ -31,7 +33,6 @@
 				     (:file tricks)
 				     (:file bidding)
 				     (:file scoring)
-				     (:file request-handling)
 				     (:file ringlist)
 				     (:file kernel)
 				     (:file states :depends-on (kernel))
