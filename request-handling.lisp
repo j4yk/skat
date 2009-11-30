@@ -34,9 +34,11 @@
 
 (defun raise-error-in-kernel-handler (kernel condition fn-name sender request-name args)
   "Signalisiert einen error-in-kernel-handler error."
-  (comm::prepend-request (comm kernel) sender request-name args) ; Anfrage zurückpacken, damit sie nicht verloren geht
-  (restart-case (error 'error-in-kernel-handler :error condition :handler-fn-name fn-name :kernel kernel)
-    (raise-inner-condition () (error condition))))
+  (restart-bind ((raise-inner-condition #'(lambda () (error condition))))
+    (restart-case (error  'error-in-kernel-handler :error condition :handler-fn-name fn-name :kernel kernel)
+      (push-request-back ()		; Anfrage zurückpacken, damit sie nicht verloren geht
+	(comm::prepend-request (comm kernel) sender request-name args)
+	(error 'error-in-kernel-handler :error condition :handler-fn-name fn-name :kernel kernel)))))
 
 (defmacro defhandler (request-name (&rest states) allowed-senders (kernel-class-and-varname &rest request-args) &body body)
   "Definiert eine Handlerfunktion für diese Anfragen.
