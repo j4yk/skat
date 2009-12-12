@@ -11,6 +11,17 @@
    (address-compare-function :initform #'equalp))
   (:documentation "Communication over an XMPP-Connection. The addresses are JID-strings."))
 
+(kern:define-login-data xmpp-login-data
+    (username nil :type string) (hostname nil :type string) (domain nil :type string)
+    (resource nil :type string) (password nil :type string) (mechanism nil :type keyword))
+
+(kern:define-registration-data xmpp-registration-data
+    (host-jid nil :type string))
+
+(defmethod host-address ((xmpp-comm xmpp-comm) (xmpp-registration-data xmpp-registration-data))
+  "Extrahiert die Host-Adresse aus den XMPP-Registrierungsdaten. Gibt einfach nur die Host-JID zurück."
+  (xmpp-registration-data-host-jid xmpp-registration-data))
+
 (defmethod start ((comm xmpp-comm))
   "Initialisiert dieses XMPP-Verbindungsobjekt. Fügt nur die Login-Parameterliste für Kernel zum Abruf ein."
   (push-request comm comm 'login-parameters 
