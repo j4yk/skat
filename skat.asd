@@ -14,6 +14,8 @@
 	       (:file utils)
 	       (:file requests)
 	       (:file request-handling)
+	       (:file login-and-registration)
+	       (:file struct-translations)
 	       (:module comm
 			:serial t
 			:components ((:file base-comm)
@@ -37,5 +39,7 @@
 				     (:file kernel)
 				     (:file states :depends-on (kernel))
 				     (:file host)
-				     (:file player)))
+				     (:file host-tests)
+				     (:file player)
+				     (:file player-tests)))
 	       (:file debugutils)))
