@@ -37,5 +37,6 @@
 				     (:file kernel)
 				     (:file states :depends-on (kernel))
 				     (:file host)
-				     (:file player)))
+				     (:file player)
+				     (:file player-tests)))
 	       (:file debugutils)))
