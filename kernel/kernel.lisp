@@ -28,7 +28,9 @@
   "Druckt den Zustand mit aus."
   (print-unreadable-object (kernel stream :type t :identity t)
     (princ "State=" stream)
-    (princ (state kernel) stream)))
+    (princ (state kernel) stream)
+    (when (slot-boundp kernel 'own-address)
+      (format stream " Address=\"~a\"" (own-address kernel)))))
 
 (defmacro defkernelmethod (name (kernel-class &rest method-parameters) &body body)
   "Definiert eine neue Methode für eine Kernelklasse,
