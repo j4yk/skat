@@ -4,6 +4,13 @@
   ()
   (:documentation "Schritt- für Schritt UI, kann gar nichts."))
 
+(defmethod print-object ((ui stub-ui) stream)
+  (print-unreadable-object (ui stream :type t)
+    (princ "of " stream)
+    (if (slot-boundp ui 'kernel)
+	(princ (kernel ui) stream)
+	(princ "NO KERNEL BOUND" stream))))
+
 (defmacro define-all-requests-handler ((ui-class data-argname) &body body)
   "Definiert einen Handler für alle Requests..."
   (cons 'progn
@@ -39,7 +46,7 @@
   (values))
 
 (define-condition stub-ui-request-arrived ()
-  ((ui :accessor ui :initarg :stub-ui)
+  ((ui :accessor ui :initarg :ui)
    (request-call :accessor request-call :initarg :request-call))
   (:documentation "Condition für den Fall, dass eine Stub-UI etwas empfangen hat."))
 
