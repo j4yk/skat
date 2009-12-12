@@ -34,4 +34,5 @@ test-definition ::= (name (test-function input-form*) output-form)"
 		    `(deftest ,name :category ,category
 			      :input-form (values ,@input-forms)
 			      :test-fn #',fn-name
-			      :output-form ,output-form)))))
+			      :output-form ,output-form
+			      :compare-fn #'equalp)))))
