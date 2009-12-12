@@ -4,6 +4,11 @@
   ((id :accessor id :initform (gensym "STUB-COMM"))
    (address-compare-function :initform #'eq)))
 
+(kern:define-registration-data stub-registration-data (host-comm nil :type stub-comm))
+
+(defmethod host-address ((comm stub-comm) (data stub-registration-data))
+  (stub-registration-data-host-comm data))
+
 (defun stub-msg (format-str &rest format-args)
   (apply #'format t format-str format-args)
   (terpri))
@@ -24,7 +29,11 @@
 (defmethod login ((comm stub-comm) data)
   (stub-msg "COMM: logged in.")
   (push-request comm comm 'own-address (list (address comm)))
+  (push-request comm comm 'registration-struct '(stub-registration-data))
   (values))
+
+(defmethod register ((comm stub-comm) (data stub-registration-data))
+  (push-request (stub-registration-data-host-comm data) comm 'registration-request nil))
 
 (defmethod push-request :after ((comm stub-comm) sender request-name request-args)
   "Schreibt auf, was gepusht wurde"
