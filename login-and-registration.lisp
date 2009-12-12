@@ -17,7 +17,7 @@ definierte Structs."
 (defstruct (example-login-data (:include login-data)) "Beispiel für eine login-data Struktur."
 	   (username nil :type string) (password nil :type string))
 
-(push '(example-login-data (username nil :type string) (password nil :type string)) *login-data-slots*)
+(push '(example-login-data (username nil :type string) (password nil :type string)) *struct-slots*)
 
 (defparameter *example-login-data-translations*
   '((:de-de (username "Benutzername" "Beschreibung des Feldes Benutzername")
