@@ -33,14 +33,6 @@
 			(mechanism (:plain :sasl-plain) "Form, in der das Passwort übermittelt wird"))))
   (values))
 
-(defun make-xmpp-login-data (username hostname domain resource password mechanism)
-  "Erstellt eine Login-Data-Liste für xmpp-comm"
-  (apply #'append (mapcar #'list
-			  '(:username :hostname :jid-domain-part
-			    :resource :password :mechanism)
-			  (list username hostname domain
-				resource password mechanism))))
-
 (defmacro let-multiple-getf (place (&rest indicators-and-varnames) &body body)
   "Packt eine Property-Liste mit getf aus.
 Syntax: let-multiple-getf place ({indicator varname}*) form*"
@@ -73,11 +65,6 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
     (push-request comm comm 'own-address (list (address comm))))
   ;; Host instruieren, was für die Registrierung benötigt wird
   (push-request comm comm 'registration-parameters (list '((host-address string "JID des Skat-Hostes")))))
-
-(defun make-xmpp-registration-data (host-address)
-  "Erstellt eine Liste mit Registrierungsargumenten für XMPP-Comm,
-zum Aufruf von REGISTRATION-DATA Handlern und comm:register."
-  (list :host-address host-address))  
  
 ;; Das hier ist nur notwendig, damit comm seine speziellen Datensätze auspacken kann
 ;; (die sind ja von comm zu comm verschieden und das Gedöns soll nicht in den Kernel)
