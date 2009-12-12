@@ -37,12 +37,12 @@ Endet, wenn Slot stop-received initialisiert wird."
   (handler-bind ((error #'(lambda () (invoke-restart 'continue-main-loop))))
     (main-loop ui)))
 
-(defmethod start ((ui host-ui) &optional no-new-thread-p)
+(defmethod start ((ui host-ui) &optional new-thread-p)
   "Startet die Hauptschleife für den Host in einem neuen Thread."
   (slot-makunbound ui 'stop-received)
-  (if no-new-thread-p
-      (main-loop ui)
-      (sb-thread:make-thread #'(lambda () (main-loop-in-other-thread ui)) :name "Host Main Loop Thread")))
+  (if new-thread-p
+      (sb-thread:make-thread #'(lambda () (main-loop-in-other-thread ui)) :name "Host Main Loop Thread")
+      (main-loop ui)))
 
 (defmethod stop ((ui host-ui))
   "Hält die UI an, indem die Abbruchvariable gesetzt wird."
