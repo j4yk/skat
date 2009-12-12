@@ -14,7 +14,7 @@
 (defun player-prepared-for-registration-p (player)
   (and (slot-boundp player 'own-address)))
 
-(defun test-game ()
+(defun test-game-before-bidding ()
   (let* ((p1 (make-test-player))
 	 (p2 (make-test-player))
 	 (p3 (make-test-player))
@@ -49,15 +49,46 @@
 		 (-do p1)
 		 (-do p2)
 		 (-do p3))))
-      (macrolet ((assert-for-each-player (form)
-		   `(dolist (player players)
-		      (assert ,form))))
-	(update-entities) 		; erstes Mal, login-parameters muss ankommen
+      (update-entities) 		; erstes Mal, login-parameters muss ankommen
+      (dolist (p players)
+	(assert (member 'login-parameters (received-request-names p)))
+	(assert (eq (state p) 'start))	; alle in Start
+	(clear-requests p)
+	(ui-send p 'login-data nil))
+      (update-entities)		; einloggen, registration-struct muss kommen
+      (dolist (p players)
+	(assert (eq (state p) 'unregistered))
+	(assert (member 'registration-struct (received-request-names p)))
+	(ui-send p 'registration-data (comm::make-stub-registration-data :host-comm (comm host))) ; registieren
+	(assert (eq (state p) 'registration-pending)))
+      (update-entities)		; hierbei müsste Host antworten und die Leute registrieren
+      (dolist (p players)
+	(let ((requests (received-request-names p)))
+	  (assert (eq (state p) 'registration-succeeded)) ; Registrierung war wohl erfolgreich
+	  (assert (slot-boundp p 'host))		  ; Host muss bekannt sein
+	  (assert (member 'registration-reply requests))
+	  (assert (member 'playmates requests)) ; Mitspieler wurden verkündet
+	  (assert (slot-boundp p 'left-playmate))
+	  (assert (slot-boundp p 'right-playmate))
+	  (ui-send p 'game-start)))	; Spiel starten
+      (update-entities)		; Host startet Spiel und teilt Karten aus
+      (let ((bidder nil)
+	    (listener nil))
 	(dolist (p players)
-	  (assert (member 'login-parameters (received-request-names p)))
-	  (clear-requests p)
-	  (ui-send p 'login-data nil))
-	(update-entities)		; einloggen, registration-parameters muss kommen
-	(dolist (p players)		
-	  (assert (member 'registration-parameters (received-request-names p)))
-	  (ui-send p 'registration-data nil)))))) ; ... geht noch weiter...
+	  (let ((requests (received-request-names p)))
+	    (assert (member 'game-start requests)) ; vom Host
+	    (assert (member 'cards requests))	   ; Karten erhalten
+	    (assert (slot-boundp p 'cards))
+	    ;; Zustände je nach Reizrolle
+	    (cond ((member 'start-bidding requests)
+		   (setf bidder p)
+		   (assert (eq (state p) 'bid)))
+		  ((member 'listen requests)
+		   (setf listener p)
+		   (assert (eq (state p) 'listen)))
+		  (t (assert (eq (state p) 'bidding-wait))))))
+	(assert (not (null bidder)))	; Hörer und Sager müssen benannt worden sein
+	(assert (not (null listener)))
+	(assert (eq (bidding-mate listener) (own-address bidder))) ; und sie müssen sich gegenseitig kennen
+	(assert (eq (bidding-mate bidder) (own-address listener)))
+	(values players host)))))
