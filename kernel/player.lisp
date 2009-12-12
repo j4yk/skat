@@ -83,10 +83,10 @@ Weist Comm an sich mit den Daten einzuloggen."
   (comm:login (comm player) data)
   (switch-to-unregistered player))
 
-(DEFHANDLER REGISTRATION-PARAMETERS (UNREGISTERED) comm (PLAYER PARAMETERS)
+(DEFHANDLER REGISTRATION-struct (UNREGISTERED) comm (PLAYER struct-classname)
   "Behandelt die Parameterliste für die Registrierung von der Comm."
   (LET ((COMM SENDER))
-    (CALL-UI 'REGISTRATION-PARAMETERS PLAYER COMM PARAMETERS)))
+    (CALL-UI 'REGISTRATION-struct PLAYER COMM struct-classname)))
 
 (define-state-switch-function registration-pending (player)
   "Wechelst in den Zustand registration-pending.")

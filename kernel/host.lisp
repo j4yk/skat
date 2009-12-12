@@ -96,7 +96,7 @@ Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden se
   "Host empfängt own-address im State registration. Daher dieser Extra-Handler."
   (setf (own-address host) address))
 
-(defhandler registration-parameters () comm (host parameters)
+(defhandler registration-struct () comm (host struct-classname)
   "Da Comm nichts vom Host weiß, schickt sie dem Host auch die Registrierungsparameter.
 Host ignoriert diese einfach.")
 
