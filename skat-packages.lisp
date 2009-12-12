@@ -26,6 +26,9 @@
 		receive-requests
 		call-handler-fn
 		error-in-handler
+		define-login-data	 ; Login-Strukturen für Comm
+		define-registration-data ; Registrierungs-Strukturen für Comm
+		slots-of-class		 ; Slotliste holen
 		,@requests-kernel-ui
 		,@requests-kernel-comm))
      (defpackage skat-ui
