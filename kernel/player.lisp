@@ -91,6 +91,11 @@ Weist Comm an sich mit den Daten einzuloggen."
 (define-state-switch-function registration-pending (player)
   "Wechelst in den Zustand registration-pending.")
 
+;;; == Warum Player die Host-Adresse nicht bei der Anfrage speichert ==
+;; Player hat keine Information darüber, wie die Registrierungsdaten
+;; zu interpretieren sind. Dies obliegt der Kommunikation.
+;; == ENDE ==
+
 (DEFHANDLER REGISTRATION-DATA (UNREGISTERED) ui (PLAYER DATA)
   "Soll durch die UI aufgerufen werden.
 Weist comm an sich mit den Daten bei einem Host zu registrieren."

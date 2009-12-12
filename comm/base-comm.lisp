@@ -51,6 +51,13 @@ und nimmt eventuelle Startaktionen inklusive Thread-Spawning vor."))
   (:documentation "Weist das Kommunikationsobjekt an, sich mit den übergebenen
 Daten in seinem Medium zu authentifizieren."))
 
+(defgeneric host-address (comm registration-data)
+  (:documentation "Extrahiert die Host-Adresse aus den Registrierungsdaten, wenn möglich.
+Wenn nicht möglich, wird ein error signalisiert."))
+
+(defgeneric register (comm data)
+  (:documentation "Weist das Kommunikationsobjekt an, sich mit diesem Host zu registrieren."))
+
 (defgeneric send (comm address request-name &rest request-args)
   (:documentation "Weist das Kommunikationsobjekt an, die übergebene Anfrage
 und ihre Parameter an die übergebene Adresse zu schicken."))

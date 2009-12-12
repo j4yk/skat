@@ -38,5 +38,12 @@
   (stub-ui-msg "started.")
   (values))
 
+(define-condition stub-ui-request-arrived ()
+  ((ui :accessor ui :initarg :stub-ui)
+   (request-call :accessor request-call :initarg :request-call))
+  (:documentation "Condition für den Fall, dass eine Stub-UI etwas empfangen hat."))
+
 (define-all-requests-handler (stub-ui request-call)
-  (stub-ui-msg "UI received ~a ~a from ~a" (car request-call) (cdr request-call) sender))
+  (stub-ui-msg "UI received ~a ~a from ~a" (car request-call) (cdr request-call) sender)
+  (restart-case (signal 'stub-ui-request-arrived :ui ui :request-call request-call)
+    (continue () t)))

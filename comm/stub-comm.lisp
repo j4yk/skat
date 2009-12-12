@@ -1,11 +1,20 @@
 (in-package skat-comm)
 
 (defclass stub-comm (base-comm)
-  ((address-compare-function :initform #'eq)))
+  ((id :accessor id :initform (gensym "STUB-COMM"))
+   (address-compare-function :initform #'eq)))
 
 (defun stub-msg (format-str &rest format-args)
   (apply #'format t format-str format-args)
   (terpri))
+
+(defmethod print-object ((stub-comm stub-comm) stream)
+  (print-unreadable-object (stub-comm stream :type t)
+    (princ (id stub-comm) stream)))
+
+(defmethod address ((stub-comm stub-comm))
+  "Gibt sich selbst als Adresse zurück."
+  stub-comm)
 
 (defmethod start ((comm stub-comm))
   (stub-msg "COMM: started.")
@@ -14,6 +23,7 @@
 
 (defmethod login ((comm stub-comm) data)
   (stub-msg "COMM: logged in.")
+  (push-request comm comm 'own-address (list (address comm)))
   (values))
 
 (defmethod push-request :after ((comm stub-comm) sender request-name request-args)
@@ -38,15 +48,11 @@
   ;; lasse wen will hier einhängen, damit noch was automatisiert werden kann
   (restart-case (signal 'stub-communication-send :request request-name :args request-args
 			:sender comm :address address)
-    (continue () nil))
+    (continue () t))
   (values))
 
 (defmethod stop ((comm stub-comm))
   (values))
-
-(defmethod feed-comm ((comm stub-comm) sender request-name request-args)
-  "\"Füttert\" eine Stub-Comm mit einer Anfrage. So als ob sie sie empfangen hätte."
-  (apply #'push-request comm sender request-name request-args))
 
 (defmethod receive-requests ((comm stub-comm))
   "Tut eigentlich nichts."

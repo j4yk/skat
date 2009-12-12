@@ -26,12 +26,6 @@
     (setf (ui::kernel (ui p)) p)
     p))
 
-(defmacro -send (kernel request &rest args)
-  `(ui::send-request-to-kernel (ui ,kernel) ',request ,@args))
-
-(defmacro -do (kernel)
-  `(ui:just-one-step (ui ,kernel)))
-
 
 
 

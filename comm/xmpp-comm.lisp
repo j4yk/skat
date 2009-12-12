@@ -86,6 +86,11 @@ zum Aufruf von REGISTRATION-DATA Handlern und comm:register."
   (let-multiple-getf data (:host-address host-address)
     (send comm host-address 'registration-request)))
 
+(defmethod host-address ((comm xmpp-comm) data)
+  "Gibt die Host-Adresse aus den Registrierungsdaten zurück."
+  (let-multiple-getf data (:host-address host-address)
+    host-address))
+
 (defmethod send ((comm xmpp-comm) address request-name &rest request-args)
   "Sendet eine Anfrage an einen anderen Spieler. Das Format der Anfrage ist eine Liste: (cons request-name request-args)."
   (xmpp:message (connection comm) address (format nil "~s" (cons request-name request-args))))
