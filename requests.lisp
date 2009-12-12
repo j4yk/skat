@@ -40,14 +40,14 @@ Definition des Requests übereinstimmen."
 	    ;; sender
 	    receiver)))
 
-(defmacro defrequest (name parameters options)
+(defmacro defrequest (name parameters &optional flow options)
   "Definiert eine neue Art Request.
 
 defrequest name parameter*
 
 name: Name des Requests. Daran orientieren sich die Handler-Funktionen zur Unterscheidung verschiedener Request-Arten.
 parameter: Name eines dem Request immer zwingend beigefügten Parameters"
-  (declare (ignorable options))
+  (declare (ignorable options flow))
   (let ((parameter-symbols (mapcar #'car parameters))
 	(documentation (nth (1+ (position :documentation options)) options))
 	(sender (nth (1+ (position :sender options)) options))
@@ -55,14 +55,15 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
     `(progn
        (eval-when (:compile-toplevel)
 	 ;; create Documentation
-	 (with-open-file (fs "../skat-doc/requests-table.tex"
-			     :direction :output
-			     :if-exists (if (boundp '*request-printing-started*)
-					    (print :append)
-					    (print :supersede)))
-	   (print-request-latex ',name ',parameters ,documentation ,sender ,receiver fs)
-	   (format t "printed request ~a" ',name))
-	 (defvar *request-printing-started* t))
+	 (when (fboundp 'print-request-latex)
+	   (with-open-file (fs "/home/jakob/dev/skat-doc/requests-table.tex"
+			       :direction :output
+			       :if-exists (if (boundp '*request-printing-started*)
+					      (print :append)
+					      (print :supersede)))
+	     (print-request-latex ',name ',parameters ,documentation ,sender ,receiver fs)
+	     (format t "printed request ~a" ',name))
+	   (defvar *request-printing-started* t)))
        (eval-when (:load-toplevel :execute)
 	 (apply #'add-request-definition ',name ',parameter-symbols)))))
 
@@ -86,6 +87,7 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 (DEFREQUEST LOGIN-PARAMETERS
     ((PARAMETERS
       "Eine Liste von Assoziationen $Parametername \\rightarrow Datentyp$"))
+  (comm->kernel player->ui)
   (:DOCUMENTATION
    "Enthält eine Liste notwendiger Informationen für die Einwahl des Kommunikationsmoduls in seinem Kommunikationskanal"
    :SENDER "Kommunikation" :RECEIVER "UI"))
@@ -93,54 +95,64 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 (DEFREQUEST LOGIN-DATA
     ((DATA
       "Eine Property-Liste mit den Parameternamen als Namen und den entsprechenden Argumenten als Werten"))
+  (ui->player kernel->comm)
   (:DOCUMENTATION
    "Enthält die der Kommunikation zur Verfügung gestellten Einwahldaten."
    :SENDER "UI" :RECEIVER "Kommunikation"))
 
-(DEFREQUEST OWN-ADDRESS ((address ""))
+(DEFREQUEST OWN-ADDRESS
+    ((address ""))
+  (comm->kernel)
   (:DOCUMENTATION
    "Teilt dem Kernel die eigene Adresse mit (die hängt ja vom Kommunikationsmodul ab)."
    :SENDER "Kommunikation" :RECEIVER "Kernel"))
 
-(DEFREQUEST REGISTRATION-PARAMETERS
-    ((PARAMETERS
-      "Eine Liste von Assoziationen $Parametername \\rightarrow Datentyp$"))
+(DEFREQUEST registration-struct
+    ((struct-classname "Ein Symbol, dass für eine Struct-Klasse steht."))
+  (comm->kernel player->ui)
   (:DOCUMENTATION
-   "Enthält eine Liste notwendiger Informationen für die Registrierung mit einem Host"
+   "Übergibt den Datentyp für die Informationen, die zum Registrieren mit einem Host benötigt werden."
    :SENDER "Kommunikation" :RECEIVER "UI"))
 
 (DEFREQUEST REGISTRATION-DATA
     ((DATA
-      "Eine Liste von Assoziationen $Parametername \\rightarrow Parameterwert$"))
+      "Ein Struct von dem Typ, der in REGISTRATION-STRUCT mitgeteilt wurde"))
+  (ui->player kernel->comm)
   (:DOCUMENTATION
    "Enthält die der Kommunikation zur Verfügung gestellten Daten zur Registrierung mit einem Host."
    :SENDER "UI" :RECEIVER "Kommunikation"))
 
 (DEFREQUEST REGISTRATION-REQUEST
     NIL
+  (comm->host)
   (:DOCUMENTATION "Fragt an, ob der Sender sich beim Host eintragen darf."
 		  :SENDER "Player" :RECEIVER "Host"))
 
 (DEFREQUEST REGISTRATION-REPLY
     ((ACCEPTED
       "t bedeutet, der Spieler ist eingetragen, nil bedeutet, dass die Registrierung abgelehnt ist"))
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION
    "Die Antwort des Hostes auf eine registration-request (Ja oder Nein)."
    :SENDER "Host" :RECEIVER "Player"))
 
-(DEFREQUEST SERVER-UPDATE ((EVENTS ""))
+(DEFREQUEST SERVER-UPDATE
+    ((EVENTS ""))
+  (comm->player player->ui)
   (:DOCUMENTATION
    "Statusmeldung des Hostes, die wartende Spieler über Neuigkeiten informiert."
    :SENDER "Host" :RECEIVER "Player"))
 
 (DEFREQUEST UNREGISTER
     NIL
+  (ui->player player->comm comm->host)
   (:DOCUMENTATION
    "Teilt dem Host mit, dass der Spieler die Runde verlassen hat." :SENDER
    "Player" :RECEIVER "Host"))
 
 (DEFREQUEST LOGOUT
     ((ADDRESS "Adresse des Spielers oder Hosts, der sich ausgeloggt hat"))
+  (comm->kernel player->ui)
   (:DOCUMENTATION
    "Interne Nachricht, dass ein Mitspieler auf Kommunikationsebene (z. B. XMPP) ausgeloggt wurde."
    :SENDER "Kommunikation" :RECEIVER "Kernel, UI"))
@@ -148,11 +160,13 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 (DEFREQUEST PLAYMATES
     ((LEFT "Adresse des linken Mitspielers")
      (RIGHT "Adresse des rechten Mitspielers"))
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION "Informiert einen Spieler über seine Mitspieler" :SENDER
 		  "Host" :RECEIVER "Player"))
 
 (DEFREQUEST GAME-START
     NIL
+  (ui->player player->comm comm->host host->comm comm->player player->ui)
   (:DOCUMENTATION
    " 1. Möglichkeit: Host informiert Spieler über Spielbeginn
 2. Möglichkeit: Spieler drückt Bereitschaft zum nächsten Spiel aus"
@@ -160,57 +174,68 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 
 (DEFREQUEST CARDS
     ((CARDS "Liste von Karten"))
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION "Eine Menge von Karten, die ausgeteilt werden." :SENDER
 		  "Host" :RECEIVER "Player"))
 
 (DEFREQUEST START-BIDDING
     ((LISTENER "Die Adresse des zuhörenden Spielers")
      (MIN-VALUE "Mindestreizwert"))
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION "Teilt einem Spieler mit, dass er Reizwerte ansagen soll."
 		  :SENDER "Host" :RECEIVER "Player"))
 
 (DEFREQUEST LISTEN
     ((BIDDER "Die Adresse des Reizwerte sagenden Spielers"))
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION "Teilt einem Spieler mit, dass er dem Bidder zuhören soll."
 		  :SENDER "Host" :RECEIVER "Player"))
 
 (DEFREQUEST BID
     ((VALUE "der Reizwert"))
+  (ui->player player->comm comm->kernel player->ui)
   (:DOCUMENTATION "Ansage eines Reizwertes" :SENDER "Player" :RECEIVER
 		  "Player, Host"))
 
 (defrequest reply-to-bid
     ((value "der Reizwert"))
+  (player->ui)
   (:documentation "Fordert die UI dazu auf, einen Reizwert mit JOIN oder PASS zu beantworten"
 		  :sender "Kernel" :receiver "UI"))
 
 (DEFREQUEST JOIN
     ((VALUE "der Reizwert"))
+  (ui->player player->comm comm->kernel player->ui)
   (:DOCUMENTATION "Mitgehen bei einem Reizwert" :SENDER "Player," :RECEIVER
 		  "Player, Host"))
 
 (DEFREQUEST PASS
     ((VALUE "der Reizwert"))
+  (ui->player player->comm comm->kernel player->ui)
   (:DOCUMENTATION "Bei einem Reizwert passen" :SENDER "Player," :RECEIVER
 		  "Player, Host"))
 
 (DEFREQUEST DECLARER
     ((DECLARER "Adresse des Spielführers"))
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION "Verkündet den Spieler, der das Spiel führt" :SENDER "Host"
 		  :RECEIVER "Player"))
 
 (DEFREQUEST HAND-DECISION
     ((HAND "wenn t, spielt der Spieler ein Handspiel, sonst möchte er den Skat"))
+  (ui->player player->comm comm->kernel player->ui)
   (:DOCUMENTATION
    "Verkündet die Entscheidung des Declarers, ob er Hand spielt oder nicht"
    :SENDER "Player" :RECEIVER "Host, Player"))
 
 (DEFREQUEST SKAT
     ((SKAT "Liste mit zwei Karten"))
+  (host->comm comm->kernel player->ui ui->player player->comm)
   (:DOCUMENTATION
    "Die Übergabe des Skats. Sowohl vom Host zum Declarer als auch zurück."
    :SENDER "Host, Player" :RECEIVER "Host, Player"))
 
+;; obsolet: Host zählt Buben selbst mit
 ;; (defrequest flush-run
 ;;     ((with-or-without
 ;;       "entweder :with oder :without (mit oder ohne)")
@@ -221,22 +246,26 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 
 (DEFREQUEST DECLARATION
     ((DECLARATION "Eine Liste an Spieloptionen (zum Beispiel was Trumpf ist)"))
+  (ui->player player->comm comm->kernel player->ui)
   (:DOCUMENTATION "Verkündet das Spiel, das der Declarer ansagt" :SENDER
 		  "Player" :RECEIVER "Host, Player"))
 
 (DEFREQUEST CARD
     ((CARD "eine Karte"))
+  (ui->player player->comm comm->kernel player->ui)
   (:DOCUMENTATION "Eine gespielte Karte." :SENDER "Player" :RECEIVER
 		  "Player, Host"))
 
 (DEFREQUEST CHOOSE-CARD
     NIL
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION "Fordert den Spieler auf, eine Karte zu spielen" :SENDER
 		  "Host" :RECEIVER "Player"))
 
 (DEFREQUEST TRICK
     ((CARDS "die drei Karten des Stichs")
      (WINNER "Adresse des Spielers, der den Stich mitnimmt"))
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION
    "Fasst einen vollständigen Stich zusammen und teilt den Gewinner mit"
    :SENDER "Host" :RECEIVER "Player"))
@@ -244,12 +273,14 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 (DEFREQUEST GAME-OVER
     ((PROMPT
       "wenn t, dann können die Spieler entscheiden, ob sie noch eine Runde spielen wollen"))
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION "Offizielle Beendigung des Spiels durch den Host" :SENDER
 		  "Host" :RECEIVER "Player"))
 
 (DEFREQUEST CARDS-SCORE
     ((DECLARER-SCORE "die Augensumme der Spielführerstiche")
      (DEFENDERS-SCORE "die Augensumme der Stiche der verteidigenden Spieler"))
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION "Informiert die Spieler über die gewonnenen Augenpunkte"
 		  :SENDER "Host" :RECEIVER "Player"))
 
@@ -258,6 +289,7 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
      (WON
       "wenn t, hat der Spielführer gewonnen, wenn nil, haben die verteidigenden Spieler gewonnen")
      (SCORE "der Punktewert dieses Spieles"))
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION "Fasst das Spielresultat zusammen." :SENDER "Host" :RECEIVER
 		  "Player"))
 
@@ -268,12 +300,14 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
      (PLAYER2-SCORE "analog")
      (PLAYER3-ADDRESS "analog")
      (PLAYER3-SCORE "analog"))
+  (host->comm comm->player player->ui)
   (:DOCUMENTATION
    "Die Punktestände der Spieler nach einem Spiel" :SENDER
    "Host" :RECEIVER "Player"))
 
 (DEFREQUEST MESSAGE
     ((TEXT "Nachrichtentext"))
+  (ui->player kernel->comm comm->kernel player->ui)
   (:DOCUMENTATION "Eine Textsendung an einen Spieler" :SENDER "Host, Player"
 		  :RECEIVER "Player"))
 
