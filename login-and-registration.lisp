@@ -28,9 +28,9 @@ definierte Structs."
 (defmacro define-struct-with-slot-dict (name-and-options &rest slot-descriptions)
   "Definiert einen neuen Struct und pusht die Slots in das slot-dict."
   (let ((pure-slots (labels ((shrink (slots)
-			       (if (listp (car slots))
-				   slots
-				   (shrink (cdr slots)))))
+			       (if (stringp (car slots))
+				   (shrink (cdr slots))
+				   slots)))
 		      ;; nur die Slot-Definitionen ohne Docstring
 		      (shrink slot-descriptions))))
   `(progn
