@@ -105,7 +105,52 @@ und ruft den Continue-Restart auf."
       (assert (eq (bidding-mate bidder) (own-address listener)))
       (values players host))))
 
-(deftest "before-bidding" :category "player-tests"
+(defun find-kernel-of-stub-comm (stub-comm kernels)
+  (loop for kernel in kernels
+     when (eq stub-comm (comm kernel)) return kernel))
+
+(deftest "find-kernel-of-stub-comm" :category "player-tests"
+	 :input-fn #'(lambda ()
+		       (defvar p1)
+		       (setq p1 (make-test-player))
+		       (values (comm p1) (list p1 (make-test-player))))
+	 :test-fn #'find-kernel-of-stub-comm
+	 :output-form (symbol-value 'p1))
+
+(defun ready-for-bidding-p (players host)
+  "Gibt t zurück, wenn alle bereit zum Reizen sind."
+  ;; Host muss Rollen vergeben haben
+  (assert (not (null (current-dealer host))))
+  (assert (not (null (current-bidder host))))
+  (assert (not (null (current-listener host))))
+  ;; Kernel zu diesen Adressen finden
+  (let ((dealer (find-kernel-of-stub-comm (current-dealer host) players))
+	(listener (find-kernel-of-stub-comm (current-listener host) players))
+	(bidder (find-kernel-of-stub-comm (current-bidder host) players)))
+    ;; die müssen in den richtigen Zuständen sein
+    (assert-state 'bid bidder)
+    (assert-state 'listen listener)
+    (assert-state 'bidding-wait dealer)
+    (assert (eq (bidding-mate listener) (own-address bidder)))
+    (assert (eq (bidding-mate bidder) (own-address listener))))
+  ;; Host muss Reizwerte führen und die müssen bei 18 losgehen
+  (assert (not (null (bidding-values host))))
+  (assert (= (car (bidding-values host)) 18))
+  (assert (= (length (skat host)) 2))	; Host muss den Skat haben
+  (dolist (player players)
+    ;; Spieler dürfen den Skat nicht, also genau 10 Karten, haben
+    (assert (= (length (cards player)) 10))
+    ;; Spieler müssen auch Reizwerte führen, die bei 18 beginnen
+    (assert (not (null (bidding-values player))))
+    (assert (= (car (bidding-values player)) 18)))
+  (values players host))
+
+(deftest "before bidding" :category "player-tests"
 	 :test-fn #'test-game-before-bidding
 	 :input-form (init-test-set)
 	 :compare-fn #'always-true)	; es geht nur um die Fehler während der Ausführung
+
+(deftest "ready for bidding" :category "player-tests"
+	 :test-fn #'ready-for-bidding-p
+	 :input-form (apply #'test-game-before-bidding (multiple-value-list (init-test-set)))
+	 :compare-fn #'always-true)
