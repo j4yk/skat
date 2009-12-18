@@ -36,7 +36,7 @@
 
 (defmethod push-request :after ((comm stub-comm) sender request-name request-args)
   "Schreibt auf, was gepusht wurde"
-  (stub-comm-msg "COMM: pushed ~a ~a from ~a" request-name request-args sender))
+  (stub-comm-msg comm "pushed ~s ~s from ~s" request-name request-args sender))
 
 (defmethod get-request :around ((comm stub-comm))
   "Schreibt auf, was gepoppt wurde."
