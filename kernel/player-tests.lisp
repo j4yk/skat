@@ -149,6 +149,57 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
     (assert (= (car (bidding-values player)) 18)))
   (values players host))
 
+(defun test-bidding-scenario_pass-bidder-dealer (players host)
+  "Testet die Reizprozedur"
+  (labels ((update-entities ()
+	     (update-kernels (cons host players))))
+    (assert (ready-for-bidding-p players host))
+    (let ((bidder (find-kernel-of-stub-comm (current-bidder host) players))
+	  (listener (find-kernel-of-stub-comm (current-listener host) players))
+	  (dealer (find-kernel-of-stub-comm (current-dealer host) players)))
+      (ui-send bidder 'pass 18)
+      (update-entities)
+      ;; muss jeder mitbekommen haben
+      (dolist (kernel (list  dealer listener))
+	(assert-received 'ui:pass kernel))
+      ;; Rollen verändert
+      (assert-received 'ui:start-bidding dealer)
+      (assert-received 'ui:listen listener)
+      (assert-state 'bidding-2 host)
+      (assert-state 'bid dealer)
+      (assert-state 'listen listener)
+      (assert-state 'bidding-wait bidder)
+      (dolist (player players)
+	(setf (ui::received-requests (ui player)) nil)) ; Log zurücksetzen
+      
+      (ui-send dealer 'pass 18)
+      (update-entities)
+      (dolist (kernel (list listener bidder))
+	(assert-received 'ui:pass kernel))
+      ;; Rollen wieder verändert
+      (assert-received 'ui:start-bidding listener)
+      (assert-state 'bidding-3 host)
+      (assert-state 'bidding-wait bidder)
+      (assert-state 'bidding-wait dealer)
+      (assert-state 'bid listener)
+      (dolist (player players)
+	(setf (ui::received-requests (ui player)) nil)) ; Log zurücksetzen
+
+      (ui-send listener 'bid 18)
+      (update-entities)
+      (dolist (kernel (list dealer bidder))
+	(assert-received 'ui:bid kernel))
+      ;; Reizen vorbei
+      (dolist (player players)
+	(assert-received 'ui:declarer player))
+      (assert (eq (current-declarer host) (own-address listener))) ; Vorderhand spielt
+      (assert-state 'declarer-found host)
+      (assert-state 'preparations dealer)
+      (assert-state 'preparations listener)
+      (assert-state 'preparations bidder)))
+  (values players host))
+      
+
 (deftest "before bidding" :category "player-tests"
 	 :test-fn #'test-game-before-bidding
 	 :input-form (init-test-set)
@@ -156,5 +207,10 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
 
 (deftest "ready for bidding" :category "player-tests"
 	 :test-fn #'ready-for-bidding-p
+	 :input-form (apply #'test-game-before-bidding (multiple-value-list (init-test-set)))
+	 :compare-fn #'always-true)
+
+(deftest "bidding scenario 1" :category "player-tests"
+	 :test-fn #'test-bidding-scenario_pass-bidder-dealer
 	 :input-form (apply #'test-game-before-bidding (multiple-value-list (init-test-set)))
 	 :compare-fn #'always-true)
