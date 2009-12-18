@@ -261,7 +261,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
        (current-dealer			; Geber hat gepasst
 	(if (not (slot-boundp host 'current-declarer))
 	    ;; noch hat keiner etwas gereizt, d. h. Vorderhand entscheidet über Ramsch
-	    (switch-to-bidding-3 (current-forehand host))
+	    (switch-to-bidding-3 host (current-forehand host))
 	    ;; es hat schon jemand etwas gereizt und nicht gepasst, derjenige spielt
 	    (switch-to-declarer-found host)))))
     (bidding-3				; dritter Pass => Ramsch
