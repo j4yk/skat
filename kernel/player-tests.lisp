@@ -42,7 +42,9 @@ und ruft den Continue-Restart auf."
 
 (defun assert-received (request player)
   "Setzt voraus, dass eine bestimmte Anfrage bei der UI angekommen ist"
-  (assert (member request (ui-received-request-names player))))
+  (assert (member request (ui-received-request-names player)) ()
+	  "~a müsste ~a empfangen haben, dies ist aber nicht der Fall~%~
+Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names player)))
 
 (defun init-test-set ()
   "Erstellt einen Satz Spieler mit einem Host"
