@@ -53,14 +53,18 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
     (map nil #'comm:start (mapcar #'comm (cons host players))) ; starte Comms
     (values players host)))
 
+(defun update-kernels (kernels)
+  "Lässt jede UI ausstehende Anfragen verarbeiten"
+  (handler-bind ((comm::stub-communication-send #'stub-communication-send-testhandler))
+    (dolist (kernel kernels)
+      (ui:just-one-step (ui kernel)))))
+
 (defun test-game-before-bidding (players host)
   (labels ((clear-requests (player)
 	     (setf (ui::received-requests (ui player)) nil))
 	   (update-entities ()
 	     "Lässt jede UI ausstehende Anfragen verarbeiten"
-	     (handler-bind ((comm::stub-communication-send #'stub-communication-send-testhandler))
-	       (dolist (kernel (cons host players))
-		 (ui:just-one-step (ui kernel))))))
+	     (update-kernels (cons host players))))
     (update-entities) 		; erstes Mal, login-parameters muss ankommen
     (dolist (p players)
       (assert-received 'ui:login-parameters p)
