@@ -9,9 +9,8 @@
 (defmethod host-address ((comm stub-comm) (data stub-registration-data))
   (stub-registration-data-host-comm data))
 
-(defun stub-msg (format-str &rest format-args)
-  (apply #'format t format-str format-args)
-  (terpri))
+(defun stub-comm-msg (comm format-str &rest format-args)
+  (apply #'format t (concatenate 'string "~%~a: " format-str) comm format-args))
 
 (defmethod print-object ((stub-comm stub-comm) stream)
   (print-unreadable-object (stub-comm stream :type t)
@@ -22,12 +21,12 @@
   stub-comm)
 
 (defmethod start ((comm stub-comm))
-  (stub-msg "COMM: started.")
+  (stub-comm-msg comm "started.")
   (push-request comm comm 'login-parameters (list nil))
   (values))
 
 (defmethod login ((comm stub-comm) data)
-  (stub-msg "COMM: logged in.")
+  (stub-comm-msg comm "logged in.")
   (push-request comm comm 'own-address (list (address comm)))
   (push-request comm comm 'registration-struct '(stub-registration-data))
   (values))
@@ -37,12 +36,12 @@
 
 (defmethod push-request :after ((comm stub-comm) sender request-name request-args)
   "Schreibt auf, was gepusht wurde"
-  (stub-msg "COMM: pushed ~a ~a from ~a" request-name request-args sender))
+  (stub-comm-msg "COMM: pushed ~a ~a from ~a" request-name request-args sender))
 
 (defmethod get-request :around ((comm stub-comm))
   "Schreibt auf, was gepoppt wurde."
   (multiple-value-bind (request-name sender request-args) (call-next-method)
-    (stub-msg "popped: ~a (~{~a ~}) from ~a" request-name request-args sender)
+    (stub-comm-msg comm "popped ~s ~s from ~s" request-name request-args sender)
     (values request-name sender request-args)))
 
 (define-condition stub-communication-send ()
@@ -53,7 +52,7 @@
   (:documentation "Condition zum automatisierten Weiterverarbeiten einer Sendung."))
 
 (defmethod send ((comm stub-comm) address request-name &rest request-args)
-  (stub-msg "COMM: sending ~a ~a to ~a" request-name request-args address)
+  (stub-comm-msg comm "sending ~s ~s to ~s" request-name request-args address)
   ;; lasse wen will hier einhängen, damit noch was automatisiert werden kann
   (restart-case (signal 'stub-communication-send :request request-name :args request-args
 			:sender comm :address address)
