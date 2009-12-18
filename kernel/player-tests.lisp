@@ -54,54 +54,62 @@ und ruft den Continue-Restart auf."
     (map nil #'comm:start (mapcar #'comm (cons host players))) ; starte Comms
     (values players host)))
 
-(defun test-game-before-bidding ()
-  (multiple-value-bind (players host) (init-test-set)
-    (labels ((clear-requests (player)
-	       (setf (ui::received-requests (ui player)) nil))
-	     (update-entities ()
-	       "Lässt jede UI ausstehende Anfragen verarbeiten"
-	       (handler-bind ((comm::stub-communication-send #'stub-communication-send-testhandler))
-		 (dolist (kernel (cons host players))
-		   (ui:just-one-step (ui kernel))))))
-      (update-entities) 		; erstes Mal, login-parameters muss ankommen
+(defun test-game-before-bidding (players host)
+  (labels ((clear-requests (player)
+	     (setf (ui::received-requests (ui player)) nil))
+	   (update-entities ()
+	     "Lässt jede UI ausstehende Anfragen verarbeiten"
+	     (handler-bind ((comm::stub-communication-send #'stub-communication-send-testhandler))
+	       (dolist (kernel (cons host players))
+		 (ui:just-one-step (ui kernel))))))
+    (update-entities) 		; erstes Mal, login-parameters muss ankommen
+    (dolist (p players)
+      (assert-received 'ui:login-parameters p)
+      (assert-state 'start p)		; alle in Start
+      (clear-requests p)
+      (ui-send p 'login-data nil))
+    (update-entities)		; einloggen, registration-struct muss kommen
+    (dolist (p players)
+      (assert-state 'unregistered p)
+      (assert-received 'ui::registration-struct p)
+      (ui-send p 'registration-data (comm::make-stub-registration-data :host-comm (comm host))) ; registieren
+      (assert-state 'registration-pending p))
+    (update-entities)		; hierbei müsste Host antworten und die Leute registrieren
+    (dolist (p players)
+      (assert-state 'registration-succeeded p) ; Registrierung war wohl erfolgreich
+      (assert (slot-boundp p 'host)) ; Host muss bekannt sein
+      (assert-received 'ui:registration-reply p)
+      (assert-received 'ui:playmates p) ; Mitspieler wurden verkündet
+      (assert (slot-boundp p 'left-playmate))
+      (assert (slot-boundp p 'right-playmate))
+      (ui-send p 'game-start))	; Spiel starten
+    (update-entities)		; Host startet Spiel, teilt Karten aus und benennt Reizrollen
+    (let ((bidder nil)
+	  (listener nil))
       (dolist (p players)
-	(assert-received 'ui:login-parameters p)
-	(assert-state 'start p)		; alle in Start
-	(clear-requests p)
-	(ui-send p 'login-data nil))
-      (update-entities)		; einloggen, registration-struct muss kommen
-      (dolist (p players)
-	(assert-state 'unregistered p)
-	(assert-received 'ui::registration-struct p)
-	(ui-send p 'registration-data (comm::make-stub-registration-data :host-comm (comm host))) ; registieren
-	(assert-state 'registration-pending p))
-      (update-entities)		; hierbei müsste Host antworten und die Leute registrieren
-      (dolist (p players)
-	(assert-state 'registration-succeeded p) ; Registrierung war wohl erfolgreich
-	(assert (slot-boundp p 'host)) ; Host muss bekannt sein
-	(assert-received 'ui:registration-reply p)
-	(assert-received 'ui:playmates p) ; Mitspieler wurden verkündet
-	(assert (slot-boundp p 'left-playmate))
-	(assert (slot-boundp p 'right-playmate))
-	(ui-send p 'game-start))	; Spiel starten
-      (update-entities)		; Host startet Spiel, teilt Karten aus und benennt Reizrollen
-      (let ((bidder nil)
-	    (listener nil))
-	(dolist (p players)
-	  (assert-received 'ui:game-start p) ; vom Host
-	  (assert-received 'ui:cards p) ; Karten erhalten
-	  (assert (slot-boundp p 'cards))
-	  (let ((requests (ui-received-request-names p)))
-	    ;; Zustände je nach Reizrolle
-	    (cond ((member 'ui:start-bidding requests)
-		   (setf bidder p)
-		   (assert-state 'bid p))
-		  ((member 'ui:listen requests)
-		   (setf listener p)
-		   (assert-state 'listen p))
-		  (t (assert-state 'bidding-wait p)))))
-	(assert (not (null bidder)))	; Hörer und Sager müssen benannt worden sein
-	(assert (not (null listener)))
-	(assert (eq (bidding-mate listener) (own-address bidder))) ; und sie müssen sich gegenseitig kennen
-	(assert (eq (bidding-mate bidder) (own-address listener)))
-	(values players host)))))
+	(assert-received 'ui:game-start p) ; vom Host
+	(assert-received 'ui:cards p) ; Karten erhalten
+	(assert (slot-boundp p 'cards))
+	(let ((requests (ui-received-request-names p)))
+	  ;; Zustände je nach Reizrolle
+	  (cond ((member 'ui:start-bidding requests)
+		 (setf bidder p)
+		 (assert-state 'bid p))
+		((member 'ui:listen requests)
+		 (setf listener p)
+		 (assert-state 'listen p))
+		(t (assert-state 'bidding-wait p)))))
+      (assert (not (null bidder)))	; Hörer und Sager müssen benannt worden sein
+      (assert (not (null listener)))
+      (assert (eq (bidding-mate listener) (own-address bidder))) ; und sie müssen sich gegenseitig kennen
+      (assert (eq (bidding-mate bidder) (own-address listener)))
+      (values players host))))
+
+(defun always-true (&rest args)
+  (declare (ignore args))
+  t)
+
+(deftest "before-bidding" :category "player-tests"
+	 :test-fn #'test-game-before-bidding
+	 :input-form (init-test-set)
+	 :compare-fn #'always-true)	; es geht nur um die Fehler während der Ausführung
