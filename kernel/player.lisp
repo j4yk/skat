@@ -5,8 +5,7 @@
      unregistered registration-pending registration-succeeded
      bidding-wait bid listen preparations
      in-game game-over)     
-  ((ui :accessor ui :initarg :ui)
-   (cards :accessor cards)
+  ((cards :accessor cards)
    (current-trick :accessor current-trick)
    (won-tricks :accessor won-tricks)
    (bidding-mate :accessor bidding-mate)
