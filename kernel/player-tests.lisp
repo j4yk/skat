@@ -1,4 +1,7 @@
-(in-package skat-kernel)
+(defpackage skat-player-test
+  (:use :cl :kern))
+
+(in-package skat-player-test)
 
 (defun make-test-player ()
   (let ((player (make-instance 'player :ui (make-instance 'ui:stub-ui) :comm (make-instance 'comm::stub-comm))))
@@ -25,47 +28,35 @@ und ruft den Continue-Restart auf."
 		      (comm::args condition))
   (continue))
 
+(defun ui-send (receiving-kernel request &rest args)
+  "Simuliert eine Benutzeraktion bei der UI des Kernels für den Test"
+  (handler-bind ((comm::stub-communication-send #'stub-communication-send-testhandler)) ; Nachrichten zustellen
+    (apply #'ui::send-request-to-kernel (ui receiving-kernel) request args)))
+
+(defun ui-received-request-names (player)
+  "Gibt die Namen aller empfangenen Anfragen der UI des Kernels zurück."
+  (mapcar #'car (ui::received-requests (ui player))))
+
+(defun assert-received (request player)
+  "Setzt voraus, dass eine bestimmte Anfrage bei der UI angekommen ist"
+  (assert (member request (ui-received-request-names player))))
+
+(defun init-test-set ()
+  "Erstellt einen Satz Spieler mit einem Host"
+  (let ((players (list (make-test-player) (make-test-player) (make-test-player)))
+	(host (make-test-host)))
+    (map nil #'comm:start (mapcar #'comm (cons host players))) ; starte Comms
+    (values players host)))
+
 (defun test-game-before-bidding ()
-  (let* ((p1 (make-test-player))
-	 (p2 (make-test-player))
-	 (p3 (make-test-player))
-	 (host (make-test-host))
-	 (received-requests `((,(ui p1)) (,(ui p2)) (,(ui p3))))
-	 (players (list p1 p2 p3)))
-    (map nil #'comm:start (mapcar #'comm (list p1 p2 p3 host))) ; starte Comms
-    (labels (
-	     ;; Restart Funktionen für stub-send und ui-received
-	     (push-received-ui-request (condition)
-	       "Merkt sich eine für die UI angekommene Anfrage"
-	       (declare (type ui::stub-ui-request-arrived condition))
-	       (push (ui::request-call condition) (cdr (assoc (ui::ui condition) received-requests)))
-	       (continue))
-	     
-	     (ui-send (receiving-kernel request &rest args)
-	       "Simuliert eine Benutzeraktion"
-	       (handler-bind ((comm::stub-communication-send #'stub-communication-send-testhandler)) ; Nachrichten zustellen
-		 (apply #'ui::send-request-to-kernel (ui receiving-kernel) request args)))
-
-	     (received-request-names (player)
-	       "Gibt die Namen aller empfangenden Anfragen (UI) zurück."
-	       (let ((requests (cdr (assoc (ui player) received-requests))))
-		 (if (null requests)
-		     nil
-		     (mapcar #'car requests))))
-	     (assert-received (request player)
-	       "Setzt voraus, dass eine bestimmte Anfrage bei der UI angekommen ist."
-	       (assert (member request (received-request-names player))))
-	     (clear-requests (player)
-	       (setf (cdr (assoc (ui player) received-requests)) nil))
-
+  (multiple-value-bind (players host) (init-test-set)
+    (labels ((clear-requests (player)
+	       (setf (ui::received-requests (ui player)) nil))
 	     (update-entities ()
 	       "Lässt jede UI ausstehende Anfragen verarbeiten"
-	       (handler-bind ((ui::stub-ui-request-arrived #'push-received-ui-request)
-			      (comm::stub-communication-send #'stub-communication-send-testhandler))
-		 (-do host)
-		 (-do p1)
-		 (-do p2)
-		 (-do p3))))
+	       (handler-bind ((comm::stub-communication-send #'stub-communication-send-testhandler))
+		 (dolist (kernel (cons host players))
+		   (ui:just-one-step (ui kernel))))))
       (update-entities) 		; erstes Mal, login-parameters muss ankommen
       (dolist (p players)
 	(assert-received 'ui:login-parameters p)
@@ -94,7 +85,7 @@ und ruft den Continue-Restart auf."
 	  (assert-received 'ui:game-start p) ; vom Host
 	  (assert-received 'ui:cards p) ; Karten erhalten
 	  (assert (slot-boundp p 'cards))
-	  (let ((requests (received-request-names p)))
+	  (let ((requests (ui-received-request-names p)))
 	    ;; Zustände je nach Reizrolle
 	    (cond ((member 'ui:start-bidding requests)
 		   (setf bidder p)
