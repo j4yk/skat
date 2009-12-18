@@ -244,8 +244,12 @@ wenn der Benutzer passen möchte."
   (SETF (DECLARER PLAYER) DECLARER)
   (CALL-UI 'DECLARER PLAYER (host player) DECLARER))
 
-(DEFHANDLER DECLARER (BIDDING-wait) host (PLAYER DECLARER)
+(DEFHANDLER DECLARER (BIDDING-wait bid) host (PLAYER DECLARER)
   "Behandelt die Bekanntgabe des Spielführers durch den Host."
+  (when (eq (state player) 'bid)
+    (assert (address-equal player (own-address player) declarer) ()
+	    "~a hat DECLARER in Zustand BID empfangen, ist jedoch nicht selbst declarer!"
+	    player))
   (SWITCH-to-PREPARATIONS player declarer))
 
 (DEFHANDLER HAND-DECISION (PREPARATIONS) (ui declarer) (PLAYER HAND)
