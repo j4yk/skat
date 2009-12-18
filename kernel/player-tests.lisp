@@ -114,9 +114,8 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
 
 (deftest "find-kernel-of-stub-comm" :category "player-tests"
 	 :input-fn #'(lambda ()
-		       (defvar p1)
-		       (setq p1 (make-test-player))
-		       (values (comm p1) (list p1 (make-test-player))))
+		       (defparameter p1 (make-test-player) "Spielerinstanz für einige Testfälle")
+		       (values (kern::comm p1) (list p1 (make-test-player))))
 	 :test-fn #'find-kernel-of-stub-comm
 	 :output-form (symbol-value 'p1))
 
@@ -131,7 +130,9 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
 	(listener (find-kernel-of-stub-comm (current-listener host) players))
 	(bidder (find-kernel-of-stub-comm (current-bidder host) players)))
     ;; die müssen in den richtigen Zuständen sein
+    (assert-received 'ui:start-bidding bidder)
     (assert-state 'bid bidder)
+    (assert-received 'ui:listen listener)
     (assert-state 'listen listener)
     (assert-state 'bidding-wait dealer)
     (assert (eq (bidding-mate listener) (own-address bidder)))
