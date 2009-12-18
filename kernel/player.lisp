@@ -8,6 +8,7 @@
   ((cards :accessor cards :documentation "Die Karten, die der Spieler auf der Hand hält")
    (current-trick :accessor current-trick :documentation "Liste der momentan auf dem Tisch liegenden Karten")
    (won-tricks :accessor won-tricks :documentation "Liste von Kartenlisten, die die gewonnenen Stiche sind")
+   (bidding-values :accessor bidding-values :documentation "Liste verbliebener Reizwerte")
    (bidding-mate :accessor bidding-mate :documentation "Adresse des momentanen Reizpartners")
    (declarer :accessor declarer :documentation "Adresse des Spielführers")
    (game-declaration :accessor game-declaration :documentation "Ansage des Spielführers")
@@ -133,18 +134,27 @@ vom Host wünscht."
   (CALL-UI 'PLAYMATES PLAYER SENDER LEFT RIGHT))
 
 (define-state-switch-function bidding-wait (player)
-  "Wechelt in den Zustand bidding-wait."
+  "Wechelt in den Zustand bidding-wait.
+Dies wird nicht nur zu Beginn der ganzen Reizprozedur aufgerufen!"
   (SLOT-MAKUNBOUND PLAYER 'BIDDING-MATE))
+
+(defkernelmethod start-new-game (player)
+  "Bereitet alles für eine neue Runde vor. Setzt die Reizwerte zurück,
+vergisst, wer zuerst dran sein müsste, und wechselt nach Bidding-Wait."
+  ;; Diese Zeilen dürfen nicht in die hierüberstehende Funktion,
+  ;; da diese auch aufgerufen wird, nachdem der Spieler gepasst hat
+  ;; oder ihm gepasst wurde
+  (setf (table player) (cons nil (table player))) ; packe nil an den Tisch, als "keine Ahnung, wer dran ist"
+  (call-ui 'game-start player (host player))	  ; UI Bescheid geben
+  (setf (bidding-values player) (cut-away-game-point-levels 18)) ; Reizwerte zurücksetzen
+  (switch-to-bidding-wait player))
   
 (DEFHANDLER GAME-START (REGISTRATION-SUCCEEDED game-over) (ui host) (PLAYER)
   "Behandelt die Nachricht vom Host, dass die Runde beginnt und soll von
 UI aufgerufen werden, wenn der Spieler die nächste Runde zu beginnen wünscht."
-  (if (equalp sender (ui player))
+  (if (eq sender (ui player))
       (comm:send (comm player) (host player) 'game-start) ; von der UI
-      (progn						  ; vom Host
-	(setf (table player) (cons nil (table player))) ; packe nil an den Tisch, als "keine Ahnung, wer dran ist"
-	(call-ui 'game-start player sender) ; kann nicht in die switch-fn, da die auch bei PASS aufgerufen wird
-	(switch-to-bidding-wait player))))
+      (start-new-game player)))				  ; vom Host
 
 (DEFHANDLER CARDS (BIDDING-wait) host (PLAYER CARDS)
    "Behandelt die Überreichung der Karten durch den Host."
