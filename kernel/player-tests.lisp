@@ -1,7 +1,4 @@
-(defpackage skat-player-test
-  (:use :cl :kern))
-
-(in-package skat-player-test)
+(in-package skat-kernel)
 
 ;; Konventionen:
 ;; alle eigentlichen Testfunktionen nehmen als Parameter:
