@@ -3,6 +3,12 @@
 
 (in-package skat-player-test)
 
+;; Konventionen:
+;; alle eigentlichen Testfunktionen nehmen als Parameter:
+;; 1. eine Liste mit drei Spielerkernen
+;; 2. einen Hostkern
+;; und sie geben diese beiden als values auch wieder zurück
+
 (defun make-test-player ()
   (let ((player (make-instance 'player :ui (make-instance 'ui:stub-ui) :comm (make-instance 'comm::stub-comm))))
     (setf (ui::kernel (ui player)) player)
