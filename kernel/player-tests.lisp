@@ -11,13 +11,19 @@
 (defmacro -do (kernel)
   `(ui:just-one-step (ui ,kernel)))
 
-(defun player-prepared-for-registration-p (player)
-  (and (slot-boundp player 'own-address)))
-
 (defun assert-state (asserted-state player)
   "Setzt einen bestimmten Zustand beim Spieler voraus."
   (assert (eq (state player) asserted-state) (player (state player) asserted-state)
 	  "Spieler ~a sollte in ~a sein, ist aber in ~a" player asserted-state (state player)))
+
+(defun stub-communication-send-testhandler (condition)
+  "Condition-Handler. Stellt eine Anfrage von der einen zur anderen Stub-Comm zu
+und ruft den Continue-Restart auf."
+  (declare (type comm::stub-communication-send condition))
+  (comm::push-request (comm::address condition)
+		      (comm::sender-comm condition) (comm::request-name condition)
+		      (comm::args condition))
+  (continue))
 
 (defun test-game-before-bidding ()
   (let* ((p1 (make-test-player))
@@ -29,13 +35,6 @@
     (map nil #'comm:start (mapcar #'comm (list p1 p2 p3 host))) ; starte Comms
     (labels (
 	     ;; Restart Funktionen für stub-send und ui-received
-	     (ship-request (condition)
-	       "Stellt eine Anfrage von der einen zur anderen Stub-Comm zu."
-	       (declare (type comm::stub-communication-send condition))
-	       (comm::push-request (comm::address condition)
-		      (comm::sender-comm condition) (comm::request-name condition)
-		      (comm::args condition))
-	       (continue))
 	     (push-received-ui-request (condition)
 	       "Merkt sich eine für die UI angekommene Anfrage"
 	       (declare (type ui::stub-ui-request-arrived condition))
@@ -44,7 +43,7 @@
 	     
 	     (ui-send (receiving-kernel request &rest args)
 	       "Simuliert eine Benutzeraktion"
-	       (handler-bind ((comm::stub-communication-send #'ship-request)) ; Nachrichten zustellen
+	       (handler-bind ((comm::stub-communication-send #'stub-communication-send-testhandler)) ; Nachrichten zustellen
 		 (apply #'ui::send-request-to-kernel (ui receiving-kernel) request args)))
 
 	     (received-request-names (player)
@@ -62,7 +61,7 @@
 	     (update-entities ()
 	       "Lässt jede UI ausstehende Anfragen verarbeiten"
 	       (handler-bind ((ui::stub-ui-request-arrived #'push-received-ui-request)
-			      (comm::stub-communication-send #'ship-request))
+			      (comm::stub-communication-send #'stub-communication-send-testhandler))
 		 (-do host)
 		 (-do p1)
 		 (-do p2)
