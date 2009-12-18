@@ -105,10 +105,6 @@ und ruft den Continue-Restart auf."
       (assert (eq (bidding-mate bidder) (own-address listener)))
       (values players host))))
 
-(defun always-true (&rest args)
-  (declare (ignore args))
-  t)
-
 (deftest "before-bidding" :category "player-tests"
 	 :test-fn #'test-game-before-bidding
 	 :input-form (init-test-set)

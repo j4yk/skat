@@ -36,3 +36,7 @@ test-definition ::= (name (test-function input-form*) output-form)"
 			      :test-fn #',fn-name
 			      :output-form ,output-form
 			      :compare-fn #'equalp)))))
+
+(defun always-true (&rest args)
+  (declare (ignore args))
+  t)

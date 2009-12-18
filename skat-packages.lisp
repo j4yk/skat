@@ -4,7 +4,8 @@
   (:export to-keyword
 	   parse-function-body
 	   separate-lambda-list
-	   deftests))
+	   deftests
+	   always-true))
 
 (defpackage skat-requests
   (:nicknames requests)
