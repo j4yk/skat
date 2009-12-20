@@ -54,18 +54,24 @@
       (setf (slot-value player 'cards) (sort-cards cards (game-variant (game-declaration player))))
       (setf (slot-value player 'cards) (sort-cards cards :grand))))
 
-(deftests "Player"
-  ("Automatisches Sortieren bei (setf (cards player) ...) ohne Declaration"
-   ((lambda () (let ((player (make-instance 'player)))
-		 (setf (cards player) '(#cCA #cDA #cHJ #cD7))
-		 (equalp (cards player) '(#cD7 #cDA #cCA #cHJ)))))
-   t)
-  ("Automatisches Sortieren bei (setf (cards player) ...) mit Declaration"
-   ((lambda () (let ((player (make-instance 'player)))
-		 (setf (game-declaration player) '(:null :hand :ouvert))
-		 (setf (cards player) '(#cCA #cDA #cHJ #cD7))
-		 (equalp (cards player) '(#cD7 #cDA #cHJ #cCA)))))
-   t))
+(DEFTEST
+    "sort cards on (setf (cards player)) w/o declaration"
+    :CATEGORY "Player"
+    :TEST-FN #'(LAMBDA ()
+		 (LET ((PLAYER (MAKE-INSTANCE 'PLAYER)))
+		   (SETF (CARDS PLAYER) (print (list #!CA #!DA #!HJ #!D7)))
+		   (print (cards player))))
+    :OUTPUT-FORM '(#!D7 #!DA #!CA #!HJ) :compare-fn #'equalp)
+
+(DEFTEST
+    "sort cards on (setf (cards player)) w/ declaration"
+    :CATEGORY "Player"
+    :TEST-FN #'(LAMBDA ()
+		 (LET ((PLAYER (MAKE-INSTANCE 'PLAYER)))
+		   (SETF (GAME-DECLARATION PLAYER) '(:NULL :HAND :OUVERT))
+		   (SETF (CARDS PLAYER) (list #!CA #!DA #!HJ #!D7))
+		   (cards player)))
+    :OUTPUT-FORM '(#!D7 #!DA #!HJ #!CA) :compare-fn #'equalp)
 
 ;;;;  Handler und State-Switch-Functions
 
