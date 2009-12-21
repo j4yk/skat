@@ -266,7 +266,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 	    ;; es hat schon jemand etwas gereizt und nicht gepasst, derjenige spielt
 	    (switch-to-declarer-found host)))))
     (bidding-3				; dritter Pass => Ramsch
-     (ramschen))))
+     (switch-to-game-over host t t))))	; solange bis Ramschen implementiert ist
 	  
 ;; state: declarer-found. Warte auf hand-decision.
 
