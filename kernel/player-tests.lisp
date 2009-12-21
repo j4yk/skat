@@ -70,9 +70,10 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
   (loop for kernel in kernels
      when (eq stub-comm (comm kernel)) return kernel))
 
+(defvar p1 nil "Spielerinstanz für einige Testfälle")
 (deftest "find-kernel-of-stub-comm" :category "player-tests"
 	 :input-fn #'(lambda ()
-		       (defparameter p1 (make-test-player) "Spielerinstanz für einige Testfälle")
+		       (defparameter p1 (make-test-player))
 		       (values (kern::comm p1) (list p1 (make-test-player))))
 	 :test-fn #'find-kernel-of-stub-comm
 	 :output-form (symbol-value 'p1))
@@ -350,13 +351,15 @@ entscheiden kann"
       (assert-state 'await-declaration host)
       (reset-received-requests players)
       ;; Ansage
-      (ui-send declarer 'declaration '(:grand))
+      (ui-send declarer 'declaration (list :grand))
       (update-entities)
       (assert-state 'in-game host)
-      (dolist (player players)
-	(assert-state 'in-game player))
+      (assert (equal (declarer-declaration host) (list :grand)) () "~s != (:grand) (vor dotimes, host)" (declarer-declaration host))
       (dolist (player other-players)
 	(assert-received 'ui:declaration player))
+      (dolist (player players)
+	(assert-state 'in-game player)
+	(assert (equal (game-declaration player) (list :grand)) () "~s != (:grand) (vor dotimes)" (game-declaration player)))
       ;; Vorderhand kommt raus
       (assert (eq (current-player host) (comm forehand)))
       (assert (eq (right-playmate forehand) (current-dealer host)))
@@ -371,6 +374,10 @@ entscheiden kann"
 	  (let* ((forehand (find-kernel-of-stub-comm (current-player host) players))
 		 (middlehand (find-kernel-of-stub-comm (left-playmate forehand) players))
 		 (backhand (find-kernel-of-stub-comm (right-playmate forehand) players)))
+	    (assert (equal (slot-value host 'declaration) (list :grand)) ()
+		    "~s != (:grand) (in dotimes)" (declarer-declaration host))
+	    (dolist (player players)
+	      (assert (eq (current-player player) (comm forehand))))
 	    (assert-received 'ui:choose-card forehand)
 	    ;; erste Karte
 	    (send-card forehand)
@@ -379,6 +386,8 @@ entscheiden kann"
 	    (assert-received 'ui:choose-card middlehand)
 	    (reset-received-requests players)
 	    (assert-trick-length 1)
+	    (dolist (player players)
+	      (assert (eq (current-player player) (comm middlehand))))
 	    ;; zweite Karte
 	    (send-card middlehand)
 	    (dolist (player (list backhand forehand))
@@ -386,6 +395,8 @@ entscheiden kann"
 	    (assert-received 'ui:choose-card backhand)
 	    (reset-received-requests players)
 	    (assert-trick-length 2)
+	    (dolist (player players)
+	      (assert (eq (current-player player) (comm backhand))))
 	    ;; dritte Karte
 	    (send-card backhand)
 	    (dolist (player (list forehand middlehand))
