@@ -194,6 +194,7 @@ Host ignoriert diese einfach.")
     (symbol-macrolet ((current-forehand (current-forehand host)) ; with-slots geht nicht, 
 		      (current-middlehand (current-middlehand host))) ; weil dies keine Slots sind
       (listen-to current-forehand current-middlehand 18))
+    (slot-makunbound host 'current-declarer) ; vergiss den letzten Spielführer
     (reset-bidding-values host)
     ;; und jetzt warte auf pass
     ))
