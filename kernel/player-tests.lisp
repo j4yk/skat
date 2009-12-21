@@ -90,20 +90,19 @@ entsprechenden Spieler"
 
 (defun test-game-before-bidding (players host)
   "Testet den Spielverlauf vor dem Reizen"
-  (labels ((clear-requests (player)
-	     (setf (ui::received-requests (ui player)) nil))
-	   (update-entities ()
+  (labels ((update-entities ()
 	     "Lässt jede UI ausstehende Anfragen verarbeiten"
 	     (update-kernels (cons host players))))
     (update-entities) 		; erstes Mal, login-parameters muss ankommen
     (dolist (p players)
       (assert-received 'ui:login-parameters p)
       (assert-state 'start p)		; alle in Start
-      (clear-requests p)
       (ui-send p 'login-data nil))
+    (reset-received-requests players)
     (assert-state 'registration host)	; Host muss Registrierungen annehmen
     (update-entities)		; einloggen, registration-struct muss kommen
     (dolist (p players)
+      (assert (slot-boundp p 'own-address))
       (assert-state 'unregistered p)
       (assert-received 'ui:registration-struct p)
       (ui-send p 'registration-data (comm::make-stub-registration-data :host-comm (comm host))) ; registieren
