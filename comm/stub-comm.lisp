@@ -1,7 +1,7 @@
 (in-package skat-comm)
 
 (defclass stub-comm (base-comm)
-  ((id :accessor id :initform (gensym "STUB-COMM"))
+  ((id :accessor id :initform (gensym "STUB-COMM") :initarg :id)
    (address-compare-function :initform #'eq)))
 
 (kern:define-registration-data stub-registration-data (host-comm nil :type stub-comm))
