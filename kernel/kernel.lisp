@@ -62,11 +62,13 @@ etabliert wird."
    (request-name :accessor request-name :initarg :request-name)))
 
 (defmacro with-correct-sender (sender correct-senders &body body)
-  "Führt body nur aus, wenn sender und corretct-sender übereinstimmen.
+  "Führt body nur aus, wenn sender und correct-sender übereinstimmen.
 Andernfalls wird ein invalid-request-sender-error signalisiert.
 Dieses Makro sollte nur innerhalb von defhandler verwendet werden,
-da es die Bindungen der Variablen kernel und request-name voraussetzt."
-  `(if (member sender (list ,@correct-senders) :test (address-compare-function kernel))
+da es die Bindungen der Variablen kernel und request-name voraussetzt.
+Error Conditions: invalid-request-sender-error"
+  `(if (handler-bind ((unbound-slot #'(lambda (condition) (use-value nil condition)))) ; nicht verzweifeln, wenn Slots ungebunden sind
+	 (member sender (list ,@correct-senders) :test (address-compare-function kernel)))
        (progn ,@body)
        (error 'invalid-request-sender-error :sender ,sender :kernel kernel :expected-senders (list ,@correct-senders)
 	      :request request-name)))
@@ -95,7 +97,8 @@ Zustand wechseln zu lassen"))
 (defmethod switch-state ((kernel kernel) target-state)
   "Wechselt den Zustand des Kernelobjekts. Dies hat Auswirkungen auf die Menge der akzeptierten Anfragen.
 Diese Methode verändert nur den Slot, führt aber keine mit dem Wechsel assoziierten Aktionen aus.
-Siehe [[define-state-switch-function]]."
+Siehe [[define-state-switch-function]].
+Error Conditions: invalid-kernel-state-error"
   (if (member target-state (valid-states kernel))
       (setf (state kernel) target-state)
       (error 'invalid-kernel-state-error :kernel-class (class-of kernel) :target-state target-state)))
