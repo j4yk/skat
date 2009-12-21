@@ -331,8 +331,9 @@ wenn der Benutzer eine Karte spielt."
   (CALL-UI 'TRICK PLAYER SENDER CARDS WINNER) ; UI benachrichtigen
   (turn-table-to player winner))	      ; der Gewinner ist nun am Stich
 
-(define-state-switch-function game-over (player prompt)
+(define-state-switch-function game-over (player prompt &optional just-send-game-over)
   "Wechselt in den game-over Zustand."
+  (declare (ignore just-send-game-over)) ; host hat auch ein switch-to-game-over
   (call-ui 'game-over player (host player) prompt))
 
 (defhandler game-over (in-game) host (player prompt)
