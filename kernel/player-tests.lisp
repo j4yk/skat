@@ -12,6 +12,12 @@
     (comm:start (comm player))		; Comm starten
     player))
 
+(defun make-test-host ()
+  (let ((host (make-instance 'host :ui (make-instance 'ui:host-ui) :comm (make-instance 'comm::stub-comm) :login-data nil)))
+    (setf (ui::kernel (ui host)) host)
+    (comm:start (comm host))		; Comm starten
+    host))
+
 (defmacro -send (kernel request &rest args)
   `(ui::send-request-to-kernel (ui ,kernel) ',request ,@args))
 
@@ -26,6 +32,26 @@
 (defun ui-received-request-names (player)
   "Gibt die Namen aller empfangenen Anfragen der UI des Kernels zurück."
   (mapcar #'car (ui::received-requests (ui player))))
+
+(defun assert-state (asserted-state kernel)
+  "Setzt einen bestimmten Zustand beim Spieler voraus."
+  (assert (eq (state kernel) asserted-state) ()
+	  "~a sollte in ~a sein, ist aber in ~a" kernel asserted-state (state kernel)))
+
+(defun update-kernels (kernels)
+  "Lässt jede UI ausstehende Anfragen verarbeiten"
+  (handler-bind ((comm::stub-communication-send #'stub-communication-send-testhandler))
+    (dolist (kernel kernels)
+      (ui:just-one-step (ui kernel)))))
+
+(defun stub-communication-send-testhandler (condition)
+  "Condition-Handler. Stellt eine Anfrage von der einen zur anderen Stub-Comm zu
+und ruft den Continue-Restart auf."
+  (declare (type comm::stub-communication-send condition))
+  (comm::push-request (comm::address condition)
+		      (comm::sender-comm condition) (comm::request-name condition)
+		      (comm::args condition))
+  (continue))
 
 (defun assert-received (request player)
   "Setzt voraus, dass eine bestimmte Anfrage bei der UI angekommen ist"
@@ -51,13 +77,15 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
       (assert-state 'start p)		; alle in Start
       (clear-requests p)
       (ui-send p 'login-data nil))
+    (assert-state 'registration host)	; Host muss Registrierungen annehmen
     (update-entities)		; einloggen, registration-struct muss kommen
     (dolist (p players)
       (assert-state 'unregistered p)
-      (assert-received 'ui::registration-struct p)
+      (assert-received 'ui:registration-struct p)
       (ui-send p 'registration-data (comm::make-stub-registration-data :host-comm (comm host))) ; registieren
       (assert-state 'registration-pending p))
     (update-entities)		; hierbei müsste Host antworten und die Leute registrieren
+    (assert (= (length (registered-players host)) 3) () "Host hat keine drei Spieler registriert")
     (dolist (p players)
       (assert-state 'registration-succeeded p) ; Registrierung war wohl erfolgreich
       (assert (slot-boundp p 'host)) ; Host muss bekannt sein
@@ -67,47 +95,8 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
       (assert (slot-boundp p 'right-playmate))
       (ui-send p 'game-start))	; Spiel starten
     (update-entities)		; Host startet Spiel, teilt Karten aus und benennt Reizrollen
-    (let ((bidder nil)
-	  (listener nil))
-      (dolist (p players)
-	(assert-received 'ui:game-start p) ; vom Host
-	(assert-received 'ui:cards p) ; Karten erhalten
-	(assert (slot-boundp p 'cards))
-	(let ((requests (ui-received-request-names p)))
-	  ;; Zustände je nach Reizrolle
-	  (cond ((member 'ui:start-bidding requests)
-		 (setf bidder p)
-		 (assert-state 'bid p))
-		((member 'ui:listen requests)
-		 (setf listener p)
-		 (assert-state 'listen p))
-		(t (assert-state 'bidding-wait p)))))
-      (assert (not (null bidder)))	; Hörer und Sager müssen benannt worden sein
-      (assert (not (null listener)))
-      (assert (eq (bidding-mate listener) (own-address bidder))) ; und sie müssen sich gegenseitig kennen
-      (assert (eq (bidding-mate bidder) (own-address listener)))
-      (values players host))))
-
-(defun find-kernel-of-stub-comm (stub-comm kernels)
-  (loop for kernel in kernels
-     when (eq stub-comm (comm kernel)) return kernel))
-
-(deftest "find-kernel-of-stub-comm" :category "player-tests"
-	 :input-fn #'(lambda ()
-		       (defparameter p1 (make-test-player) "Spielerinstanz für einige Testfälle")
-		       (values (kern::comm p1) (list p1 (make-test-player))))
-	 :test-fn #'find-kernel-of-stub-comm
-	 :output-form (symbol-value 'p1))
-
-(defmacro find-players-according-to-their-roles (players host (bidder listener other) &body body)
-  "Bindet die Variablen in der dritten Argumentengruppe an die Kernel der
-entsprechenden Spieler"
-  `(let* ((,bidder (find-kernel-of-stub-comm (current-bidder ,host) ,players))
-	  (,listener (find-kernel-of-stub-comm (current-listener ,host) ,players))
-	  (,other (find-if #'(lambda (player) (not (or (eq player ,bidder)
-						       (eq player ,listener))))
-			   ,players)))
-     ,@body))  
+    (assert (ready-for-bidding-p players host)))
+  (values players host))
 
 (defun ready-for-bidding-p (players host)
   "Gibt t zurück, wenn alle bereit zum Reizen sind."
@@ -115,7 +104,11 @@ entsprechenden Spieler"
   (assert (not (null (current-dealer host))))
   (assert (not (null (current-bidder host))))
   (assert (not (null (current-listener host))))
-  ;; Kernel zu diesen Adressen finden
+  (dolist (player players)
+    (assert-received 'ui:game-start player) ; vom Host
+    (assert-received 'ui:cards player)	     ; Karten erhalten
+    (assert (= (length (cards player)) 10)))
+  ;; Kernel zu den Reizrollen finden
   (find-players-according-to-their-roles players host (bidder listener dealer)
     (assert (eq (current-dealer host) (own-address dealer)))
     ;; die müssen in den richtigen Zuständen sein
@@ -137,6 +130,27 @@ entsprechenden Spieler"
     (assert (not (null (bidding-values player))))
     (assert (= (car (bidding-values player)) 18)))
   (values players host))
+
+(defun find-kernel-of-stub-comm (stub-comm kernels)
+  (loop for kernel in kernels
+     when (eq stub-comm (comm kernel)) return kernel))
+
+(deftest "find-kernel-of-stub-comm" :category "player-tests"
+	 :input-fn #'(lambda ()
+		       (defparameter p1 (make-test-player) "Spielerinstanz für einige Testfälle")
+		       (values (kern::comm p1) (list p1 (make-test-player))))
+	 :test-fn #'find-kernel-of-stub-comm
+	 :output-form (symbol-value 'p1))
+
+(defmacro find-players-according-to-their-roles (players host (bidder listener other) &body body)
+  "Bindet die Variablen in der dritten Argumentengruppe an die Kernel der
+entsprechenden Spieler"
+  `(let* ((,bidder (find-kernel-of-stub-comm (current-bidder ,host) ,players))
+	  (,listener (find-kernel-of-stub-comm (current-listener ,host) ,players))
+	  (,other (find-if #'(lambda (player) (not (or (eq player ,bidder)
+						       (eq player ,listener))))
+			   ,players)))
+     ,@body))  
 
 (defun bid-and-pass (players host who-passes)
   "Verallgemeinerung folgender Prozedur: Bidder reizt,
