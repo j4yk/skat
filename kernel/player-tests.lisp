@@ -99,6 +99,16 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
 	 :test-fn #'find-kernel-of-stub-comm
 	 :output-form (symbol-value 'p1))
 
+(defmacro find-players-according-to-their-roles (players host (bidder listener other) &body body)
+  "Bindet die Variablen in der dritten Argumentengruppe an die Kernel der
+entsprechenden Spieler"
+  `(let* ((,bidder (find-kernel-of-stub-comm (current-bidder ,host) ,players))
+	  (,listener (find-kernel-of-stub-comm (current-listener ,host) ,players))
+	  (,other (find-if #'(lambda (player) (not (or (eq player ,bidder)
+						       (eq player ,listener))))
+			   ,players)))
+     ,@body))  
+
 (defun ready-for-bidding-p (players host)
   "Gibt t zurück, wenn alle bereit zum Reizen sind."
   ;; Host muss Rollen vergeben haben
@@ -106,9 +116,8 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
   (assert (not (null (current-bidder host))))
   (assert (not (null (current-listener host))))
   ;; Kernel zu diesen Adressen finden
-  (let ((dealer (find-kernel-of-stub-comm (current-dealer host) players))
-	(listener (find-kernel-of-stub-comm (current-listener host) players))
-	(bidder (find-kernel-of-stub-comm (current-bidder host) players)))
+  (find-players-according-to-their-roles players host (bidder listener dealer)
+    (assert (eq (current-dealer host) (own-address dealer)))
     ;; die müssen in den richtigen Zuständen sein
     (assert-received 'ui:start-bidding bidder)
     (assert-state 'bid bidder)
@@ -136,56 +145,52 @@ Parameter passen soll.
 Führt am Ende keine Zustands-Assertions aus, aber am Anfang."
   (labels ((update-entities ()
 	     (update-kernels (cons host players))))
-    (let* ((bidder (find-kernel-of-stub-comm (current-bidder host) players))
-	   (listener (find-kernel-of-stub-comm (current-listener host) players))
-	   (other (find-if #'(lambda (player) (not (or (eq player bidder)
-						       (eq player listener))))
-			   players))
-	   (host-bidding-state (state host)))
-      (labels ((assert-same-roles ()
-		 "setzt voraus, dass die Spieler immer noch die gleichen Rollen haben"
-		 (assert-state host-bidding-state host)
-		 (assert-state 'bid bidder)
-		 (assert-state 'listen listener)
-		 (assert-state 'bidding-wait other))
-	       (bidder-bids ()
-		 "lässt den Sager einen Reizwert sagen"
-		 (ui-send bidder 'bid (car (bidding-values host)))
-		 (update-entities)
-		 ;; muss jeder mitbekommen haben
-		 (assert-received 'ui:bid other)
-		 (assert-received 'ui:reply-to-bid listener)
-		 (assert-same-roles)))
-	(assert-state 'bid bidder)
-	(assert-state 'listen listener)
-	(assert-state 'bidding-wait other)
-	
-	(bidder-bids)
+    (find-players-according-to-their-roles players host (bidder listener other)
+      (let ((host-bidding-state (state host)))
+	(labels ((assert-same-roles ()
+		   "setzt voraus, dass die Spieler immer noch die gleichen Rollen haben"
+		   (assert-state host-bidding-state host)
+		   (assert-state 'bid bidder)
+		   (assert-state 'listen listener)
+		   (assert-state 'bidding-wait other))
+		 (bidder-bids ()
+		   "lässt den Sager einen Reizwert sagen"
+		   (ui-send bidder 'bid (car (bidding-values host)))
+		   (update-entities)
+		   ;; muss jeder mitbekommen haben
+		   (assert-received 'ui:bid other)
+		   (assert-received 'ui:reply-to-bid listener)
+		   (assert-same-roles)))
+	  (assert-state 'bid bidder)
+	  (assert-state 'listen listener)
+	  (assert-state 'bidding-wait other)
+	  
+	  (bidder-bids)
 
-	(ui-send listener 'join (car (bidding-values host)))
-	(update-entities)
-	(dolist (player (list bidder other))
-	  (assert-received 'ui:join player))
-	;; gleiche Rollen
-	(assert-state host-bidding-state host)
-	(assert-state 'bid bidder)
-	(assert-state 'listen listener)
-	(assert-state 'bidding-wait other)
+	  (ui-send listener 'join (car (bidding-values host)))
+	  (update-entities)
+	  (dolist (player (list bidder other))
+	    (assert-received 'ui:join player))
+	  ;; gleiche Rollen
+	  (assert-state host-bidding-state host)
+	  (assert-state 'bid bidder)
+	  (assert-state 'listen listener)
+	  (assert-state 'bidding-wait other)
 
-	(if (eq bidder who-passes)
-	    (progn
-	      (ui-send bidder 'pass (car (bidding-values host)))
-	      (update-entities)
-	      ;; muss jeder mitbekommen haben
-	      (dolist (player (list listener other))
-		(assert-received 'ui:pass player)))
-	    (progn
-	      (bidder-bids)
-	      (ui-send listener 'pass (car (bidding-values host)))
-	      (update-entities)
-	      ;; muss jeder mitbekommen haben
-	      (dolist (player (list bidder other))
-		(assert-received 'ui:pass player))))))))
+	  (if (eq bidder who-passes)
+	      (progn
+		(ui-send bidder 'pass (car (bidding-values host)))
+		(update-entities)
+		;; muss jeder mitbekommen haben
+		(dolist (player (list listener other))
+		  (assert-received 'ui:pass player)))
+	      (progn
+		(bidder-bids)
+		(ui-send listener 'pass (car (bidding-values host)))
+		(update-entities)
+		;; muss jeder mitbekommen haben
+		(dolist (player (list bidder other))
+		  (assert-received 'ui:pass player)))))))))
 
 (defun assert-bidding-over (players host declarer)
   "Stellt sicher, dass alle mitbekommen haben, dass das Reizen vorbei ist."
@@ -203,9 +208,7 @@ Führt am Ende keine Zustands-Assertions aus, aber am Anfang."
   (labels ((update-entities ()
 	     (update-kernels (cons host players))))
     (assert (ready-for-bidding-p players host))
-    (let ((bidder (find-kernel-of-stub-comm (current-bidder host) players))
-	  (listener (find-kernel-of-stub-comm (current-listener host) players))
-	  (dealer (find-kernel-of-stub-comm (current-dealer host) players)))
+    (find-players-according-to-their-roles players host (bidder listener dealer)
       ;; Stub-Msgs besser lesbar machen
       (setf (comm::id (comm bidder)) '#:comm-bidder)
       (setf (comm::id (comm listener)) '#:comm-listener)
@@ -242,7 +245,7 @@ Führt am Ende keine Zustands-Assertions aus, aber am Anfang."
 	(assert-received 'ui:bid kernel))
       (assert-bidding-over players host listener)))
   (values players host))
-      
+
 
 (deftest "before bidding" :category "player-tests"
 	 :test-fn #'test-game-before-bidding
