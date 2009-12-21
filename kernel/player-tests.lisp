@@ -133,6 +133,9 @@ entsprechenden Spieler"
 
 (defun ready-for-bidding-p (players host)
   "Testet, ob alles zum Reizen bereit ist."
+  ;; noch darf keiner als Spielführer vorgemerkt sein
+  (assert (not (slot-boundp host 'current-declarer)) ()
+	  "Host hat seinen vorigen Declarer nicht gelöscht")
   ;; Host muss Rollen vergeben haben
   (assert (not (null (current-dealer host))))
   (assert (not (null (current-bidder host))))
