@@ -322,3 +322,86 @@ entscheiden kann"
   (dolist (player (list bidder dealer))
     (assert-received 'ui:bid player))	; die anderen haben es mitbekommen
   (assert-bidding-over players host listener))
+
+;; soviel zum Thema Reizen...
+
+(defun test-game (players host)
+  "Testfall für eine Spielrunde (die Spieler spielen immer ihre ganz linke Karte an)"
+  (labels ((update-entities ()
+	     (update-kernels (cons host players))))
+    (let* ((declarer (find-kernel-of-stub-comm (current-declarer host) players))
+	   (forehand (find-kernel-of-stub-comm (current-forehand host) players))
+	   (other-players (set-difference players (list declarer))))
+      (assert-bidding-over players host declarer)
+      ;; alle haben DECLARER bekommen
+      (ui-send declarer 'hand-decision nil) ; will den Skat haben
+      (update-entities)
+      (assert-state 'skat-away host)
+      (dolist (player other-players)
+	(assert-received 'ui:hand-decision player))
+      (assert-received 'ui:skat declarer)
+      (assert (= (length (cards declarer)) 12)) ; Skat auf der Hand
+      (assert (not (slot-boundp host 'skat)))	; Host hat ihn nicht
+      ;; die ersten beiden Karten drücken
+      (ui-send declarer 'skat (list (first (cards declarer)) (second (cards declarer))))
+      (update-entities)
+      (assert (= (length (cards declarer)) 10)) ; Skat nicht mehr auf der Hand
+      (assert (= (length (skat host)) 2))	; sondern beim Host
+      (assert-state 'await-declaration host)
+      (reset-received-requests players)
+      ;; Ansage
+      (ui-send declarer 'declaration '(:grand))
+      (update-entities)
+      (assert-state 'in-game host)
+      (dolist (player players)
+	(assert-state 'in-game player))
+      (dolist (player other-players)
+	(assert-received 'ui:declaration player))
+      ;; Vorderhand kommt raus
+      (assert (eq (current-player host) (comm forehand)))
+      (assert (eq (right-playmate forehand) (current-dealer host)))
+      (labels ((send-card (player)
+		 (ui-send player 'card (car (cards player)))
+		 (update-entities))
+	       (assert-trick-length (length)
+		 (assert (= (length (trick-contributions (current-trick host))) length))
+		 (dolist (player players)
+		   (assert (= (length (current-trick player)) length)))))
+	(dotimes (turn 10)
+	  (let* ((forehand (find-kernel-of-stub-comm (current-player host) players))
+		 (middlehand (find-kernel-of-stub-comm (left-playmate forehand) players))
+		 (backhand (find-kernel-of-stub-comm (right-playmate forehand) players)))
+	    (assert-received 'ui:choose-card forehand)
+	    ;; erste Karte
+	    (send-card forehand)
+	    (dolist (player (list middlehand backhand))
+	      (assert-received 'ui:card player))
+	    (assert-received 'ui:choose-card middlehand)
+	    (reset-received-requests players)
+	    (assert-trick-length 1)
+	    ;; zweite Karte
+	    (send-card middlehand)
+	    (dolist (player (list backhand forehand))
+	      (assert-received 'ui:card player))
+	    (assert-received 'ui:choose-card backhand)
+	    (reset-received-requests players)
+	    (assert-trick-length 2)
+	    ;; dritte Karte
+	    (send-card backhand)
+	    (dolist (player (list forehand middlehand))
+	      (assert-received 'ui:card player))
+	    (dolist (player players)
+	      (assert-received 'ui:trick player))))
+	;; Spiel vorbei
+	(dolist (player players)
+	  (assert-received 'ui:game-over player)
+	  (assert-received 'ui:cards-score player)
+	  (assert-received 'ui:game-result player)
+	  (assert-received 'ui:score-table player))
+	(reset-received-requests players))))
+  (values players host))
+
+(deftest "test game" :category "player-tests"
+	 :input-fn #'(lambda () (multiple-value-call #'bidder-and-dealer-pass (multiple-value-call #'test-game-before-bidding (init-test-set))))
+	 :test-fn #'test-game
+	 :compare-fn #'always-true)
