@@ -46,6 +46,8 @@
 			(slot-translation 'example-login-data 'username stub-locale)))
 	 :output-form '(username "Test" "Testbeschreibung") :compare-fn #'equalp)
 
+(defvar *__add-translation-test-stub-slot* (gensym)
+  "Dummy-Variable für den Testfall add-translation neuer slot")
 (deftest "add-translation neuer slot" :category "Übersetzungen"
 	 :test-fn #'(lambda ()
 		      (defparameter *__add-translation-test-stub-slot* (gensym))
