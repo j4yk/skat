@@ -24,6 +24,13 @@
       ,@direct-slots)
      ,@options))
 
+(defvar *kernel-verbosity* 1 "Wie viel Kernels drucken")
+
+(defmacro verbose (min-value &body body)
+  "Führt body nur aus, wenn *kernel-verbosity* mindestens min-value ist."
+  `(when (>= *kernel-verbosity* ,min-value)
+     ,@body))
+
 (defmethod print-object ((kernel kernel) stream)
   "Druckt den Zustand mit aus."
   (print-unreadable-object (kernel stream :type t :identity t)
@@ -74,9 +81,9 @@ da es die Bindungen der Variablen kernel und request-name voraussetzt."
   "Holt alle vorliegenden Anfragen aus dem Kommunikationsobjekt heraus und ruft entsprechende Anfragehandler auf."
   (loop while (comm:has-request (comm kernel))
      do (multiple-value-bind (request-name sender request-args) (comm:get-request (comm kernel))
-	  (unwind-protect (format *debug-io* "~%processing ~a ~a from ~a" request-name request-args sender)
-	    (restart-case (apply (handler-fn request-name) kernel sender request-args)
-	      (next-request () :report "Anfrage überspringen und weitermachen"))))))
+	  (verbose 1 (format *debug-io* "~%processing ~a ~a from ~a" request-name request-args sender))
+	  (restart-case (apply (handler-fn request-name) kernel sender request-args)
+	    (next-request () :report "Anfrage überspringen und weitermachen")))))
 
 (define-condition invalid-kernel-state-error (error)
   ((kernel-class :accessor kernel-class :initarg :kernel-class)
