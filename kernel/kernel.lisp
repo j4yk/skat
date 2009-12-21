@@ -43,9 +43,10 @@
   "Definiert eine neue Methode für eine Kernelklasse,
 in deren body eine lexikalische Bindung der Variable kernel
 etabliert wird."
-  (multiple-value-bind (forms docstring) (parse-function-body body) ; docstring finden
+  (multiple-value-bind (forms docstring declarations) (parse-function-body body) ; docstring finden
     `(defmethod ,name ((,kernel-class ,kernel-class) ,@method-parameters)
        ,docstring
+       ,declarations
        (let ((kernel ,kernel-class))	; kernel binden
 	 (declare (ignorable kernel))	; muss aber nicht zwangsläufig benutzt werden
 	 ,@forms))))

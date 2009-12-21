@@ -60,7 +60,7 @@ body:         forms des handlers"
 	    (format t "%Handlerdefinition ~a für ~a ist korrekt." request-name kernel-class-and-varname)
 	    (error "~a sind keine definierten Zustände von ~a"
 		   (set-difference states valid-states) kernel-class-and-varname)))))
-  (multiple-value-bind (forms docstring) (parse-function-body body)
+  (multiple-value-bind (forms docstring declarations) (parse-function-body body)
     (let* ((handler-fn-name (handler-fn-name request-name))
 	   (allowed-senders-forms (if (listp allowed-senders)
 				      (loop for attribute in allowed-senders
@@ -80,6 +80,7 @@ body:         forms des handlers"
 	   ;; handler function definieren
 	   (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) sender ,@request-args)
 	     ,(or docstring (format nil "Handler Funktion für Request ~a" request-name))
+	     ,declarations
 	     (handler-bind ((error #'(lambda (condition) (raise-error-in-kernel-handler ,kernel-class-and-varname condition
 											',handler-fn-name sender
 											',request-name (list ,@request-args)))))
@@ -87,7 +88,7 @@ body:         forms des handlers"
 		    encapsulated-body
 		    `(if (member (state ,kernel-class-and-varname) '(,@states)) ; vorher state abfragen
 			 ,encapsulated-body
-			 (signal 'request-state-mismatch :state (state ,kernel-class-and-varname) 
+			 (error 'request-state-mismatch :state (state ,kernel-class-and-varname) 
 				 :request-name ',request-name :request-args ,@request-args)))))
 	 ;; handler function registrieren
 	 (register-handler-fn ',request-name #',handler-fn-name)))))

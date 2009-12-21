@@ -15,10 +15,14 @@
   (intern (symbol-name symbol) :keyword))
 
 (defun parse-function-body (body)
-  "Gibt die Forms und den Docstring zurück."
+  "Gibt die Forms, Declarations und den Docstring zurück."
   (if (stringp (car body))
-      (values (cdr body) (car body))
-      (values body nil)))
+      (if (and (listp (cadr body)) (eq (caadr body) 'declare))
+	  (values (cddr body) (car body) (cadr body))
+	  (values (cdr body) (car body) nil))
+      (if (and (listp (car body)) (eq (caar body) 'declare))
+	  (values (cdr body) nil (car body))
+	  (values body nil nil))))
 
 (defun separate-lambda-list (lambda-list)
   "Trennt eine Lambda-Liste auf.
