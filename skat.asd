@@ -10,10 +10,11 @@
   :license "GNU General Public License"
   :depends-on (:cl-xmpp-tls :cl-glu :cl-glut :lispbuilder-sdl :clunit)
   :serial t
-  :components ((:file skat-packages)
+  :components (;(:file skat-packages)
 	       (:file utils)
 	       (:file requests)
-	       (:file request-handling)
+	       (:file modules)		; skat-kernel, skat-ui, skat-comm
+	       (:file request-handling :depends-on (modules))
 	       (:file login-and-registration)
 	       (:file struct-translations)
 	       (:module comm

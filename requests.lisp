@@ -1,3 +1,13 @@
+(defpackage skat-requests
+  (:nicknames requests)
+  (:use cl skat-utils)
+  (:export request-exists-p
+	   correct-parameters-p
+	   request-parameters
+	   undefined-request-error
+	   wrong-request-parameters
+	   validate-request-handler))
+
 (in-package skat-requests)
 
 (defvar *request-definitions* nil "Assoc Liste: (cons :request-name (list of :parameter-names))")
@@ -18,6 +28,14 @@
   "Gibt t zurück, wenn die Namen der Parameter und ihre Reihenfolge mit denen in der
 Definition des Requests übereinstimmen."
   (equal (mapcar #'to-keyword parameters) (cdr (assoc (to-keyword name) *request-definitions*))))
+
+(defmacro utils:define-package-which-exports-all-requests (package &body options)
+  `(defpackage ,package
+     ,@(progn
+	(setf (cdr (assoc :export options)) (nconc (cdr (assoc :export options))
+						   (loop for request-def in *request-definitions*
+						      collect (car request-def))))
+	options)))					       
 
 (eval-when (:compile-toplevel)
   (defun format-parameters-list-latex (parameter-definitions)

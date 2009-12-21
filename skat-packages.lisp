@@ -1,22 +1,3 @@
-(defpackage skat-utils
-  (:nicknames :utils)
-  (:use :cl :org.ancar.clunit)
-  (:export to-keyword
-	   parse-function-body
-	   separate-lambda-list
-	   deftests
-	   always-true))
-
-(defpackage skat-requests
-  (:nicknames requests)
-  (:use cl skat-utils)
-  (:export request-exists-p
-	   correct-parameters-p
-	   request-parameters
-	   undefined-request-error
-	   wrong-request-parameters
-	   validate-request-handler))
-
 (defmacro define-skat-packages ((&rest requests-kernel-ui) (&rest requests-kernel-comm))
   `(progn
      (defpackage skat-kernel

@@ -1,3 +1,13 @@
+(defpackage skat-utils
+  (:nicknames :utils)
+  (:use :cl :org.ancar.clunit)
+  (:export to-keyword
+	   parse-function-body
+	   separate-lambda-list
+	   deftests
+	   always-true
+	   define-package-which-exports-all-requests)) ; das steckt in requests.lisp
+
 (in-package :skat-utils)
 
 (defun to-keyword (symbol)
