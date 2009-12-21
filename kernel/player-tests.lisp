@@ -66,6 +66,7 @@ und ruft den Continue-Restart auf."
 Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names player)))
 
 (defun find-kernel-of-stub-comm (stub-comm kernels)
+  "Findet aus einer Liste von Kerneln denjenigen raus, zu dem die angegebene Stub-Comm gehört."
   (loop for kernel in kernels
      when (eq stub-comm (comm kernel)) return kernel))
 
@@ -87,6 +88,7 @@ entsprechenden Spieler"
      ,@body))  
 
 (defun test-game-before-bidding (players host)
+  "Testet den Spielverlauf vor dem Reizen"
   (labels ((clear-requests (player)
 	     (setf (ui::received-requests (ui player)) nil))
 	   (update-entities ()
@@ -119,13 +121,18 @@ entsprechenden Spieler"
     (assert (ready-for-bidding-p players host)))
   (values players host))
 
+(deftest "before bidding" :category "player-tests"
+	 :test-fn #'test-game-before-bidding
+	 :input-form (init-test-set)
+	 :compare-fn #'always-true)	; es geht nur um die Fehler während der Ausführung
+
 (defun bidding-mates-correct-p (bidder listener)
   "Gibt t zurück, wenn die bidding-mate Slots richtig gesetzt sind."
   (and (eq (bidding-mate listener) (own-address bidder))
        (eq (bidding-mate bidder) (own-address listener))))
 
 (defun ready-for-bidding-p (players host)
-  "Gibt t zurück, wenn alle bereit zum Reizen sind."
+  "Testet, ob alles zum Reizen bereit ist."
   ;; Host muss Rollen vergeben haben
   (assert (not (null (current-dealer host))))
   (assert (not (null (current-bidder host))))
@@ -156,6 +163,11 @@ entsprechenden Spieler"
   (assert (= (car (bidding-values host)) 18))
   (assert (= (length (skat host)) 2))	; Host muss den Skat haben
   (values players host))
+
+(deftest "ready for bidding" :category "player-tests"
+	 :test-fn #'ready-for-bidding-p
+	 :input-form (apply #'test-game-before-bidding (multiple-value-list (init-test-set)))
+	 :compare-fn #'always-true)
 
 (defun bid-and-pass (players host who-passes)
   "Verallgemeinerung folgender Prozedur: Bidder reizt,
@@ -197,19 +209,20 @@ Führt am Ende keine Zustands-Assertions aus, aber am Anfang."
 	  (assert-state 'bidding-wait other)
 
 	  (if (eq bidder who-passes)
+	      ;; der momentane Sager soll passen
+	      (let-pass players host bidder (list listener other))
+	      ;; der momentane Hörer soll passen
 	      (progn
-		(ui-send bidder 'pass (car (bidding-values host)))
-		(update-entities)
-		;; muss jeder mitbekommen haben
-		(dolist (player (list listener other))
-		  (assert-received 'ui:pass player)))
-	      (progn
-		(bidder-bids)
-		(ui-send listener 'pass (car (bidding-values host)))
-		(update-entities)
-		;; muss jeder mitbekommen haben
-		(dolist (player (list bidder other))
-		  (assert-received 'ui:pass player)))))))))
+		(bidder-bids)		; damit der Hörer passen kann, muss der Sager nochwas reizen
+		(let-pass players host listener (list bidder other)))))))))
+
+(defun let-pass (players host who-passes the-others)
+  "Lässt den Spieler passen und stellt sicher, dass die anderen Spieler dies mitbekommen"
+  (ui-send who-passes 'pass (car (bidding-values host)))
+  (update-kernels (cons host players))
+  ;; muss jeder mitbekommen haben
+  (dolist (player the-others)
+    (assert-received 'ui:pass player)))
 
 (defun assert-bidding-over (players host declarer)
   "Stellt sicher, dass alle mitbekommen haben, dass das Reizen vorbei ist."
@@ -233,38 +246,79 @@ Führt am Ende keine Zustands-Assertions aus, aber am Anfang."
   (assert (bidding-mates-correct-p bidder listener))
   (assert-state 'bidding-wait other))
 
-(defun test-bidding-scenario_pass-bidder-dealer (players host)
-  "Testet die Reizprozedur"
-  (assert (ready-for-bidding-p players host))
-  (find-players-according-to-their-roles players host (bidder listener dealer)
-    ;; Stub-Msgs besser lesbar machen
-    (setf (comm::id (comm bidder)) '#:comm-bidder)
-    (setf (comm::id (comm listener)) '#:comm-listener)
-    (setf (comm::id (comm dealer)) '#:comm-dealer)
-    
-    (bid-and-pass players host bidder) ; Sager passt beim zweiten Mal
-    ;; Rollen verändert:
-    (assert-state 'bidding-2 host)
-    (assert-bidding-configuration dealer listener bidder host)
-    (dolist (player players)
-      (setf (ui::received-requests (ui player)) nil)) ; Log zurücksetzen
+(defmacro define-bidding-scenario (name docstring &body body)
+  "Definert eine Testfunktion für ein Reizszenario.
+Die Variablen bidder listener und dealer sind für body gebunden."
+  `(progn
+     (defun ,name (players host)
+       ,docstring
+       (assert (ready-for-bidding-p players host))
+       (find-players-according-to-their-roles players host (bidder listener dealer)
+	 ;; Stub-Msgs besser lesbar machen
+	 (setf (comm::id (comm bidder)) '#:comm-bidder)
+	 (setf (comm::id (comm listener)) '#:comm-listener)
+	 (setf (comm::id (comm dealer)) '#:comm-dealer)
+	 ,@body))
+     
+     (deftest ,(symbol-name name) :category "player-tests"
+	      :test-fn #',name
+	      :input-form (apply #'test-game-before-bidding (multiple-value-list (init-test-set)))
+	      :compare-fn #'always-true)))
 
-    (bid-and-pass players host dealer)	; Weitersager passt beim zweiten Mal
-    ;; kein Ramsch, da listener irgendwo schonmal gejoint ist (bid-and-pass)
-    (assert-bidding-over players host listener))
-  (values players host))
+(defun reset-received-requests (players)
+  "Setzt die Listen der empfangenen Anfragen zurück."
+  (dolist (player players)
+    (setf (ui::received-requests (ui player)) nil)))
 
-(deftest "before bidding" :category "player-tests"
-	 :test-fn #'test-game-before-bidding
-	 :input-form (init-test-set)
-	 :compare-fn #'always-true)	; es geht nur um die Fehler während der Ausführung
+(defmacro two-pass-bidding-scenario (name who-passes-first who-passes-second who-declares)
+  "Definiert ein Bidding-Szenario, bei dem zwei Spieler beim jeweils zweiten Mal passen"
+  (dolist (p (list who-passes-first who-passes-second who-declares))
+    (assert (member p '(bidder listener dealer)) () "Die angegebenen Rollen müssten bidder, listener oder dealer sein."))
+  `(define-bidding-scenario ,name
+       "Testet die Reizprozedur"
+     (bid-and-pass players host ,who-passes-first) ; erster Pass beim zweiten Mal
+     ;; Rollen verändert:
+     (assert-state 'bidding-2 host)
+     (assert-bidding-configuration dealer
+				   ,(if (eq who-passes-first 'bidder)
+					'listener
+					'bidder)
+				   ,(if (eq who-passes-first 'bidder)
+					'bidder
+					'listener)
+				   host)
+     (reset-received-requests players)
 
-(deftest "ready for bidding" :category "player-tests"
-	 :test-fn #'ready-for-bidding-p
-	 :input-form (apply #'test-game-before-bidding (multiple-value-list (init-test-set)))
-	 :compare-fn #'always-true)
+     (bid-and-pass players host ,who-passes-second)	; zweiter Pass bei zweitem Mal
+     ;; kein Ramsch, da der declarer irgendwo schonmal gejoint ist (bid-and-pass)
+     (assert-bidding-over players host ,who-declares)
+     (values players host)))
 
-(deftest "bidding scenario 1" :category "player-tests"
-	 :test-fn #'test-bidding-scenario_pass-bidder-dealer
-	 :input-form (apply #'test-game-before-bidding (multiple-value-list (init-test-set)))
-	 :compare-fn #'always-true)
+(two-pass-bidding-scenario bidder-and-dealer-pass bidder dealer listener)
+
+(two-pass-bidding-scenario listener-and-dealer-pass listener dealer bidder)
+
+(two-pass-bidding-scenario bidder-and-listener-pass bidder listener dealer)
+
+(two-pass-bidding-scenario listener-and-bidder-pass listener bidder dealer)
+
+(define-bidding-scenario bidder-and-dealer-pass-instantly
+    "Testet den Reizverlauf, wenn Sager und Geber sofort passen, Hörer also über Ramsch
+entscheiden kann"
+  (let-pass players host bidder (list dealer listener))
+  (assert-state 'bidding-2 host)
+  (assert-bidding-configuration dealer listener bidder host)
+  (reset-received-requests players)
+  (let-pass players host dealer (list listener bidder))
+  ;; jetzt hat noch keiner irgendwas gereizt
+  ;; Hörer muss entscheiden, ob Ramsch oder nicht
+  (assert-state 'bidding-3 host)
+  (assert-received 'ui:start-bidding listener)
+  (assert-state 'bid listener)
+  (assert-state 'bidding-wait dealer)
+  (assert-state 'bidding-wait bidder)
+  (ui-send listener 'bid 18)		; kein Ramsch
+  (update-kernels (cons host players))
+  (dolist (player (list bidder dealer))
+    (assert-received 'ui:bid player))	; die anderen haben es mitbekommen
+  (assert-bidding-over players host listener))
