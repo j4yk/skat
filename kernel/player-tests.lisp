@@ -258,6 +258,8 @@ Die Variablen bidder listener und dealer sind für body gebunden."
        (assert (ready-for-bidding-p players host))
        (find-players-according-to-their-roles players host (bidder listener dealer)
 	 ;; Stub-Msgs besser lesbar machen
+	 (if (or (>= ui::*stub-ui-verbosity* 1) (>= comm::*stub-comm-verbosity* 1))
+	     (format t "~%==== RENAMING the comms ===="))
 	 (setf (comm::id (comm bidder)) '#:comm-bidder)
 	 (setf (comm::id (comm listener)) '#:comm-listener)
 	 (setf (comm::id (comm dealer)) '#:comm-dealer)
@@ -305,6 +307,15 @@ Die Variablen bidder listener und dealer sind für body gebunden."
 
 (two-pass-bidding-scenario listener-and-bidder-pass listener bidder dealer)
 
+(defun assert-bidding-3-situation (bidder others host)
+  "Setzt voraus, dass ein Spieler reizen soll, die anderen nur warten und
+der Host im dritten Reizstadium ist."
+  (assert-state 'bidding-3 host)
+  (assert-received 'ui:start-bidding bidder)
+  (assert-state 'bid bidder)
+  (assert-state 'bidding-wait (car others))
+  (assert-state 'bidding-wait (cadr others)))
+
 (define-bidding-scenario bidder-and-dealer-pass-instantly
     "Testet den Reizverlauf, wenn Sager und Geber sofort passen, Hörer also über Ramsch
 entscheiden kann"
@@ -315,16 +326,30 @@ entscheiden kann"
   (let-pass players host dealer (list listener bidder))
   ;; jetzt hat noch keiner irgendwas gereizt
   ;; Hörer muss entscheiden, ob Ramsch oder nicht
-  (assert-state 'bidding-3 host)
-  (assert-received 'ui:start-bidding listener)
-  (assert-state 'bid listener)
-  (assert-state 'bidding-wait dealer)
-  (assert-state 'bidding-wait bidder)
+  (assert-bidding-3-situation listener (list bidder dealer) host)
   (ui-send listener 'bid 18)		; kein Ramsch
   (update-kernels (cons host players))
   (dolist (player (list bidder dealer))
     (assert-received 'ui:bid player))	; die anderen haben es mitbekommen
-  (assert-bidding-over players host listener))
+  (assert-bidding-over players host listener)
+  (values players host))
+
+(define-bidding-scenario everyone-passes
+    "Testet den Reizverlauf für den Fall, dass keiner Spielen will"
+  (let-pass players host bidder (list dealer listener))
+  (assert-state 'bidding-2 host)
+  (assert-bidding-configuration dealer listener bidder host)
+  (reset-received-requests players)
+  (let-pass players host dealer (list listener bidder))
+  ;; jetzt hat noch keiner irgendwas gereizt
+  ;; Hörer muss entscheiden, ob Ramsch oder nicht
+  (assert-bidding-3-situation listener (list bidder dealer) host)
+  (ui-send listener 'pass 18)
+  (update-kernels (cons host players))	; Runde abblasen
+  (dolist (player (list bidder dealer))
+    (assert-received 'ui:pass player))
+  (assert-game-over players host t)	; Spiel vorbei, aber keine Spielergebnisse
+  (values players host))
 
 ;; soviel zum Thema Reizen...
 
