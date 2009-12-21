@@ -18,6 +18,12 @@
     (comm:start (comm host))		; Comm starten
     host))
 
+(defun init-test-set ()
+  "Erstellt einen Satz Spieler mit einem Host"
+  (let ((players (list (make-test-player) (make-test-player) (make-test-player)))
+	(host (make-test-host)))
+    (values players host)))
+
 (defmacro -send (kernel request &rest args)
   `(ui::send-request-to-kernel (ui ,kernel) ',request ,@args))
 
@@ -59,11 +65,26 @@ und ruft den Continue-Restart auf."
 	  "~a müsste ~a empfangen haben, dies ist aber nicht der Fall~%~
 Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names player)))
 
-(defun init-test-set ()
-  "Erstellt einen Satz Spieler mit einem Host"
-  (let ((players (list (make-test-player) (make-test-player) (make-test-player)))
-	(host (make-test-host)))
-    (values players host)))
+(defun find-kernel-of-stub-comm (stub-comm kernels)
+  (loop for kernel in kernels
+     when (eq stub-comm (comm kernel)) return kernel))
+
+(deftest "find-kernel-of-stub-comm" :category "player-tests"
+	 :input-fn #'(lambda ()
+		       (defparameter p1 (make-test-player) "Spielerinstanz für einige Testfälle")
+		       (values (kern::comm p1) (list p1 (make-test-player))))
+	 :test-fn #'find-kernel-of-stub-comm
+	 :output-form (symbol-value 'p1))
+
+(defmacro find-players-according-to-their-roles (players host (bidder listener other) &body body)
+  "Bindet die Variablen in der dritten Argumentengruppe an die Kernel der
+entsprechenden Spieler"
+  `(let* ((,bidder (find-kernel-of-stub-comm (current-bidder ,host) ,players))
+	  (,listener (find-kernel-of-stub-comm (current-listener ,host) ,players))
+	  (,other (find-if #'(lambda (player) (not (or (eq player ,bidder)
+						       (eq player ,listener))))
+			   ,players)))
+     ,@body))  
 
 (defun test-game-before-bidding (players host)
   (labels ((clear-requests (player)
@@ -98,6 +119,11 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
     (assert (ready-for-bidding-p players host)))
   (values players host))
 
+(defun bidding-mates-correct-p (bidder listener)
+  "Gibt t zurück, wenn die bidding-mate Slots richtig gesetzt sind."
+  (and (eq (bidding-mate listener) (own-address bidder))
+       (eq (bidding-mate bidder) (own-address listener))))
+
 (defun ready-for-bidding-p (players host)
   "Gibt t zurück, wenn alle bereit zum Reizen sind."
   ;; Host muss Rollen vergeben haben
@@ -106,10 +132,16 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
   (assert (not (null (current-listener host))))
   (dolist (player players)
     (assert-received 'ui:game-start player) ; vom Host
-    (assert-received 'ui:cards player)	     ; Karten erhalten
-    (assert (= (length (cards player)) 10)))
+    (assert-received 'ui:cards player)	    ; Karten erhalten
+    ;; Spieler dürfen den Skat nicht, also genau 10 Karten, haben
+    (assert (= (length (cards player)) 10))
+    ;; Spieler müssen auch Reizwerte führen, die bei 18 beginnen
+    (assert (not (null (bidding-values player))))
+    (assert (= (car (bidding-values player)) 18)))
   ;; Kernel zu den Reizrollen finden
   (find-players-according-to-their-roles players host (bidder listener dealer)
+    ;; bidder listener wurden anhand von (current-bidder) und (current-listener) ermittelt,
+    ;; deshalb brauchen die hier nicht mehr überprüft zu werden
     (assert (eq (current-dealer host) (own-address dealer)))
     ;; die müssen in den richtigen Zuständen sein
     (assert-received 'ui:start-bidding bidder)
@@ -117,40 +149,13 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
     (assert-received 'ui:listen listener)
     (assert-state 'listen listener)
     (assert-state 'bidding-wait dealer)
-    (assert (eq (bidding-mate listener) (own-address bidder)))
-    (assert (eq (bidding-mate bidder) (own-address listener))))
+    ;; und die Reizpartner müssen sich kennen
+    (assert (bidding-mates-correct-p bidder listener)))
   ;; Host muss Reizwerte führen und die müssen bei 18 losgehen
   (assert (not (null (bidding-values host))))
   (assert (= (car (bidding-values host)) 18))
   (assert (= (length (skat host)) 2))	; Host muss den Skat haben
-  (dolist (player players)
-    ;; Spieler dürfen den Skat nicht, also genau 10 Karten, haben
-    (assert (= (length (cards player)) 10))
-    ;; Spieler müssen auch Reizwerte führen, die bei 18 beginnen
-    (assert (not (null (bidding-values player))))
-    (assert (= (car (bidding-values player)) 18)))
   (values players host))
-
-(defun find-kernel-of-stub-comm (stub-comm kernels)
-  (loop for kernel in kernels
-     when (eq stub-comm (comm kernel)) return kernel))
-
-(deftest "find-kernel-of-stub-comm" :category "player-tests"
-	 :input-fn #'(lambda ()
-		       (defparameter p1 (make-test-player) "Spielerinstanz für einige Testfälle")
-		       (values (kern::comm p1) (list p1 (make-test-player))))
-	 :test-fn #'find-kernel-of-stub-comm
-	 :output-form (symbol-value 'p1))
-
-(defmacro find-players-according-to-their-roles (players host (bidder listener other) &body body)
-  "Bindet die Variablen in der dritten Argumentengruppe an die Kernel der
-entsprechenden Spieler"
-  `(let* ((,bidder (find-kernel-of-stub-comm (current-bidder ,host) ,players))
-	  (,listener (find-kernel-of-stub-comm (current-listener ,host) ,players))
-	  (,other (find-if #'(lambda (player) (not (or (eq player ,bidder)
-						       (eq player ,listener))))
-			   ,players)))
-     ,@body))  
 
 (defun bid-and-pass (players host who-passes)
   "Verallgemeinerung folgender Prozedur: Bidder reizt,
@@ -217,49 +222,37 @@ Führt am Ende keine Zustands-Assertions aus, aber am Anfang."
     (eq (declarer player) (own-address declarer))
     (assert-state 'preparations player)))
 
+(defun assert-bidding-configuration (bidder listener other host)
+  "Setzt voraus, dass die Rollen wie angegeben verteilt sind."
+  (assert (eq (current-bidder host) (own-address bidder)))
+  (assert-received 'ui:start-bidding bidder)
+  (assert-state 'bid bidder)
+  (assert (eq (current-listener host) (own-address listener)))
+  (assert-received 'ui:listen listener)
+  (assert-state 'listen listener)
+  (assert (bidding-mates-correct-p bidder listener))
+  (assert-state 'bidding-wait other))
+
 (defun test-bidding-scenario_pass-bidder-dealer (players host)
   "Testet die Reizprozedur"
-  (labels ((update-entities ()
-	     (update-kernels (cons host players))))
-    (assert (ready-for-bidding-p players host))
-    (find-players-according-to-their-roles players host (bidder listener dealer)
-      ;; Stub-Msgs besser lesbar machen
-      (setf (comm::id (comm bidder)) '#:comm-bidder)
-      (setf (comm::id (comm listener)) '#:comm-listener)
-      (setf (comm::id (comm dealer)) '#:comm-dealer)
-      
-      (bid-and-pass players host bidder) ; Sager passt beim zweiten Mal
-      ;; Rollen verändert:
-      (assert-state 'bidding-2 host)
-      (assert-state 'bidding-wait bidder)
-      ;; Geber sagt weiter
-      (assert (eq (current-bidder host) (own-address dealer)))
-      (assert-state 'bid dealer)
-      (assert-received 'ui:start-bidding dealer)
-      ;; Hörer hört weiter
-      (assert (eq (current-listener host) (own-address listener)))
-      (assert-received 'ui:listen listener)
-      (assert-state 'listen listener)
-      (dolist (player players)
-	(setf (ui::received-requests (ui player)) nil)) ; Log zurücksetzen
+  (assert (ready-for-bidding-p players host))
+  (find-players-according-to-their-roles players host (bidder listener dealer)
+    ;; Stub-Msgs besser lesbar machen
+    (setf (comm::id (comm bidder)) '#:comm-bidder)
+    (setf (comm::id (comm listener)) '#:comm-listener)
+    (setf (comm::id (comm dealer)) '#:comm-dealer)
+    
+    (bid-and-pass players host bidder) ; Sager passt beim zweiten Mal
+    ;; Rollen verändert:
+    (assert-state 'bidding-2 host)
+    (assert-bidding-configuration dealer listener bidder host)
+    (dolist (player players)
+      (setf (ui::received-requests (ui player)) nil)) ; Log zurücksetzen
 
-      (bid-and-pass players host dealer)	; Weitersager passt beim zweiten Mal
-      ;; Rollen wieder verändert: Hörer entscheidet nun über Ramschen
-      (assert-received 'ui:start-bidding listener)
-      (assert-state 'bidding-3 host)
-      (assert-state 'bidding-wait bidder)
-      (assert-state 'bidding-wait dealer)
-      (assert-state 'bid listener)
-      (dolist (player players)
-	(setf (ui::received-requests (ui player)) nil)) ; Log zurücksetzen
-
-      (ui-send listener 'bid 18)	; kein Ramsch
-      (update-entities)
-      (dolist (kernel (list dealer bidder))
-	(assert-received 'ui:bid kernel))
-      (assert-bidding-over players host listener)))
+    (bid-and-pass players host dealer)	; Weitersager passt beim zweiten Mal
+    ;; kein Ramsch, da listener irgendwo schonmal gejoint ist (bid-and-pass)
+    (assert-bidding-over players host listener))
   (values players host))
-
 
 (deftest "before bidding" :category "player-tests"
 	 :test-fn #'test-game-before-bidding
