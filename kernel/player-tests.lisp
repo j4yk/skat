@@ -18,20 +18,6 @@
 (defmacro -do (kernel)
   `(ui:just-one-step (ui ,kernel)))
 
-(defun assert-state (asserted-state player)
-  "Setzt einen bestimmten Zustand beim Spieler voraus."
-  (assert (eq (state player) asserted-state) (player (state player) asserted-state)
-	  "Spieler ~a sollte in ~a sein, ist aber in ~a" player asserted-state (state player)))
-
-(defun stub-communication-send-testhandler (condition)
-  "Condition-Handler. Stellt eine Anfrage von der einen zur anderen Stub-Comm zu
-und ruft den Continue-Restart auf."
-  (declare (type comm::stub-communication-send condition))
-  (comm::push-request (comm::address condition)
-		      (comm::sender-comm condition) (comm::request-name condition)
-		      (comm::args condition))
-  (continue))
-
 (defun ui-send (receiving-kernel request &rest args)
   "Simuliert eine Benutzeraktion bei der UI des Kernels für den Test"
   (handler-bind ((comm::stub-communication-send #'stub-communication-send-testhandler)) ; Nachrichten zustellen
