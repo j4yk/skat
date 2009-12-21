@@ -400,17 +400,17 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 	  (if won
 	      (progn
 		(when (>= declarer-score 90) ; Schneider
-		  (push :played-schneider (cdr declaration))
-		  (when (= declarer-score 120)
-		    (push :played-schwarz (cdr declaration)))) ; Schwarz
+		  (setf declaration (nconc declaration '(:played-schneider)))
+		  (when (= declarer-score 120) ; Schwarz
+		    (setf declaration (nconc declaration '(:played-schwarz)))))
 		(let ((game-points (game-points declaration (flush-run-value host))))
-		(send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
-		(incf (gethash current-declarer score-table) game-points)))
+		  (send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
+		  (incf (gethash current-declarer score-table) game-points)))
 	      (progn
-		(when (<= declarer-score 30)
-		  (push :played-schneider (cdr declaration)) ; Schneider
-		  (when (= declarer-score 0)
-		    (push :played-schwarz (cdr declaration)))) ; Schwarz
+		(when (<= declarer-score 30) ; Schneider
+		  (setf declaration (nconc declaration '(:played-schneider)))
+		  (when (= declarer-score 0) ; Schwarz
+		    (setf declaration (nconc declaration '(:played-schwarz)))))
 		(let ((game-points (* 2 (game-points declaration (flush-run-value host)))))
 		  (send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
 		  (decf (gethash current-declarer score-table) game-points)))))))
