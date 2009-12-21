@@ -431,15 +431,83 @@ entscheiden kann"
 	    (dolist (player players)
 	      (assert-received 'ui:trick player))))
 	;; Spiel vorbei
-	(dolist (player players)
-	  (assert-received 'ui:game-over player)
-	  (assert-received 'ui:cards-score player)
-	  (assert-received 'ui:game-result player)
-	  (assert-received 'ui:score-table player))
-	(reset-received-requests players))))
+	(assert-game-over players host))))
   (values players host))
 
+(defun assert-game-over (players host &optional no-scoring-stuff)
+  "Setzt voraus, dass das Spiel vorbei ist und entsprechende
+Nachrichten ausgetauscht wurden.
+Ist no-scoring-stuff == t, dann wird nicht auf Empfang von
+cards-score, game-result und score-table überprüft."
+  (assert-state 'game-over host)
+  (dolist (player players)
+    (assert-received 'ui:game-over player)
+    (assert-state 'game-over player)
+    (unless no-scoring-stuff
+      (assert-received 'ui:cards-score player)
+      (assert-received 'ui:game-result player)
+      (assert-received 'ui:score-table player))))
+
+(defun start-new-test-game (players host)
+  "Lässt die Spieler nach einer neuen Runde verlangen."
+  (assert-game-over players host t)
+  (let ((old-dealer (find-kernel-of-stub-comm (current-dealer host) players)))
+    (dolist (player players)
+      (ui-send player 'game-start))
+    (update-kernels (cons host players))
+    (assert (ready-for-bidding-p players host)) ; danach muss alles wieder Reizfertig sein
+    (assert (eq (current-dealer host) (left-playmate old-dealer)))) ; neuer Geber links vom alten
+  (values players host))
+
+(defun start-new-test-game-after-complete (players host)
+  "Lässt die Spieler nach einer neuen Runde verlangen, nachdem sie
+eine komplette Runde hinter sich haben.
+Überprüft zusätzlich, ob score-table etc. eingetrudelt sind"
+  (assert-game-over players host)
+  (start-new-test-game players host))
+
+(defmacro surround (form &rest functions)
+  (if (null functions)
+      form
+      `(surround (multiple-value-call ,(car functions) ,form) ,@(cdr functions))))
+
+(defmacro chain-functions (arg &rest functions)
+  (if (null functions)
+      (error "No functions supplied to chain-functions."))
+  `(surround ,arg ,@functions))
+
 (deftest "test game" :category "player-tests"
-	 :input-fn #'(lambda () (multiple-value-call #'bidder-and-dealer-pass (multiple-value-call #'test-game-before-bidding (init-test-set))))
+	 :input-fn #'(lambda () (chain-functions (init-test-set) #'test-game-before-bidding #'bidder-and-dealer-pass))
+	 :test-fn #'test-game
+	 :compare-fn #'always-true)
+
+(deftest "two games" :category "player-tests"
+	 :input-fn #'(lambda () (chain-functions (init-test-set)
+						 #'test-game-before-bidding
+						 #'listener-and-dealer-pass
+						 #'test-game
+						 #'start-new-test-game-after-complete
+						 #'bidder-and-listener-pass))
+	 :test-fn #'test-game
+	 :compare-fn #'always-true)
+
+(deftest "second game after all passed" :category "player-tests"
+	 :input-fn #'(lambda () (chain-functions (init-test-set)
+						 #'test-game-before-bidding
+						 #'everyone-passes
+						 #'start-new-test-game
+						 #'listener-and-dealer-pass))				       
+	 :test-fn #'test-game
+	 :compare-fn #'always-true)
+
+(deftest "game, pass all, game" :category "player-tests"
+	 :input-fn #'(lambda () (chain-functions (init-test-set)
+						 #'test-game-before-bidding
+						 #'bidder-and-listener-pass
+						 #'test-game
+						 #'start-new-test-game-after-complete
+						 #'everyone-passes
+						 #'start-new-test-game
+						 #'listener-and-bidder-pass))
 	 :test-fn #'test-game
 	 :compare-fn #'always-true)
