@@ -9,6 +9,7 @@
 (defun make-test-player ()
   (let ((player (make-instance 'player :ui (make-instance 'ui:stub-ui) :comm (make-instance 'comm::stub-comm))))
     (setf (ui::kernel (ui player)) player)
+    (comm:start (comm player))		; Comm starten
     player))
 
 (defmacro -send (kernel request &rest args)
@@ -50,14 +51,7 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
   "Erstellt einen Satz Spieler mit einem Host"
   (let ((players (list (make-test-player) (make-test-player) (make-test-player)))
 	(host (make-test-host)))
-    (map nil #'comm:start (mapcar #'comm (cons host players))) ; starte Comms
     (values players host)))
-
-(defun update-kernels (kernels)
-  "Lässt jede UI ausstehende Anfragen verarbeiten"
-  (handler-bind ((comm::stub-communication-send #'stub-communication-send-testhandler))
-    (dolist (kernel kernels)
-      (ui:just-one-step (ui kernel)))))
 
 (defun test-game-before-bidding (players host)
   (labels ((clear-requests (player)
@@ -149,6 +143,75 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
     (assert (= (car (bidding-values player)) 18)))
   (values players host))
 
+(defun bid-and-pass (players host who-passes)
+  "Verallgemeinerung folgender Prozedur: Bidder reizt,
+Listener joint und dann passt als nächstes der, der laut drittem
+Parameter passen soll.
+Führt am Ende keine Zustands-Assertions aus, aber am Anfang."
+  (labels ((update-entities ()
+	     (update-kernels (cons host players))))
+    (let* ((bidder (find-kernel-of-stub-comm (current-bidder host) players))
+	   (listener (find-kernel-of-stub-comm (current-listener host) players))
+	   (other (find-if #'(lambda (player) (not (or (eq player bidder)
+						       (eq player listener))))
+			   players))
+	   (host-bidding-state (state host)))
+      (labels ((assert-same-roles ()
+		 "setzt voraus, dass die Spieler immer noch die gleichen Rollen haben"
+		 (assert-state host-bidding-state host)
+		 (assert-state 'bid bidder)
+		 (assert-state 'listen listener)
+		 (assert-state 'bidding-wait other))
+	       (bidder-bids ()
+		 "lässt den Sager einen Reizwert sagen"
+		 (ui-send bidder 'bid (car (bidding-values host)))
+		 (update-entities)
+		 ;; muss jeder mitbekommen haben
+		 (assert-received 'ui:bid other)
+		 (assert-received 'ui:reply-to-bid listener)
+		 (assert-same-roles)))
+	(assert-state 'bid bidder)
+	(assert-state 'listen listener)
+	(assert-state 'bidding-wait other)
+	
+	(bidder-bids)
+
+	(ui-send listener 'join (car (bidding-values host)))
+	(update-entities)
+	(dolist (player (list bidder other))
+	  (assert-received 'ui:join player))
+	;; gleiche Rollen
+	(assert-state host-bidding-state host)
+	(assert-state 'bid bidder)
+	(assert-state 'listen listener)
+	(assert-state 'bidding-wait other)
+
+	(if (eq bidder who-passes)
+	    (progn
+	      (ui-send bidder 'pass (car (bidding-values host)))
+	      (update-entities)
+	      ;; muss jeder mitbekommen haben
+	      (dolist (player (list listener other))
+		(assert-received 'ui:pass player)))
+	    (progn
+	      (bidder-bids)
+	      (ui-send listener 'pass (car (bidding-values host)))
+	      (update-entities)
+	      ;; muss jeder mitbekommen haben
+	      (dolist (player (list bidder other))
+		(assert-received 'ui:pass player))))))))
+
+(defun assert-bidding-over (players host declarer)
+  "Stellt sicher, dass alle mitbekommen haben, dass das Reizen vorbei ist."
+  (dolist (player players)
+    (assert-received 'ui:declarer player))		       ; DECLARER beendet das Reizen
+  (assert-state 'declarer-found host)
+  ;; sicherstellen, dass alle wissen, wer spielt
+  (assert (eq (current-declarer host) (own-address declarer)))
+  (dolist (player players)
+    (eq (declarer player) (own-address declarer))
+    (assert-state 'preparations player)))
+
 (defun test-bidding-scenario_pass-bidder-dealer (players host)
   "Testet die Reizprozedur"
   (labels ((update-entities ()
@@ -157,26 +220,28 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
     (let ((bidder (find-kernel-of-stub-comm (current-bidder host) players))
 	  (listener (find-kernel-of-stub-comm (current-listener host) players))
 	  (dealer (find-kernel-of-stub-comm (current-dealer host) players)))
-      (ui-send bidder 'pass 18)
-      (update-entities)
-      ;; muss jeder mitbekommen haben
-      (dolist (kernel (list  dealer listener))
-	(assert-received 'ui:pass kernel))
-      ;; Rollen verändert
-      (assert-received 'ui:start-bidding dealer)
-      (assert-received 'ui:listen listener)
+      ;; Stub-Msgs besser lesbar machen
+      (setf (comm::id (comm bidder)) '#:comm-bidder)
+      (setf (comm::id (comm listener)) '#:comm-listener)
+      (setf (comm::id (comm dealer)) '#:comm-dealer)
+      
+      (bid-and-pass players host bidder) ; Sager passt beim zweiten Mal
+      ;; Rollen verändert:
       (assert-state 'bidding-2 host)
-      (assert-state 'bid dealer)
-      (assert-state 'listen listener)
       (assert-state 'bidding-wait bidder)
+      ;; Geber sagt weiter
+      (assert (eq (current-bidder host) (own-address dealer)))
+      (assert-state 'bid dealer)
+      (assert-received 'ui:start-bidding dealer)
+      ;; Hörer hört weiter
+      (assert (eq (current-listener host) (own-address listener)))
+      (assert-received 'ui:listen listener)
+      (assert-state 'listen listener)
       (dolist (player players)
 	(setf (ui::received-requests (ui player)) nil)) ; Log zurücksetzen
-      
-      (ui-send dealer 'pass 18)
-      (update-entities)
-      (dolist (kernel (list listener bidder))
-	(assert-received 'ui:pass kernel))
-      ;; Rollen wieder verändert
+
+      (bid-and-pass players host dealer)	; Weitersager passt beim zweiten Mal
+      ;; Rollen wieder verändert: Hörer entscheidet nun über Ramschen
       (assert-received 'ui:start-bidding listener)
       (assert-state 'bidding-3 host)
       (assert-state 'bidding-wait bidder)
@@ -185,18 +250,11 @@ Liste der empfangengen Sachen: ~%~s" player request (ui-received-request-names p
       (dolist (player players)
 	(setf (ui::received-requests (ui player)) nil)) ; Log zurücksetzen
 
-      (ui-send listener 'bid 18)
+      (ui-send listener 'bid 18)	; kein Ramsch
       (update-entities)
       (dolist (kernel (list dealer bidder))
 	(assert-received 'ui:bid kernel))
-      ;; Reizen vorbei
-      (dolist (player players)
-	(assert-received 'ui:declarer player))
-      (assert (eq (current-declarer host) (own-address listener))) ; Vorderhand spielt
-      (assert-state 'declarer-found host)
-      (assert-state 'preparations dealer)
-      (assert-state 'preparations listener)
-      (assert-state 'preparations bidder)))
+      (assert-bidding-over players host listener)))
   (values players host))
       
 
