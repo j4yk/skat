@@ -13,7 +13,7 @@
 	    ((equal (cdr declaration) '(:hand)) 35)
 	    ((equal (cdr declaration) '(:ouvert)) 46)
 	    ((equal (cdr declaration) '(:ouvert :hand)) 59))
-      (* (ccase (car declaration)
+      (* (ecase (car declaration)
 	   (:diamonds 9)
 	   (:hearts 10)
 	   (:spades 11)

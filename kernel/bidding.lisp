@@ -14,7 +14,7 @@
     (delete-duplicates (sort values #'<))))
 
 (defun cut-away-game-point-levels (bid &optional (point-levels *game-point-levels*))
-  "Gibt eine Liste zurück, aus der alle Reizwerte bis vor dem angegebenen gestrichen sind.
+  "Gibt eine Liste zurück, aus der alle Reizwerte vor dem angegebenen gestrichen sind.
 Das erste Element der zurückgegebenen Liste ist der angegebene Reizwert."
   (if (<= bid (car point-levels))
       point-levels
