@@ -8,7 +8,7 @@
   `(restart-case (progn ,@body)
      (continue () t)))
 
-(defclass opengl-ui (base-ui)
+(defclass opengl-ui (ui::base-ui)
   ()
   (:documentation "OpenGL-UI Klasse. Zentrales Objekt für die OpenGL-Schnittstelle"))
 
@@ -127,14 +127,14 @@ Gibt die Textur-ID zurück."
     (setf (sdl:frame-rate) 2)
     (main-gl-init ui)
     (sdl:show-cursor :enable)		; mit Cursor bitte
-    (sdl-ttf:init-ttf)
-    (setf sdl:*default-font* (sdl-ttf:open-font (make-instance 'sdl:ttf-font-definition :filename "/usr/share/fonts/truetype/freefont/FreeSans.ttf" :size 12)))
+;    (sdl-ttf:init-ttf)
+;    (setf sdl:*default-font* (sdl-ttf:open-font (make-instance 'sdl:ttf-font-definition :filename "/usr/share/fonts/truetype/freefont/FreeSans.ttf" :size 12)))
     (update-textures)
     (assert sdl:*default-font*)
     (sdl:with-events ()
       (:quit-event ()
-		   (sdl-ttf:close-font :font sdl:*default-font*)
-		   (sdl-ttf:quit-ttf)
+;		   (sdl-ttf:close-font :font sdl:*default-font*)
+;		   (sdl-ttf:quit-ttf)
 		   (gl:delete-textures (list *texture* *blue-tex*))
 		   (mapcar #'makunbound '(*texture* *blue-tex*))
 		   t)
