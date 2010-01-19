@@ -74,7 +74,9 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
        (eval-when (:compile-toplevel)
 	 ;; create Documentation
 	 (when (fboundp 'print-request-latex)
-	   (with-open-file (fs "/home/jakob/dev/skat-doc/requests-table.tex"
+	   (with-open-file (fs (cond ((probe-file "../skat-doc/requests-table.tex") "../skat-doc/requests-table.tex")
+				     ((probe-file "/home/jakob/dev/skat-doc/requests-table.tex") "/home/jakob/dev/skat-doc/requests-table.tex")
+				     ((probe-file "requests-table.tex") "requests-table.tex"))
 			       :direction :output
 			       :if-exists (if (boundp '*request-printing-started*)
 					      (print :append)
