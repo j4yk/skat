@@ -8,7 +8,7 @@
   :version "0.1"
   :author "Jakob Reschke <jakob@resfarm.de>"
   :license "GNU General Public License"
-  :depends-on (:cl-xmpp-tls :clunit)
+  :depends-on (:cl-xmpp-tls :cl-glu :cl-glut :lispbuilder-sdl :clunit)
   :serial t
   :components (;(:file skat-packages)
 	       (:file utils)

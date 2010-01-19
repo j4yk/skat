@@ -88,11 +88,16 @@ STUB"
     ;; und die Texturnummer zurückgeben
     texture))
 
+(defun ensure-file-exists (filename)
+  (unless (probe-file filename)
+    (error "File ~a doesn't exist!" filename))
+  filename)
+
 (defun texture-from-bmp (filename)
   "Erstellt eine OpenGL-Textur aus einer BMP-Datei.
 Gibt die Textur-ID zurück."
   (declare (ftype (function (string) integer) texture-from-bmp))
-  (sdl:with-surface (s (sdl:load-image (probe-file filename))) ; Bild auf ein SDL-Surface laden
+  (sdl:with-surface (s (sdl:load-image (ensure-file-exists filename))) ; Bild auf ein SDL-Surface laden
     (sdl-surface-to-gl-texture s :bgra)))		       ; in OpenGL-Textur umwandeln
 
 (progn
@@ -114,7 +119,7 @@ Gibt die Textur-ID zurück."
 			 ;; da der hier nicht 
 			 (sdl-surface-to-gl-texture s :rgba)))
       ;; und eine aus dem Bild
-      (setq *texture* (texture-from-bmp "/home/jakob/dev/skat/diamonds7.bmp")))))
+      (setq *texture* (texture-from-bmp "diamonds7.bmp")))))
 
 (defun skat-window ()
   "Erstellt das Skat-SDL-Fenster inklusive OpenGL-Kontext."
