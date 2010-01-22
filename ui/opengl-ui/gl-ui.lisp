@@ -126,20 +126,26 @@ Gibt die Textur-ID zurück."
   (sdl:window 640 480 :title-caption "Skat"
 	      :flags '(sdl:sdl-opengl sdl:sdl-doublebuf)))
 
+(defclass module ()
+  ((submodules :initform nil :accessor submodules :type list))
+  (:documentation "Basisklasse für alle OpenGL-UI Module"))
+
+(defgeneric draw (module)
+  (:documentation "Lässt ein Modul seine Grafiken zeichnen"))
+
+(defgeneric handle-event (module event)
+  (:documentation "Lässt ein Modul das SDL_Event verarbeiten"))
+
 (defun sdl-main-loop (ui)
   (sdl:with-init ()
     (skat-window)
     (setf (sdl:frame-rate) 2)
     (main-gl-init ui)
     (sdl:show-cursor :enable)		; mit Cursor bitte
-;    (sdl-ttf:init-ttf)
-;    (setf sdl:*default-font* (sdl-ttf:open-font (make-instance 'sdl:ttf-font-definition :filename "/usr/share/fonts/truetype/freefont/FreeSans.ttf" :size 12)))
     (update-textures)
-;    (assert sdl:*default-font*)
-    (sdl:with-events ()
+    (sdl:with-events (:poll f-sdl-event)
+      (:mouse-motion-event (:x x :y y))
       (:quit-event ()
-;		   (sdl-ttf:close-font :font sdl:*default-font*)
-;		   (sdl-ttf:quit-ttf)
 		   (gl:delete-textures (list *texture* *blue-tex*))
 		   (mapcar #'makunbound '(*texture* *blue-tex*))
 		   t)
@@ -149,5 +155,4 @@ Gibt die Textur-ID zurück."
 		      (or swank::*emacs-connection* (swank::default-connection))))
 		 (when (and connection (not (eql swank:*communication-style* :spawn)))
 		   (swank::handle-requests connection t))))
-	     (onidle)))))		
-  
+	     (onidle)))))
