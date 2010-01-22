@@ -135,7 +135,7 @@ Gibt die Textur-ID zurück."
 ;    (sdl-ttf:init-ttf)
 ;    (setf sdl:*default-font* (sdl-ttf:open-font (make-instance 'sdl:ttf-font-definition :filename "/usr/share/fonts/truetype/freefont/FreeSans.ttf" :size 12)))
     (update-textures)
-    (assert sdl:*default-font*)
+;    (assert sdl:*default-font*)
     (sdl:with-events ()
       (:quit-event ()
 ;		   (sdl-ttf:close-font :font sdl:*default-font*)
