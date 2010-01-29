@@ -13,8 +13,8 @@
   :components (;(:file skat-packages)
 	       (:file utils)
 	       (:file requests)
-	       (:file modules)		; skat-kernel, skat-ui, skat-comm
-	       (:file request-handling :depends-on (modules))
+	       (:file components)		; skat-kernel, skat-ui, skat-comm
+	       (:file request-handling :depends-on (components))
 	       (:file login-and-registration)
 	       (:file struct-translations)
 	       (:module comm
