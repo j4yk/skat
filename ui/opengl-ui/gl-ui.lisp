@@ -73,33 +73,6 @@ STUB"
   (sdl:update-display)
   (gl:disable :texture-2d))		; braucht man bestimmt auch nicht
 
-(defmethod sdl-surface-to-gl-texture (surface &optional (texture-format :rgba))
-  "Erstellt eine OpenGL-Textur aus einer SDL-Surface. Gibt die Textur-ID zurück."
-  (let ((texture (car (gl:gen-textures 1)))) ; Textur generieren
-    (gl:bind-texture :texture-2d texture)
-    ;; Filteroptionen für die Textur einstellen
-    (gl:tex-parameter :texture-2d :texture-min-filter :linear)
-    (gl:tex-parameter :texture-2d :texture-mag-filter :linear)
-    ;; die Pixel aus der SDL-Surface kopieren
-    (sdl-base::with-pixel (pixels (sdl:fp surface))
-      (gl:tex-image-2d :texture-2d 0 :rgba ;(sdl-base::pixel-bpp pixels)
-		       (sdl:width surface) (sdl:height surface)
-		       0 texture-format :unsigned-byte (sdl-base::pixel-data pixels)))
-    ;; und die Texturnummer zurückgeben
-    texture))
-
-(defun ensure-file-exists (filename)
-  (unless (probe-file filename)
-    (error "File ~a doesn't exist!" filename))
-  filename)
-
-(defun texture-from-bmp (filename)
-  "Erstellt eine OpenGL-Textur aus einer BMP-Datei.
-Gibt die Textur-ID zurück."
-  (declare (ftype (function (string) integer) texture-from-bmp))
-  (sdl:with-surface (s (sdl:load-image (ensure-file-exists filename))) ; Bild auf ein SDL-Surface laden
-    (sdl-surface-to-gl-texture s :bgra)))		       ; in OpenGL-Textur umwandeln
-
 (progn
   (eval-when (:compile-toplevel)
     (setq *textures-updated* nil))
@@ -126,18 +99,27 @@ Gibt die Textur-ID zurück."
   (sdl:window 640 480 :title-caption "Skat"
 	      :flags '(sdl:sdl-opengl sdl:sdl-doublebuf)))
 
-(defclass module ()
-  ((submodules :initform nil :accessor submodules :type list))
-  (:documentation "Basisklasse für alle OpenGL-UI Module"))
+(defun handle-swank-requests ()
+  (restartable			; SLIME-Sachen ausführen
+   (let ((connection
+	  (or swank::*emacs-connection* (swank::default-connection))))
+     (when (and connection (not (eql swank:*communication-style* :spawn)))
+       (swank::handle-requests connection t)))))
 
-;; Module sollten (initialize-instance :after) implementieren,
-;; um Aufbauarbeiten (Agar: Fenster erstellen etc.) durchzuführen
-
-(defgeneric draw (module)
-  (:documentation "Lässt ein Modul seine Grafiken zeichnen"))
-
-(defgeneric handle-event (module event)
-  (:documentation "Lässt ein Modul das SDL_Event verarbeiten"))
+(defmacro case-event (sdl-event &body events)
+  "Führt verschiedene Blöcke aus, abhängig vom Typ des Events.
+Syntax entspricht der von sdl:with-events und bedient sich bei
+Lispbuilders Funktionen."
+  ;; Basiert auf sdl:with-events Code
+  `(cond
+     ,@(remove nil (mapcar #'(lambda (event)
+			       (when (gethash (first event) sdl::*events*)
+				 (sdl::expand-event sdl-event
+						    (first event) ; Event-Type (z. B. :mouse-motion-event)
+						    (gethash (first event) sdl::*events*)
+						    (first (rest event)) ; Parameters
+						    (rest (rest event))))) ; Handler-Body
+			   events))))
 
 (defun sdl-main-loop (ui)
   (sdl:with-init ()
@@ -153,9 +135,5 @@ Gibt die Textur-ID zurück."
 		   (mapcar #'makunbound '(*texture* *blue-tex*))
 		   t)
       (:idle ()
-	     (restartable			; SLIME-Sachen ausführen
-	       (let ((connection
-		      (or swank::*emacs-connection* (swank::default-connection))))
-		 (when (and connection (not (eql swank:*communication-style* :spawn)))
-		   (swank::handle-requests connection t))))
+	     (handle-swank-requests)
 	     (onidle)))))
