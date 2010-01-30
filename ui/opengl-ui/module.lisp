@@ -1,7 +1,8 @@
 (in-package skat-opengl-ui)
 
 (defclass module ()
-  ((submodules :initform nil :accessor submodules :type list))
+  ((ui :initarg :ui :accessor ui)
+   (submodules :initform nil :accessor submodules :type list))
   (:documentation "Basisklasse für alle OpenGL-UI Module"))
 
 ;; Module sollten (initialize-instance :after) implementieren,
