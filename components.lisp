@@ -24,7 +24,10 @@
 	   stop
 	   stub-ui
 	   host-ui
-	   just-one-step))
+	   just-one-step
+	   defhandler
+	   ui				; manche UIs haben eigene Packages, defhandler benutzt aber dieses Symbol
+	   kernel))			; gleiches Problem, UIs mit eigenen Packages müssen an den Kernel rankommen
 
 (define-package-which-exports-all-requests skat-communication
   (:nicknames :skat-comm :comm)

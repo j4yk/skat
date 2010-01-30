@@ -1,7 +1,3 @@
-(defpackage skat-opengl-ui
-  (:nicknames opengl-ui gl-ui)
-  (:use :cl :skat-ui))
-
 (in-package gl-ui)
 
 (defmacro restartable (&body body)
@@ -9,7 +5,8 @@
      (continue () t)))
 
 (defclass opengl-ui (ui::base-ui)
-  ()
+  ((modules :accessor modules :initform nil :documentation "Liste der aktiven Module")
+   (priortized-modules :accessor priortized-modules :initform nil :documentation "Liste der aktiven Module, die Events zuerst verarbeiten dürfen"))
   (:documentation "OpenGL-UI Klasse. Zentrales Objekt für die OpenGL-Schnittstelle"))
 
 (defmethod ui:start ((ui opengl-ui) &optional no-new-thread-p)
@@ -121,6 +118,10 @@ Lispbuilders Funktionen."
 						    (rest (rest event))))) ; Handler-Body
 			   events))))
 
+(defhandler ui:login-parameters (opengl-ui parameters)
+  (let ((module (make-instance 'login-and-register-module :login-parameters parameters)))
+    (push module (modules ui))))
+
 (defun sdl-main-loop (ui)
   (sdl:with-init ()
     (skat-window)
@@ -129,11 +130,12 @@ Lispbuilders Funktionen."
     (sdl:show-cursor :enable)		; mit Cursor bitte
     (update-textures)
     (sdl:with-events (:poll f-sdl-event)
-      (:mouse-motion-event (:x x :y y))
+      (:mouse-motion-event ())
       (:quit-event ()
 		   (gl:delete-textures (list *texture* *blue-tex*))
 		   (mapcar #'makunbound '(*texture* *blue-tex*))
 		   t)
       (:idle ()
 	     (handle-swank-requests)
+	     (kernel:receive-requests (ui::kernel ui))
 	     (onidle)))))
