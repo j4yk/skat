@@ -88,7 +88,8 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 	 (apply #'add-request-definition ',name ',parameter-symbols)))))
 
 (define-condition %request-error (error)
-  ((request-name :accessor request-name :initarg :request-name)))
+  ((request-name :accessor request-name :initarg :request-name))
+  (:documentation "Basisklasse für Error-Conditions, die an einer Request-Sorte festgemacht sind."))
 
 (define-condition wrong-request-parameters (%request-error) ())
 (define-condition undefined-request-error (%request-error) ())
@@ -96,11 +97,11 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 (defun validate-request-handler (request-name &rest request-arg-names)
   "Überprüft die Gültigkeit des Anfragenamens und der Namen der Parameter"
   ;; prüfen, ob es diesen Anfragetyp überhaupt gibt
-  (unless (requests:request-exists-p request-name)
-    (error 'requests:undefined-request-error :request-name request-name))
+  (unless (request-exists-p request-name)
+    (error 'undefined-request-error :request-name request-name))
   ;; prüfen, ob die Parameter richtig heißen
-  (unless (apply #'requests:correct-parameters-p request-name request-arg-names)
-    (error 'requests:wrong-request-parameters :request-name request-name)))
+  (unless (apply #'correct-parameters-p request-name request-arg-names)
+    (error 'wrong-request-parameters :request-name request-name)))
 
 (makunbound '*request-printing-started*)
 
