@@ -8,7 +8,7 @@
   :version "0.1"
   :author "Jakob Reschke <jakob@resfarm.de>"
   :license "GNU General Public License"
-  :depends-on (:cl-xmpp-tls :lispbuilder-sdl :clunit)
+  :depends-on (:cl-xmpp-tls :lispbuilder-sdl :clunit :agar)
   :serial t
   :components (;(:file skat-packages)
 	       (:file utils)
@@ -29,7 +29,14 @@
 				     (:file base-ui)
 				     (:file stub-ui)
 				     (:file host-ui)
-				     (:module opengl-ui)))
+				     (:module opengl-ui
+					      :serial t
+					      :components ((:file package)
+							   (:file module)
+							   (:file gfx-utils)
+							   (:file gl-ui)
+							   (:file login-and-register)
+							   (:file test-utils)))))
 	       (:module kernel
 			:serial t
 			:components ((:file cards)
