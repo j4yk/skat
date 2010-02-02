@@ -13,7 +13,7 @@
 
 (kern:define-login-data xmpp-login-data
     (username nil :type string) (hostname nil :type string) (domain nil :type string)
-    (resource nil :type string) (password nil :type string) (mechanism nil :type keyword))
+    (resource nil :type string) (password nil :type string) (mechanism nil :type (or (eql :sasl-plain) (eql :plain))))
 
 (kern:define-registration-data xmpp-registration-data
     (host-jid nil :type string))
@@ -24,13 +24,7 @@
 
 (defmethod start ((comm xmpp-comm))
   "Initialisiert dieses XMPP-Verbindungsobjekt. Fügt nur die Login-Parameterliste für Kernel zum Abruf ein."
-  (push-request comm comm 'login-parameters 
-		(list '((username string "XMPP Benutzername") 
-			(hostname string "Adresse des XMPP Servers") 
-			(jid-domain-part string "Domänen-Teil der JID (z. B. \"bar.org\" in \"foo@bar.org\"), falls verschieden von der Serveradresse") 
-			(resource string "XMPP-Ressource zum Einloggen")
-			(password string "Passwort")
-			(mechanism (:plain :sasl-plain) "Form, in der das Passwort übermittelt wird"))))
+  (push-request comm comm 'login-struct 'xmpp-login-data)
   (values))
 
 (defmacro let-multiple-getf (place (&rest indicators-and-varnames) &body body)
@@ -47,9 +41,13 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
 
 (defmethod login ((comm xmpp-comm) data)
   "Stellt die XMPP-Verbindung zum Server her und loggt sich dort mit den bereitgestellten Daten ein."
-  (let-multiple-getf data (:hostname hostname :jid-domain-part jid-domain-part
-				     :username username :resource resource
-				     :password password :mechanism mechanism)
+  ;; data ist vom Typ xmpp-login-data (struct) 
+  (let ((hostname (xmpp-login-data-hostname data))
+	(jid-domain-part (xmpp-login-data-domain data))
+	(username (xmpp-login-data-username data))
+	(resource (xmpp-login-data-resource data))
+	(password (xmpp-login-data-password data))
+	(mechanism (xmpp-login-data-mechanism data)))
     ;; Verbindung herstellen und bei connection speichern
     (setf (connection comm) (xmpp:connect :hostname hostname :jid-domain-part jid-domain-part :class 'xmpp-skat-connection))
     ;; Rückverweis im Verbindungsobjekt setzen (wichtig für xmpp:handle)
