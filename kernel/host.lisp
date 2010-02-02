@@ -83,11 +83,12 @@ In diesem Zustand werden Registrierungsanfragen aufgenommen."
   ((host :accessor host :initarg :host))
   (:documentation "Wird signalisiert, wenn dem Hostobjekt keine Logindaten zur Verfügung gestellt wurden."))
 
-(defhandler login-parameters (start) comm (host parameters)
+(defhandler login-struct (start) comm (host struct-classname)
   "Von der Kommunikation kommende Parameter zum Einwählen ins Kommunikationsmedium.
 Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden sein."
   (if (slot-boundp host 'login-data)
       (progn
+	;; der Kommunikation die vorgegebenen Daten geben
 	(comm:login (comm host) (slot-value host 'login-data))
 	(switch-to-registration host t))
       (error 'no-login-data-supplied-error :host host)))

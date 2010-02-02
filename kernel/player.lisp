@@ -75,9 +75,9 @@
 
 ;;;;  Handler und State-Switch-Functions
 
-(defhandler login-parameters (start) comm (player parameters)
+(defhandler login-struct (start) comm (player struct-classname)
    "Behandelt die Loginparameterliste der Comm. Gibt sie an die UI weiter."
-   (call-ui 'login-parameters player sender parameters))
+   (call-ui 'login-parameters player sender struct-classname))
 
 (define-state-switch-function unregistered (player)
   "Wechselt den Zustand zu unregistered."

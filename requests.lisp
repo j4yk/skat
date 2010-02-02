@@ -105,9 +105,9 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 
 (makunbound '*request-printing-started*)
 
-(DEFREQUEST LOGIN-PARAMETERS
-    ((PARAMETERS
-      "Eine Liste von Assoziationen $Parametername \\rightarrow Datentyp$"))
+(DEFREQUEST LOGIN-struct
+    ((struct-classname
+      "Der Name des Struct-Typen, der die benötigten Slots bereitstellt."))
   (comm->kernel player->ui)
   (:DOCUMENTATION
    "Enthält eine Liste notwendiger Informationen für die Einwahl des Kommunikationsmoduls in seinem Kommunikationskanal"
@@ -115,7 +115,7 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 
 (DEFREQUEST LOGIN-DATA
     ((DATA
-      "Eine Property-Liste mit den Parameternamen als Namen und den entsprechenden Argumenten als Werten"))
+      "Ein Struct von dem Typ, der in LOGIN-STRUCT mitgeteilt wurde"))
   (ui->player kernel->comm)
   (:DOCUMENTATION
    "Enthält die der Kommunikation zur Verfügung gestellten Einwahldaten."
