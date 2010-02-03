@@ -118,8 +118,8 @@ Lispbuilders Funktionen."
 						    (rest (rest event))))) ; Handler-Body
 			   events))))
 
-(defhandler ui:login-parameters (opengl-ui parameters)
-  (let ((module (make-instance 'login-and-register-module :login-parameters parameters)))
+(defhandler ui:login-struct (opengl-ui struct-classname)
+  (let ((module (make-instance 'login-and-register-module :login-struct-type struct-classname)))
     (push module (modules ui))))
 
 (defun sdl-main-loop (ui)

@@ -2,7 +2,7 @@
 
 (defclass login-and-register-module (module)
   ((state :accessor state :initform 'enter-login)
-   (login-parameters :accessor login-parameters :initarg :login-parameters)
+   (login-struct-type :accessor login-struct-type :initarg :login-struct-type)
    (login-window :accessor login-window)
    (registration-struct :accessor registration-struct)
    (register-window :accessor register-window))
