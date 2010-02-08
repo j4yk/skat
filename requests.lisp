@@ -32,6 +32,7 @@ Definition des Requests übereinstimmen."
 (defmacro utils:define-package-which-exports-all-requests (package &body options)
   `(defpackage ,package
      ,@(progn
+	;; Request-Namen an (:export ...) anhängen
 	(setf (cdr (assoc :export options)) (nconc (cdr (assoc :export options))
 						   (loop for request-def in *request-definitions*
 						      collect (car request-def))))
