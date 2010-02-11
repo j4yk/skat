@@ -2,6 +2,7 @@
   (:nicknames :utils)
   (:use :cl :org.ancar.clunit)
   (:export to-keyword
+	   conc-symbols
 	   parse-function-body
 	   separate-lambda-list
 	   deftests
@@ -13,6 +14,10 @@
 (defun to-keyword (symbol)
   "Gibt ein Symbol gleichen Namens aus dem Package keyword zurück"
   (intern (symbol-name symbol) :keyword))
+
+(defun conc-symbols (&rest symbols)
+  "Fügt Symbolnamen zu einem neuen Symbol zusammen und interniert es im Package"
+  (intern (apply #'concatenate 'string (mapcar #'symbol-name symbols))))
 
 (defun parse-function-body (body)
   "Gibt die Forms, Declarations und den Docstring zurück."
