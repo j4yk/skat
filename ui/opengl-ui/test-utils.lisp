@@ -25,6 +25,7 @@
   (let ((module (gensym "module")))
     `(with-agar-enabled-skat-window
        (let ((,module (make-instance ,module-class ,@initargs)))
+	 (declare (ignorable ,module))
 	 (standard-with-events
 	   ((:mouse-button-down-event ()
 				      (handle-event ,module sdl-event))
