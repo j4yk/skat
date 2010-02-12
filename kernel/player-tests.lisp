@@ -95,7 +95,7 @@ entsprechenden Spieler"
 	     (update-kernels (cons host players))))
     (update-entities) 		; erstes Mal, login-parameters muss ankommen
     (dolist (p players)
-      (assert-received 'ui:login-parameters p)
+      (assert-received 'ui:login-struct p)
       (assert-state 'start p)		; alle in Start
       (ui-send p 'login-data nil))
     (reset-received-requests players)
