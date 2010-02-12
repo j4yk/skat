@@ -34,6 +34,10 @@
 				   (handle-event ,module sdl-event))
 	   (:mouse-motion-event ()
 				(handle-event ,module sdl-event))
+	   (:key-down-event ()
+			    (handle-event ,module sdl-event))
+	   (:key-up-event ()
+			  (handle-event ,module sdl-event))
 	   (:idle ()
 		  (agar:render
 		    (draw ,module))))))))
