@@ -22,15 +22,18 @@
 	 ,@body))))
 
 (defmacro test-module (module-class &rest initargs)
+  (assert (find-class (cadr module-class))) ; quoted!
   (let ((module (gensym "module")))
     `(with-agar-enabled-skat-window
        (let ((,module (make-instance ,module-class ,@initargs)))
 	 (declare (ignorable ,module))
 	 (standard-with-events
-	   ((:mouse-button-down-event ()
-				      (handle-event ,module sdl-event))
-	    (:mouse-button-up-event ()
-				    (handle-event ,module sdl-event))
-	    (:idle ()
-		   (agar:render
-		     (draw ,module)))))))))
+	   (:mouse-button-down-event ()
+				     (handle-event ,module sdl-event))
+	   (:mouse-button-up-event ()
+				   (handle-event ,module sdl-event))
+	   (:mouse-motion-event ()
+				(handle-event ,module sdl-event))
+	   (:idle ()
+		  (agar:render
+		    (draw ,module))))))))
