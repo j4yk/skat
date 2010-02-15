@@ -5,7 +5,9 @@
 (define-package-which-exports-all-requests skat-kernel
   (:nicknames :kernel :kern)
   (:use cl skat-utils org.ancar.clunit)
-  (:export handler-fn-name
+  (:export host
+	   player
+	   handler-fn-name
 	   handler-fn
 	   receive-requests
 	   call-handler-fn
@@ -38,4 +40,5 @@
 	   stop  ; gibt ihm das Signal, die Arbeit einzustellen
 	   received-other-content ; Condition für den Fall, dass Daten empfangen wurden, die nicht als Anfragen interpretiert werden konnten
 	   address-compare-function ; Slot-Accessor für die Adressenvergleichende Funktion
+	   stub-comm
 	   xmpp-comm))
