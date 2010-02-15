@@ -124,6 +124,31 @@ Lispbuilders Funktionen."
   (let ((module (make-instance 'login-and-register-module :login-struct-type struct-classname)))
     (push module (modules ui))))
 
+(defmacro non-agar-rendering (&body body)
+  `(progn
+     (gl:matrix-mode :texture) (gl:push-matrix)
+     ;; fixme: load the last used matrix
+     (gl:load-identity)
+     (gl:matrix-mode :projection) (gl:push-matrix)
+     ;; fixme: load the last used matrix
+     (gl:load-identity)
+     (gl:matrix-mode :modelview) (gl:push-matrix)
+     ;; fixme: load the last used matrix
+     (gl:load-identity)
+     
+     (gl:push-attrib :all-attrib-bits)
+     ;; disable clipping planes
+     (gl:disable :clip-plane0 :clip-plane1 :clip-plane2 :clip-plane3 :clip-plane4 :clip-plane5)
+     (gl:enable :cull-face)
+     
+     ,@body
+
+     (gl:pop-attrib)
+
+     (gl:matrix-mode :modelview) (gl:pop-matrix)
+     (gl:matrix-mode :texture) (gl:pop-matrix)
+     (gl:matrix-mode :projection) (gl:pop-matrix)))
+
 (defun standard-main-loop (ui)
   (sdl:with-events (:poll sdl-event)
     (:quit-event () t)
@@ -148,9 +173,19 @@ Lispbuilders Funktionen."
 	   ;; reset view
 	   (gl:matrix-mode :modelview)
 	   (gl:load-identity)
-	   (ag:render			; begin rendering routine for Agar-Modules also
-	     (dolist (module (modules ui))
-	       (draw module)))
+	   (if ag::*video-initialized*
+	       ;; with agar
+	       (ag:render
+		 (non-agar-rendering
+		   (dolist (module (modules ui))
+		     (draw module)))
+		 (let ((win (ag::tailqueue-first (ag::windows ag::*view*))))
+		   ;; TODO: render the other windows as well...
+		   (unless (cffi:null-pointer-p win)
+		     (ag:window-draw win))))
+	       ;; without agar
+	       (dolist (module (modules ui))
+		 (draw module)))
 	   (gl:flush)
 	   (sdl:update-display))))
 
