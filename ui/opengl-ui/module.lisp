@@ -13,3 +13,7 @@
 
 (defgeneric handle-event (module event)
   (:documentation "Lässt ein Modul das SDL_Event verarbeiten"))
+
+(defmethod handle-event ((module module) event)
+  ;; this is a no-op
+  )
