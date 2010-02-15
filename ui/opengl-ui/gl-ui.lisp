@@ -124,20 +124,6 @@ Lispbuilders Funktionen."
   (let ((module (make-instance 'login-and-register-module :login-struct-type struct-classname)))
     (push module (modules ui))))
 
-(defun simple-sdl-test ()
-  (let ((ui (make-instance 'opengl-ui))
-	(testm (make-instance 'test-module)))
-    (push testm (modules ui))
-    (sdl:with-init ()
-      (skat-window)
-      (setf (sdl:frame-rate) 2)
-      (init-gl)
-      (sdl:show-cursor :enable)		; mit Cursor bitte
-      (update-textures testm)
-      (unwind-protect
-	   (standard-main-loop ui)
-	(free-textures testm)))))
-
 (defun standard-main-loop (ui)
   (sdl:with-events (:poll sdl-event)
     (:quit-event () t)
@@ -167,3 +153,17 @@ Lispbuilders Funktionen."
 	       (draw module)))
 	   (gl:flush)
 	   (sdl:update-display))))
+
+(defun simple-sdl-test ()
+  (let ((ui (make-instance 'opengl-ui))
+	(testm (make-instance 'test-module)))
+    (push testm (modules ui))
+    (sdl:with-init ()
+      (skat-window)
+      (setf (sdl:frame-rate) 2)
+      (init-gl)
+      (sdl:show-cursor :enable)		; mit Cursor bitte
+      (update-textures testm)
+      (unwind-protect
+	   (standard-main-loop ui)
+	(free-textures testm)))))
