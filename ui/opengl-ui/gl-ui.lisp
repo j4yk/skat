@@ -134,8 +134,9 @@ Lispbuilders Funktionen."
       (init-gl)
       (sdl:show-cursor :enable)		; mit Cursor bitte
       (update-textures testm)
-      (standard-main-loop ui)
-      (free-textures testm))))
+      (unwind-protect
+	   (standard-main-loop ui)
+	(free-textures testm)))))
 
 (defun standard-main-loop (ui)
   (sdl:with-events (:poll sdl-event)
