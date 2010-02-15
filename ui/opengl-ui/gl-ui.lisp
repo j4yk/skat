@@ -33,6 +33,10 @@ STUB"
   (glu:perspective 60.0 1.0 0.1 1024.0)
   (gl:matrix-mode :modelview))
 
+(defun init-gl ()
+  "Initializes OpenGL Modelview Matrix, Clear Color etc."
+  (main-gl-init nil))
+
 (defvar *blue-tex*)
 (defvar *texture*)
 
@@ -139,3 +143,33 @@ Lispbuilders Funktionen."
 	     (handle-swank-requests)
 	     (kernel:receive-requests (ui::kernel ui))
 	     (onidle)))))
+
+(defun standard-main-loop (ui)
+  (sdl:with-events (:poll sdl-event)
+    (:quit-event () t)
+    (:mouse-button-down-event ()
+			      (dolist (module (modules ui))
+				(handle-event module sdl-event)))
+    (:mouse-button-up-event ()
+			    (dolist (module (modules ui))
+			      (handle-event module sdl-event)))
+    (:mouse-motion-event ()
+			 (dolist (module (modules ui))
+			   (handle-event module sdl-event)))
+    (:key-down-event ()
+		     (dolist (module (modules ui))
+		       (handle-event module sdl-event)))
+    (:key-up-event ()
+		   (dolist (module (modules ui))
+		     (handle-event module sdl-event)))
+    (:idle ()
+	   (handle-swank-requests)
+	   (gl:clear :color-buffer-bit :depth-buffer-bit)
+	   ;; reset view
+	   (gl:matrix-mode :modelview)
+	   (gl:load-identity)
+	   (ag:render			; begin rendering routine for Agar-Modules also
+	     (dolist (module (modules ui))
+	       (draw module)))
+	   (gl:flush)
+	   (sdl:update-display))))
