@@ -6,6 +6,7 @@
   "Initialisiert SDL und erstellt das Skatfenster."
   `(sdl:with-init ()
      (skat-window)
+     (init-gl)
      ,@body))
 
 (defmacro standard-with-events (&body event-handlers)
@@ -25,19 +26,8 @@
   (assert (find-class (cadr module-class))) ; quoted!
   (let ((module (gensym "module")))
     `(with-agar-enabled-skat-window
-       (let ((,module (make-instance ,module-class ,@initargs)))
-	 (declare (ignorable ,module))
-	 (standard-with-events
-	   (:mouse-button-down-event ()
-				     (handle-event ,module sdl-event))
-	   (:mouse-button-up-event ()
-				   (handle-event ,module sdl-event))
-	   (:mouse-motion-event ()
-				(handle-event ,module sdl-event))
-	   (:key-down-event ()
-			    (handle-event ,module sdl-event))
-	   (:key-up-event ()
-			  (handle-event ,module sdl-event))
-	   (:idle ()
-		  (agar:render
-		    (draw ,module))))))))
+       (sdl:show-cursor t)
+       (let ((,module (make-instance ,module-class ,@initargs))
+	     (ui (make-instance 'opengl-ui)))
+	 (push ,module (modules ui))
+	 (standard-main-loop ui)))))
