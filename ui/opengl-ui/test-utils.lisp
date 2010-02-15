@@ -26,7 +26,7 @@
   (assert (find-class (cadr module-class))) ; quoted!
   (let ((module (gensym "module")))
     `(with-agar-enabled-skat-window
-       (sdl:show-cursor t)
+       (sdl:show-cursor :enable)
        (let ((,module (make-instance ,module-class ,@initargs))
 	     (ui (make-instance 'opengl-ui)))
 	 (push ,module (modules ui))
