@@ -33,5 +33,6 @@
        (sdl:show-cursor :enable)
        (let ((,module (make-instance ,module-class ,@initargs))
 	     (ui (make-instance 'opengl-ui)))
+	 (defparameter *module* ,module)
 	 (push ,module (modules ui))
 	 (standard-main-loop ui)))))
