@@ -6,7 +6,7 @@
   "Initialisiert SDL und erstellt das Skatfenster."
   `(sdl:with-init ()
      (skat-window)
-     (init-gl)
+     (init-gl 640 480)
      ,@body))
 
 (defmacro standard-with-events (&body event-handlers)

@@ -26,12 +26,13 @@ STUB"
    (texture :accessor texture)
    (blue-tex :accessor blue-tex)))
 
-(defun init-gl ()
-  (gl:clear-color 0 1 0 0)
+(defun init-gl (w h)
+  (gl:clear-color 0 0 0 0)
+  (gl:shade-model :smooth)
   ;; Perspektive
   (gl:matrix-mode :projection)
   (gl:load-identity)
-  (glu:perspective 60.0 1.0 0.1 1024.0)
+  (glu:perspective 60.0 (/ w h) 0.1 1024.0)
   (gl:matrix-mode :modelview))
 
 (defmethod draw ((module test-module))
@@ -62,8 +63,6 @@ STUB"
     (gl:tex-coord 1 0) (gl:vertex 5 0)
     (gl:tex-coord 0 0) (gl:vertex -3 0))
   ;; zeigen
-  ;; (gl:flush)
-  ;; (sdl:update-display)
   (gl:disable :texture-2d))		; braucht man bestimmt auch nicht
 
 (progn
@@ -154,6 +153,10 @@ Lispbuilders Funktionen."
 (defun standard-main-loop (ui)
   (sdl:with-events (:poll sdl-event)
     (:quit-event () t)
+    (:video-resize-event (:w w :h h)
+			 (init-gl w h)
+			 (dolist (module (modules ui))
+			   (handle-event module sdl-event)))
     (:mouse-button-down-event ()
 			      (dolist (module (modules ui))
 				(handle-event module sdl-event)))
@@ -202,7 +205,7 @@ Lispbuilders Funktionen."
     (sdl:with-init ()
       (skat-window)
       (setf (sdl:frame-rate) 2)
-      (init-gl)
+      (init-gl 640 480)
       (sdl:show-cursor :enable)		; mit Cursor bitte
       (update-textures testm)
       (unwind-protect
