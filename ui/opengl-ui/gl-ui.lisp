@@ -175,6 +175,7 @@ Lispbuilders Funktionen."
     (:idle ()
 	   (handle-swank-requests)
 	   (gl:clear :color-buffer-bit :depth-buffer-bit)
+	   (gl:enable :depth-test)
 	   ;; reset view
 	   (gl:matrix-mode :modelview)
 	   (gl:load-identity)
