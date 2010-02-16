@@ -36,3 +36,28 @@ Gibt die Textur-ID zurück."
     ;; mit clippingn gibts eine Exception wegen Null-Pointer, 
     ;; da der hier nicht 
     (sdl-surface-to-gl-texture s :rgba)))
+
+;; (defmacro selection (x y &body body)
+;;   `(with-foreign-object (buffer :uint 256)
+;;      (let ((viewport (get-integer :viewport)))
+;;        (unwind-protect
+;;             (progn
+;;               (%gl:select-buffer 256 buffer)
+;;               (matrix-mode :projection)
+;;               (render-mode :select)
+;;               (with-pushed-matrix
+;;                 (load-identity)
+;;                 (glu:pick-matrix ,x (- (aref viewport 3) ,y) 1.0 1.0 viewport)
+;;                 (glu:perspective 60.0 (/ (aref viewport 2) (aref viewport 3)) 1 256)
+;;                 ,@body
+;;                 (matrix-mode :projection))
+;;               (let ((treffer (render-mode :render)))
+;;                 (loop with getroffen = (- (expt 2 32) 1)
+;;                    with z-wert = (- (expt 2 32) 1)
+;;                    for i from 0 to (1- treffer)
+;;                    do (if (< (mem-aref buffer :uint (+ (* i 4) 1)) z-wert)
+;;                           (setf getroffen (mem-aref buffer :uint (+ (* i 4) 3))
+;;                                 z-wert (mem-aref buffer :uint (+ (* i 4) 1))))
+;;                    finally (return (if (= getroffen (- (expt 2 32) 1))
+;;                                        -1
+;;                                        getroffen)))))))))
