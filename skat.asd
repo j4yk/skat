@@ -11,6 +11,7 @@
   :depends-on (:cl-xmpp-tls :lispbuilder-sdl :clunit :agar)
   :serial t
   :components (;(:file skat-packages)
+	       (:file hacks)
 	       (:file utils)
 	       (:file requests)
 	       (:file components)		; skat-kernel, skat-ui, skat-comm
