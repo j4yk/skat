@@ -26,3 +26,13 @@ Gibt die Textur-ID zurück."
   (declare (ftype (function (string) integer) texture-from-bmp))
   (sdl:with-surface (s (sdl:load-image (ensure-file-exists filename))) ; Bild auf ein SDL-Surface laden
     (sdl-surface-to-gl-texture s :bgra)))		       ; in OpenGL-Textur umwandeln
+
+(defun create-solid-filled-texture (r g b &optional (a 1))
+  (sdl:with-surface (s (sdl:create-surface 32 32))
+    (sdl:fill-surface-* (round (* 255 r))
+			(round (* 255 g))
+			(round (* 255 b))
+			:a (* 255 a) :clipping nil)
+    ;; mit clippingn gibts eine Exception wegen Null-Pointer, 
+    ;; da der hier nicht 
+    (sdl-surface-to-gl-texture s :rgba)))

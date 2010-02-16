@@ -77,11 +77,7 @@ STUB"
       (with-slots (texture blue-tex) module
 	(free-textures module)
 	;; eine per Hand erstellte Textur... blaue Fläche
-	(setf blue-tex (sdl:with-surface (s (sdl:create-surface 512 512))
-			 (sdl:fill-surface-* 0 0 255 :clipping nil)
-			 ;; mit clipping gibts eine Exception wegen Null-Pointer, 
-			 ;; da der hier nicht 
-			 (sdl-surface-to-gl-texture s :rgba)))
+	(setf blue-tex (create-solid-filled-texture 0 0 1))
 	;; und eine aus dem Bild
 	(setf texture (texture-from-bmp "diamonds7.bmp")))
       (break "~a ~a" (texture module) (blue-tex module)))))
