@@ -104,8 +104,10 @@
 (defmethod handle-event ((module cards-module) event)
   (case-event event
     (:mouse-button-down-event (:x x :y y)
+			      (declare (ignore x y))
 			      ;; selection --> welche Karte?
 			      )
     (:mouse-button-up-event (:x x :y y)
+			    (declare (ignore x y))
 			    ;; selection --> welche Karte?
 			    )))

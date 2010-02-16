@@ -26,6 +26,10 @@ STUB"
    (texture :accessor texture)
    (blue-tex :accessor blue-tex)))
 
+(defvar *modelview-root-matrix* nil "Saved modelview matrix")
+(defvar *texture-root-matrix* nil "Saved texture matrix")
+(defvar *projection-root-matrix* nil "Saved projection matrix")
+
 (defun init-gl (w h)
   (gl:clear-color 0 0 0 0)
   (gl:shade-model :smooth)
@@ -33,7 +37,12 @@ STUB"
   (gl:matrix-mode :projection)
   (gl:load-identity)
   (glu:perspective 60.0 (/ w h) 0.1 1024.0)
-  (gl:matrix-mode :modelview))
+  (gl:matrix-mode :modelview)
+  (gl:load-identity)
+  ;; save matrices
+  (setq *modelview-root-matrix* (gl:get-integer :modelview-matrix)
+	*texture-root-matrix* (gl:get-integer :texture-matrix)
+	*projection-root-matrix* (gl:get-integer :projection-matrix)))
 
 (defmethod draw ((module test-module))
   (update-textures module)			; wenn es neues in dieser Funktion gibt, führe das aus
@@ -123,25 +132,24 @@ Lispbuilders Funktionen."
 #+agar
 (defmacro non-agar-rendering (&body body)
   `(progn
+     ;; restore our own matrices
      (gl:matrix-mode :texture) (gl:push-matrix)
-     ;; fixme: load the last used matrix
-     (gl:load-identity)
+     (gl:load-matrix *texture-root-matrix*)
      (gl:matrix-mode :projection) (gl:push-matrix)
-     ;; fixme: load the last used matrix
-     (gl:load-identity)
+     (gl:load-matrix *projection-root-matrix*)
      (gl:matrix-mode :modelview) (gl:push-matrix)
-     ;; fixme: load the last used matrix
+     (gl:load-matrix *modelview-root-matrix*)
      (gl:load-identity)
-     
+     ;; restore our attributes
      (gl:push-attrib :all-attrib-bits)
-     ;; disable clipping planes
      (gl:disable :clip-plane0 :clip-plane1 :clip-plane2 :clip-plane3 :clip-plane4 :clip-plane5)
      (gl:enable :cull-face)
      
      ,@body
 
+     ;; restore Agar's attributes
      (gl:pop-attrib)
-
+     ;; restore Agar's matrices
      (gl:matrix-mode :modelview) (gl:pop-matrix)
      (gl:matrix-mode :texture) (gl:pop-matrix)
      (gl:matrix-mode :projection) (gl:pop-matrix)))
