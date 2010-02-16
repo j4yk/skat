@@ -8,7 +8,7 @@
   :version "0.1"
   :author "Jakob Reschke <jakob@resfarm.de>"
   :license "GNU General Public License"
-  :depends-on (:cl-xmpp-tls :lispbuilder-sdl :clunit :agar)
+  :depends-on (:cl-xmpp-tls :lispbuilder-sdl :cl-opengl :cl-glu #+clunit :clunit #+agar :agar)
   :serial t
   :components (;(:file skat-packages)
 	       (:file hacks)
@@ -36,7 +36,7 @@
 							   (:file module)
 							   (:file gfx-utils)
 							   (:file gl-ui)
-							   (:file login-and-register)
+							   #+agar (:file login-and-register)
 							   (:file test-utils)))))
 	       (:module kernel
 			:serial t
@@ -49,5 +49,5 @@
 				     (:file states :depends-on (kernel))
 				     (:file host)
 				     (:file player)
-				     (:file player-tests)))
+				     #+clunit (:file player-tests)))
 	       (:file debugutils)))

@@ -120,10 +120,12 @@ Lispbuilders Funktionen."
 						    (rest (rest event))))) ; Handler-Body
 			   events))))
 
+#+agar
 (defhandler ui:login-struct (opengl-ui struct-classname)
   (let ((module (make-instance 'login-and-register-module :login-struct-type struct-classname)))
     (push module (modules ui))))
 
+#+agar
 (defmacro non-agar-rendering (&body body)
   `(progn
      (gl:matrix-mode :texture) (gl:push-matrix)
@@ -149,6 +151,10 @@ Lispbuilders Funktionen."
      (gl:matrix-mode :texture) (gl:pop-matrix)
      (gl:matrix-mode :projection) (gl:pop-matrix)))
 
+#-agar
+(defmacro non-agar-rendering (&body body)
+  `(progn ,@body))
+
 (defun standard-main-loop (ui)
   (sdl:with-events (:poll sdl-event)
     (:quit-event () t)
@@ -173,6 +179,7 @@ Lispbuilders Funktionen."
 	   ;; reset view
 	   (gl:matrix-mode :modelview)
 	   (gl:load-identity)
+	   #+agar
 	   (if ag::*video-initialized*
 	       ;; with agar
 	       (ag:render
@@ -186,6 +193,9 @@ Lispbuilders Funktionen."
 	       ;; without agar
 	       (dolist (module (modules ui))
 		 (draw module)))
+	   #-agar
+	   (dolist (module (modules ui))
+	     (draw module))
 	   (gl:flush)
 	   (sdl:update-display))))
 

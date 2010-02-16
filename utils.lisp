@@ -1,3 +1,12 @@
+#-clunit
+(defpackage org.ancar.clunit
+  (:export deftest))
+
+#-clunit
+(defun org.ancar.clunit:deftest (&rest args)
+  (declare (ignore args))
+  (warn "no CLUNIT"))
+
 (defpackage skat-utils
   (:nicknames :utils)
   (:use :cl :org.ancar.clunit)

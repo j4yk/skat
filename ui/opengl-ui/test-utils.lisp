@@ -18,9 +18,13 @@
 (defmacro with-agar-enabled-skat-window (&body body)
   "Initialisiert SDL, das Skatfenster und Agar"
   `(with-skat-window
+     #+agar
      (agar:with-agar-core ("Skat")
        (agar:with-sdl-video ((sdl:fp sdl:*default-display*) :opengl) ; AG initialisieren und anbinden
-	 ,@body))))
+	 ,@body))
+     #-agar
+     (progn
+       ,@body)))
 
 (defmacro test-module (module-class &rest initargs)
   (assert (find-class (cadr module-class))) ; quoted!
