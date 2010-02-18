@@ -32,7 +32,11 @@
 
 (defstruct card texture selection-name)
 
-(defun draw-card-here (cards-module texture back-p)
+(defun own-cards-selname (nthcard)
+  (let ((own-cards-offset 1000))
+    (+ own-cards-offset nthcard)))
+
+(defun draw-card-here (cards-module texture back-p selection-name)
   (when (and back-p (slot-boundp cards-module 'back-texture))
     (gl:bind-texture :texture-2d (back-texture cards-module)))
   (when texture
@@ -41,19 +45,20 @@
   (gl:with-pushed-matrix
     (let ((f (/ 1 3)))
       (gl:scale f f f))
-    ;; Fläche
-    (gl:with-primitives :polygon
-      (gl:tex-coord 0 1) (gl:vertex (/ -6 2) (/ -9 2)) ; unten links
-      (gl:tex-coord 1 1) (gl:vertex (/  6 2) (/ -9 2)) ; unten rechts
-      (gl:tex-coord 1 0) (gl:vertex (/  6 2) (/  9 2)) ; oben rechts
-      (gl:tex-coord 0 0) (gl:vertex (/ -6 2) (/  9 2))) ; oben links
-    ;; Rahmen
-    (gl:color 0 0 0)
-    (gl:with-primitives :line-loop
-      (gl:vertex (/ -6 2) (/ -9 2)) ; unten links
-      (gl:vertex (/  6 2) (/ -9 2)) ; unten rechts
-      (gl:vertex (/  6 2) (/  9 2)) ; oben rechts
-      (gl:vertex (/ -6 2) (/  9 2))))) ; oben links
+    (with-pushed-selname selection-name
+      ;; Fläche
+      (gl:with-primitives :polygon
+	(gl:tex-coord 0 1) (gl:vertex (/ -6 2) (/ -9 2)) ; unten links
+	(gl:tex-coord 1 1) (gl:vertex (/  6 2) (/ -9 2)) ; unten rechts
+	(gl:tex-coord 1 0) (gl:vertex (/  6 2) (/  9 2)) ; oben rechts
+	(gl:tex-coord 0 0) (gl:vertex (/ -6 2) (/  9 2))) ; oben links
+      ;; Rahmen
+      (gl:color 0 0 0)
+      (gl:with-primitives :line-loop
+	(gl:vertex (/ -6 2) (/ -9 2)) ; unten links
+	(gl:vertex (/  6 2) (/ -9 2)) ; unten rechts
+	(gl:vertex (/  6 2) (/  9 2)) ; oben rechts
+	(gl:vertex (/ -6 2) (/  9 2)))))) ; oben links
 
 (defun draw-hand (module cards)
   "Zeichnet eine aufgefaltete Hand von Karten"
@@ -70,29 +75,30 @@
 ;	      (gl:rotate (* (+ (- (/ ncards 2)) n) dyrot) 0 1 0)
 	      (gl:rotate (* (+ (- (/ ncards 2)) n) dzrot) 0 0 1)
 	      (gl:translate 0 5 (* n backstep))
-	      (draw-card-here module (getf (textures module)
+	      (draw-card-here module
+			      (getf (textures module)
 					   (card-texture card))
-			      nil))))))
+			      nil
+			      (own-card-selname n)))))))
 
 (defmethod draw ((module cards-module))
   "Zeichnet die Karten"
-  (non-agar-rendering
-    (gl:matrix-mode :modelview)
-    (gl:enable :texture-2d)
-    (gl:load-identity)
-    (gl:translate 0 0 -10)
-    (gl:color 1 1 1)
-    (gl:with-pushed-matrix
-;     (gl:rotate -20 1 0 0)		; 45° nach vorn geneigt
-      (gl:translate 0 -2 0)
-      (draw-hand module (list (make-card :texture :diamonds7)
-			      (make-card :texture :diamonds8)
-			      (make-card :texture :diamonds9)
-			      (make-card :texture :diamondsQ)
-			      (make-card :texture :diamondsK)
-			      (make-card :texture :diamonds10)
-			      (make-card :texture :diamondsA)
-			      (make-card :texture :diamondsJ))))))
+  (gl:matrix-mode :modelview)
+  (gl:enable :texture-2d)
+  (gl:load-identity)
+  (gl:translate 0 0 -10)
+  (gl:color 1 1 1)
+  (gl:with-pushed-matrix
+					;     (gl:rotate -20 1 0 0)		; 45° nach vorn geneigt
+    (gl:translate 0 -2 0)
+    (draw-hand module (list (make-card :texture :diamonds7)
+			    (make-card :texture :diamonds8)
+			    (make-card :texture :diamonds9)
+			    (make-card :texture :diamondsQ)
+			    (make-card :texture :diamondsK)
+			    (make-card :texture :diamonds10)
+			    (make-card :texture :diamondsA)
+			    (make-card :texture :diamondsJ)))))
 
 (defmethod handle-event ((module cards-module) event)
   (case-event event

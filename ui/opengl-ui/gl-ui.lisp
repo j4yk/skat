@@ -30,13 +30,17 @@ STUB"
 (defvar *texture-root-matrix* nil "Saved texture matrix")
 (defvar *projection-root-matrix* nil "Saved projection matrix")
 
+(defun set-perspective (w h)
+  (with-matrix-mode :projection
+    (glu:perspective 60.0 (/ w h) 0.1 1024.0)))
+
 (defun init-gl (w h)
   (gl:clear-color 0 0 0 0)
   (gl:shade-model :smooth)
   ;; Perspektive
-  (gl:matrix-mode :projection)
-  (gl:load-identity)
-  (glu:perspective 60.0 (/ w h) 0.1 1024.0)
+  (with-matrix-mode :projection
+    (gl:load-identity)
+    (set-perspective w h))
   (gl:matrix-mode :modelview)
   (gl:load-identity)
   ;; save matrices
@@ -47,32 +51,32 @@ STUB"
 (defmethod draw ((module test-module))
   (update-textures module)			; wenn es neues in dieser Funktion gibt, führe das aus
   (gl:enable :texture-2d)
-;;  (gl:clear :color-buffer-bit :depth-buffer-bit)
-  (gl:load-identity)
-  (gl:translate 0 0 -10)
-  (gl:bind-texture :texture-2d (blue-tex module))
-  (gl:matrix-mode :texture)
-  (gl:load-identity)			; wahrscheinlich braucht man das gar nicht immer
-  (gl:matrix-mode :modelview)
-  ;; Blaues Dreieck
-  (gl:color 1 1 1)
-  (gl:with-primitive :triangles
-    (gl:tex-coord 0 1) (gl:vertex 0 2 -1)
-    (gl:tex-coord 0 0) (gl:vertex 0 0 -1)
-    (gl:tex-coord 1 0) (gl:vertex 1 0 -2))
-  (gl:bind-texture :texture-2d (texture module))
-  (gl:matrix-mode :texture)
-  (gl:load-identity)			; siehe oben
-  (gl:matrix-mode :modelview)
-  ;; verzerrte Testkarte
-  (gl:color 1 1 1)
-  (gl:with-primitive :quads
-    (gl:tex-coord 0 1) (gl:vertex -3 -3)
-    (gl:tex-coord 1 1) (gl:vertex 5 -3)
-    (gl:tex-coord 1 0) (gl:vertex 5 0)
-    (gl:tex-coord 0 0) (gl:vertex -3 0))
-  ;; zeigen
-  (gl:disable :texture-2d))		; braucht man bestimmt auch nicht
+  (with-matrix-mode :modelview
+    (gl:load-identity)
+    (gl:translate 0 0 -10)
+    (gl:bind-texture :texture-2d (blue-tex module))
+    (with-matrix-mode :texture
+      (gl:load-identity))			; wahrscheinlich braucht man das gar nicht immer
+;    (gl:matrix-mode :modelview)
+    ;; Blaues Dreieck
+    (gl:color 1 1 1)
+    (gl:with-primitive :triangles
+      (gl:tex-coord 0 1) (gl:vertex 0 2 -1)
+      (gl:tex-coord 0 0) (gl:vertex 0 0 -1)
+      (gl:tex-coord 1 0) (gl:vertex 1 0 -2))
+    (gl:bind-texture :texture-2d (texture module))
+    (with-matrix-mode :texture
+      (gl:load-identity))			; siehe oben
+;    (gl:matrix-mode :modelview)
+    ;; verzerrte Testkarte
+    (gl:color 1 1 1)
+    (gl:with-primitive :quads
+      (gl:tex-coord 0 1) (gl:vertex -3 -3)
+      (gl:tex-coord 1 1) (gl:vertex 5 -3)
+      (gl:tex-coord 1 0) (gl:vertex 5 0)
+      (gl:tex-coord 0 0) (gl:vertex -3 0))
+    ;; zeigen
+    (gl:disable :texture-2d)))		; braucht man bestimmt auch nicht
 
 (progn
   (eval-when (:compile-toplevel)
@@ -106,7 +110,7 @@ STUB"
   (restartable			; SLIME-Sachen ausführen
    (let ((connection
 	  (or swank::*emacs-connection* (swank::default-connection))))
-     (when (and connection (not (eql swank:*communication-style* :spawn)))
+     (when (and connection) ;(not (eql swank:*communication-style* :spawn)))
        (swank::handle-requests connection t)))))
 
 (defmacro case-event (sdl-event &body events)
@@ -129,34 +133,49 @@ Lispbuilders Funktionen."
   (let ((module (make-instance 'login-and-register-module :login-struct-type struct-classname)))
     (push module (modules ui))))
 
+(defmacro with-root-matrices ((&key (modelview-p t) (projection-p t) (texture-p t)) &body body)
+  `(progn
+     ,(when modelview-p
+	    `(with-matrix-mode :modelview (gl:push-matrix)
+		    (gl:load-matrix *modelview-root-matrix*)))
+     ,(when projection-p
+	    `(with-matrix-mode :projection (gl:push-matrix)
+		    (gl:load-matrix *projection-root-matrix*)))
+     ,(when texture-p
+	    `(with-matrix-mode :texture (gl:push-matrix)
+		    (gl:load-matrix *texture-root-matrix*)))
+     ,@body
+     ,(when modelview-p
+	    `(progn (gl:matrix-mode :modelview) (gl:pop-matrix)))
+     ,(when projection-p
+	    `(progn (gl:matrix-mode :projection) (gl:pop-matrix)))
+     ,(when texture-p
+	    `(progn (gl:matrix-mode :texture) (gl:pop-matrix)))))
+     
+
 #+agar
 (defmacro non-agar-rendering (&body body)
   `(progn
      ;; restore our own matrices
-     (gl:matrix-mode :texture) (gl:push-matrix)
-     (gl:load-matrix *texture-root-matrix*)
-     (gl:matrix-mode :projection) (gl:push-matrix)
-     (gl:load-matrix *projection-root-matrix*)
-     (gl:matrix-mode :modelview) (gl:push-matrix)
-     (gl:load-matrix *modelview-root-matrix*)
-     (gl:load-identity)
-     ;; restore our attributes
-     (gl:push-attrib :all-attrib-bits)
-     (gl:disable :clip-plane0 :clip-plane1 :clip-plane2 :clip-plane3 :clip-plane4 :clip-plane5)
-     (gl:enable :cull-face)
-     
-     ,@body
+     (with-root-matrices ()
+       (gl:load-identity)
+       ;; restore our attributes
+       (gl:push-attrib :all-attrib-bits)
+       (gl:disable :clip-plane0 :clip-plane1 :clip-plane2 :clip-plane3 :clip-plane4 :clip-plane5)
+       (gl:enable :cull-face)
+       
+       ,@body
 
-     ;; restore Agar's attributes
-     (gl:pop-attrib)
-     ;; restore Agar's matrices
-     (gl:matrix-mode :modelview) (gl:pop-matrix)
-     (gl:matrix-mode :texture) (gl:pop-matrix)
-     (gl:matrix-mode :projection) (gl:pop-matrix)))
+       ;; restore Agar's attributes
+       (gl:pop-attrib))))
 
 #-agar
 (defmacro non-agar-rendering (&body body)
   `(progn ,@body))
+
+(defmacro drawing (&body body)
+  `(with-root-matrices ()
+     ,@body))
 
 (defun standard-main-loop (ui)
   (sdl:with-events (:poll sdl-event)
@@ -185,8 +204,6 @@ Lispbuilders Funktionen."
 	   (gl:clear :color-buffer-bit :depth-buffer-bit)
 	   (gl:enable :depth-test)
 	   ;; reset view
-	   (gl:matrix-mode :modelview)
-	   (gl:load-identity)
 	   #+agar
 	   (if ag::*video-initialized*
 	       ;; with agar

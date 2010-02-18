@@ -17,6 +17,7 @@
   (gl:with-pushed-matrix
     (gl:load-identity)
     (gl:translate 0 0 -10)
+;    (break "modelview in draw: ~s" (gl:get-integer :modelview-matrix))
     (with-selname 1
       (gl:color 1 0 0)
       (gl:with-primitives :triangles
@@ -46,4 +47,7 @@
 (defmethod handle-event ((module selection-test) event)
   (case-event event
     (:mouse-button-down-event (:x x :y y)
-			      (print (selection x y (buffer module) (buffer-size module) #'draw module)))))
+			      (multiple-value-bind (result n)
+				  (selection x y (buffer module) (buffer-size module) #'draw module)
+				(print result)
+				(print n)))))
