@@ -24,15 +24,8 @@
 	   (add-texture module name texture))
        (list :diamonds7 :diamonds8 :diamonds9 :diamondsQ
 	     :diamondsK :diamonds10 :diamondsA :diamondsJ)
-       (list 
-	(create-solid-filled-texture 1 0.8 0.8)
-	(create-solid-filled-texture 1 0.7 0.7)
-	(create-solid-filled-texture 1 0.6 0.6)
-	(create-solid-filled-texture 1 0.5 0.5)
-	(create-solid-filled-texture 1 0.4 0.4)
-	(create-solid-filled-texture 1 0.3 0.3)
-	(create-solid-filled-texture 1 0.2 0.2)
-	(create-solid-filled-texture 1 0.1 0.1))))
+       (loop for val from 0.8 downto 0.1 by 0.1
+	  collect (create-solid-filled-texture 1 val val))))
 
 (defmethod initialize-instance :after ((module cards-module) &key)
   (load-textures module))
