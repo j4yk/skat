@@ -53,8 +53,35 @@
 	  (gl:load-identity)
 	  (glu:pick-matrix x (- (aref viewport 3) y) 1.0 1.0 viewport)
 	  (set-perspective (aref viewport 2) (aref viewport 3))
-	  ;; ich konstatiere: die Matritzen sind korrekt
 	  (with-matrix-mode :modelview
 	    (apply draw-function fn-args)))))
     (end-selection :render buffer)))
+
+(let ((last-mm nil)
+      (last-pm nil))
+  (defun %dry-selection (x y buffer buffer-size draw-function &rest fn-args)
+    (declare (ignore x y))
+    (let ((viewport (gl:get-integer :viewport)))
+      (%gl:select-buffer buffer-size buffer)
+					;    (gl:render-mode :select)
+      (%gl:init-names)
+      (non-agar-rendering		; get rid of the Agar matrices
+	(with-matrix-mode :projection
+	  (gl:with-pushed-matrix		; push the projection matrix
+	    ;; get an equivalent projection matrix which only shows the Pixel about (x, y)
+	    (gl:load-identity)
+					;	  (glu:pick-matrix x (- (aref viewport 3) y) 1.0 1.0 viewport)
+	    (set-perspective (aref viewport 2) (aref viewport 3))
+	    ;; ich konstatiere: die Matritzen sind hier noch korrekt
+	    (let ((mm (gl:get-integer :modelview-matrix))
+		  (pm (gl:get-integer :projection-matrix)))
+	      (unless (equalp last-mm mm)
+		(setf last-mm mm)
+		(format t "~%dry selection modelview: ~s" mm))
+	      (unless (equalp last-pm pm)
+		(setf last-pm pm)
+		(format t "~%dry selection projection: ~s" pm)))
+	    (with-matrix-mode :modelview
+	      (apply draw-function fn-args)))))
+      (end-selection :render buffer))))
 
