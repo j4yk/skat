@@ -17,28 +17,6 @@ STUB"
   (declare (ignore ui))
   (error "Not implemented yet!"))
 
-(defvar *modelview-root-matrix* nil "Saved modelview matrix")
-(defvar *texture-root-matrix* nil "Saved texture matrix")
-(defvar *projection-root-matrix* nil "Saved projection matrix")
-
-(defun set-perspective (w h)
-  (with-matrix-mode :projection
-    (glu:perspective 60.0 (/ w h) 0.1 1024.0)))
-
-(defun init-gl (w h)
-  (gl:clear-color 0 0 0 0)
-  (gl:shade-model :smooth)
-  ;; Perspektive
-  (with-matrix-mode :projection
-    (gl:load-identity)
-    (set-perspective w h))
-  (gl:matrix-mode :modelview)
-  (gl:load-identity)
-  ;; save matrices
-  (setq *modelview-root-matrix* (gl:get-integer :modelview-matrix)
-	*texture-root-matrix* (gl:get-integer :texture-matrix)
-	*projection-root-matrix* (gl:get-integer :projection-matrix)))
-
 (defun skat-window ()
   "Erstellt das Skat-SDL-Fenster inklusive OpenGL-Kontext."
   (sdl:window 640 480 :title-caption "Skat"
@@ -75,6 +53,28 @@ Lispbuilders Funktionen."
   (let ((module (make-instance 'login-and-register-module :login-struct-type struct-classname)))
     (push module (modules ui))))
 
+(defvar *modelview-root-matrix* nil "Saved modelview matrix")
+(defvar *texture-root-matrix* nil "Saved texture matrix")
+(defvar *projection-root-matrix* nil "Saved projection matrix")
+
+(defun set-perspective (w h)
+  (with-matrix-mode :projection
+    (glu:perspective 60.0 (/ w h) 0.1 1024.0)))
+
+(defun init-gl (w h)
+  (gl:clear-color 0 0 0 0)
+  (gl:shade-model :smooth)
+  ;; Perspektive
+  (with-matrix-mode :projection
+    (gl:load-identity)
+    (set-perspective w h))
+  (gl:matrix-mode :modelview)
+  (gl:load-identity)
+  ;; save matrices
+  (setq *modelview-root-matrix* (gl:get-integer :modelview-matrix)
+	*texture-root-matrix* (gl:get-integer :texture-matrix)
+	*projection-root-matrix* (gl:get-integer :projection-matrix)))
+
 (defmacro with-root-matrices ((&key (modelview-p t) (projection-p t) (texture-p t)) &body body)
   `(progn
      ,(when modelview-p
@@ -100,10 +100,11 @@ Lispbuilders Funktionen."
   `(progn
      ;; restore our own matrices
      (with-root-matrices ()
-       (gl:load-identity)
+       (with-matrix-mode :modelview
+	 (gl:load-identity))		; sollte man das wirklich hier lassen?
        ;; restore our attributes
        (gl:push-attrib :all-attrib-bits)
-       (gl:disable :clip-plane0 :clip-plane1 :clip-plane2 :clip-plane3 :clip-plane4 :clip-plane5)
+       (gl:disable :clip-plane0 :clip-plane1 :clip-plane2 :clip-plane3) ; agar uses up to clip-plane3
        (gl:enable :cull-face)
        
        ,@body
