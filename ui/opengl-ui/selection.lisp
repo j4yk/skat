@@ -34,6 +34,7 @@
 
 (defun end-selection (new-mode buffer-ptr)
   "Switches glRenderMode to new-mode and return the parsed selection buffer"
+  ;; FIXME: momentan kommt immer nil zurück, n-hits immer = 0
   (let ((n-hits (gl:render-mode new-mode)))
     (if (< n-hits 0)
 	(warn "Selection buffer overflow!")
@@ -43,18 +44,17 @@
 (defun selection (x y buffer buffer-size draw-function &rest fn-args)
   (let ((viewport (gl:get-integer :viewport)))
     (%gl:select-buffer buffer-size buffer)
-;    (gl:render-mode :select)
+    (gl:render-mode :select)
     (%gl:init-names)
     (non-agar-rendering		; get rid of the Agar matrices
       (with-matrix-mode :projection
 	(gl:with-pushed-matrix		; push the projection matrix
 	  ;; get an equivalent projection matrix which only shows the Pixel about (x, y)
 	  (gl:load-identity)
-;	  (glu:pick-matrix x (- (aref viewport 3) y) 5.0 5.0 viewport)
+	  (glu:pick-matrix x (- (aref viewport 3) y) 1.0 1.0 viewport)
 	  (set-perspective (aref viewport 2) (aref viewport 3))
-;	  (break)
+	  ;; ich konstatiere: die Matritzen sind korrekt
 	  (with-matrix-mode :modelview
-	    ;; FIXME: momentan wird gar nichts selektiert
 	    (apply draw-function fn-args)))))
     (end-selection :render buffer)))
 
