@@ -36,6 +36,7 @@
 							   (:file module)
 							   (:file gfx-utils)
 							   (:file gl-ui)
+							   (:file test-module)
 							   #+agar (:file login-and-register)
 							   (:file test-utils)))))
 	       (:module kernel
