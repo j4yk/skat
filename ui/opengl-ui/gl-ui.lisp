@@ -37,7 +37,7 @@ STUB"
   "Führt verschiedene Blöcke aus, abhängig vom Typ des Events.
 Syntax entspricht der von sdl:with-events und bedient sich bei
 Lispbuilders Funktionen."
-  ;; Basiert auf sdl:with-events Code
+  ;; Basiert auf sdl:with-events Code (SVN r1398)
   `(cond
      ,@(remove nil (mapcar #'(lambda (event)
 			       (when (gethash (first event) sdl::*events*)
@@ -106,8 +106,17 @@ Lispbuilders Funktionen."
        (gl:push-attrib :all-attrib-bits)
        (gl:disable :clip-plane0 :clip-plane1 :clip-plane2 :clip-plane3) ; agar uses up to clip-plane3
        (gl:enable :cull-face)
-       
-       ,@body
+
+       ;; this saves from Agar's distortion, but don't ask me why
+       (with-matrix-mode :projection
+	 (gl:with-pushed-matrix
+	   (gl:load-identity)
+	   (let ((viewport (gl:get-integer :viewport)))
+	     (set-perspective (aref viewport 2) (aref viewport 3)))
+
+	   ,@body
+
+	   ))
 
        ;; restore Agar's attributes
        (gl:pop-attrib))))

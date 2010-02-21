@@ -71,17 +71,7 @@
 	    (unless (equalp pm last-pm)
 	      (setf last-pm pm)
 	      (format t "~%draw projection: ~s" pm)))
-	  ;; this saves from Agar's distortion, but don't ask me why
-	  (with-matrix-mode :projection
-	    (gl:with-pushed-matrix
-	      (gl:load-identity)
-	      (set-perspective 640 480)
-	      ;; because actually the following format is never called,
-	      ;; i. e. the projection matrix is the same as before
-	      (let ((pm (gl:get-integer :projection-matrix)))
-	      	(unless (equalp last-pm pm)
-	      	  (format t "~%DRAW PROJECTION: ~s" pm)))
-	      (draw-this)))))))
+	  (draw-this)))))
        
 (defmethod handle-event ((module selection-test) event)
   ;; if case-event doesn't work with Lispbuilder, update Lispbuilder at least to svn-r1398
