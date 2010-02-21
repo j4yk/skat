@@ -126,48 +126,38 @@ Lispbuilders Funktionen."
   `(progn ,@body))
 
 (defun standard-main-loop (ui)
-  (sdl:with-events (:poll sdl-event)
-    (:quit-event () t)
-    (:video-resize-event (:w w :h h)
-			 (init-gl w h)
-			 (dolist (module (modules ui))
-			   (handle-event module sdl-event)))
-    (:mouse-button-down-event ()
-			      (dolist (module (modules ui))
-				(handle-event module sdl-event)))
-    (:mouse-button-up-event ()
-			    (dolist (module (modules ui))
-			      (handle-event module sdl-event)))
-    (:mouse-motion-event ()
-			 (dolist (module (modules ui))
-			   (handle-event module sdl-event)))
-    (:key-down-event ()
-		     (dolist (module (modules ui))
-		       (handle-event module sdl-event)))
-    (:key-up-event ()
-		   (dolist (module (modules ui))
-		     (handle-event module sdl-event)))
-    (:idle ()
-	   (handle-swank-requests)
-	   (gl:clear :color-buffer-bit :depth-buffer-bit)
-	   (gl:enable :depth-test)
-	   ;; reset view
-	   #+agar
-	   (if ag::*video-initialized*
-	       ;; with agar
-	       (ag:render
-		 (non-agar-rendering
-		   (dolist (module (modules ui))
-		     (draw module)))
-		 (let ((win (ag::tailqueue-first (ag::windows ag::*view*))))
-		   ;; TODO: render the other windows as well...
-		   (unless (cffi:null-pointer-p win)
-		     (ag:window-draw win))))
-	       ;; without agar
-	       (dolist (module (modules ui))
-		 (draw module)))
-	   #-agar
-	   (dolist (module (modules ui))
-	     (draw module))
-	   (gl:flush)
-	   (sdl:update-display))))
+  (macrolet ((process-event ()
+	       `(dolist (module (modules ui))
+		  (handle-event module sdl-event))))
+    (sdl:with-events (:poll sdl-event)
+      (:quit-event () t)
+      (:active-event () (process-event))
+      (:key-down-event () (process-event))
+      (:key-up-event () (process-event))
+      (:mouse-motion-event () (process-event))
+      (:mouse-button-down-event () (process-event))
+      (:mouse-button-up-event () (process-event))
+      (:video-resize-event (:w w :h h)
+			   (init-gl w h)
+			   (process-event))
+      (:video-expose-event () (process-event))
+      (:sys-wm-event () (process-event))
+      (:user-event () (process-event))
+      (:idle ()
+	     (handle-swank-requests)
+	     (gl:clear :color-buffer-bit :depth-buffer-bit)
+	     ;; reset view
+	     #+agar
+	     (if ag::*video-initialized*
+		 (ag:render
+		   (non-agar-rendering
+		     (dolist (module (remove agar-module (modules ui)))
+		       (draw module)))
+		   (draw agar-module))
+		 (dolist (module (remove agar-module (modules ui)))
+		   (draw module)))
+	     #-agar
+	     (dolist (module (modules ui))
+	       (draw module))
+	     (gl:flush)
+	     (sdl:update-display)))))
