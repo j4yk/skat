@@ -1,6 +1,6 @@
 (in-package skat-opengl-ui)
 
-(defclass cards-module (module)
+(defclass cards (module)
   ((own-cards :accessor cards :type list :initform nil)
    (left-cards :accessor cards :type list :initform nil)
    (right-cards :accessor cards :type list :initform nil)
@@ -17,7 +17,7 @@
    #'(lambda ()
        (gl:delete-textures (list texture)))))
 
-(defmethod load-textures ((module cards-module))
+(defmethod load-textures ((module cards))
   "Lädt die Texturen"
   (map nil
        #'(lambda (name texture)
@@ -27,7 +27,7 @@
        (loop for val from 0.8 downto 0.1 by 0.1
 	  collect (create-solid-filled-texture 1 val val))))
 
-(defmethod initialize-instance :after ((module cards-module) &key)
+(defmethod initialize-instance :after ((module cards) &key)
   (load-textures module))
 
 (defstruct card texture selection-name)
@@ -36,9 +36,9 @@
   (let ((own-cards-offset 1000))
     (+ own-cards-offset nthcard)))
 
-(defun draw-card-here (cards-module texture back-p selection-name)
-  (when (and back-p (slot-boundp cards-module 'back-texture))
-    (gl:bind-texture :texture-2d (back-texture cards-module)))
+(defun draw-card-here (cards texture back-p selection-name)
+  (when (and back-p (slot-boundp cards 'back-texture))
+    (gl:bind-texture :texture-2d (back-texture cards)))
   (when texture
     (gl:bind-texture :texture-2d texture))
   (gl:color 1 1 1)			; Textur unverändert
@@ -81,7 +81,7 @@
 			      nil
 			      (own-card-selname n)))))))
 
-(defmethod draw ((module cards-module))
+(defmethod draw ((module cards))
   "Zeichnet die Karten"
   (gl:matrix-mode :modelview)
   (gl:enable :texture-2d)
@@ -100,7 +100,7 @@
 			    (make-card :texture :diamondsA)
 			    (make-card :texture :diamondsJ)))))
 
-(defmethod handle-event ((module cards-module) event)
+(defmethod handle-event ((module cards) event)
   (case-event event
     (:mouse-button-down-event (:x x :y y)
 			      (declare (ignore x y))
