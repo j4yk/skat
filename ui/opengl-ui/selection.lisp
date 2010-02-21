@@ -25,11 +25,12 @@
 	       (make-hit-record :n-names-on-stack n-names
 				:min-z (cffi:mem-aref ptr :uint 1)
 				:max-z (cffi:mem-aref ptr :uint 2)
-				:names-on-stack (let ((names (cffi:incf-pointer ; advance to names array
-							      ptr
-							      (* 3 (cffi:foreign-type-size :uint)))))
+				:names-on-stack (progn
+						  ;; advance to names array
+						  (cffi:incf-pointer ptr (* 3 (cffi:foreign-type-size :uint)))
+						  ;; and collect the names
 						  (loop for n from 1 to n-names
-						     collect (cffi:mem-aref names :uint)
+						     collect (cffi:mem-aref ptr :uint)
 						     do (cffi:incf-pointer ptr (cffi:foreign-type-size :uint)))))))) ; advance to next item
 
 (defun end-selection (new-mode buffer-ptr)
@@ -63,14 +64,14 @@
     (declare (ignore x y))
     (let ((viewport (gl:get-integer :viewport)))
       (%gl:select-buffer buffer-size buffer)
-					;    (gl:render-mode :select)
+      ;; gl:render-mode left out
       (%gl:init-names)
       (non-agar-rendering		; get rid of the Agar matrices
 	(with-matrix-mode :projection
 	  (gl:with-pushed-matrix		; push the projection matrix
 	    ;; get an equivalent projection matrix which only shows the Pixel about (x, y)
 	    (gl:load-identity)
-					;	  (glu:pick-matrix x (- (aref viewport 3) y) 1.0 1.0 viewport)
+	    ;; glu:pick-matrix left out
 	    (set-perspective (aref viewport 2) (aref viewport 3))
 	    ;; ich konstatiere: die Matritzen sind hier noch korrekt
 	    (let ((mm (gl:get-integer :modelview-matrix))
