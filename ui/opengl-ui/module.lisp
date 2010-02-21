@@ -15,5 +15,7 @@
   (:documentation "Lässt ein Modul das SDL_Event verarbeiten"))
 
 (defmethod handle-event ((module module) event)
-  ;; this is a no-op
-  )
+  "No-op as fallback")
+
+(defmethod draw ((module module))
+  "No-op as fallback")
