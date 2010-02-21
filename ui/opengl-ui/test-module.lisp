@@ -48,7 +48,7 @@
 	;; eine per Hand erstellte Textur... blaue Fläche
 	(setf blue-tex (create-solid-filled-texture 0 0 1))
 	;; und eine aus dem Bild
-	(setf texture (texture-from-bmp "diamonds7.bmp")))
+	(setf texture (texture-from-bmp (merge-pathnames "diamonds7.bmp"))))
       (break "~a ~a" (texture module) (blue-tex module)))))
 
 (defmethod free-textures ((mod test-module))
