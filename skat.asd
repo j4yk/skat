@@ -8,7 +8,12 @@
   :version "0.1"
   :author "Jakob Reschke <jakob@resfarm.de>"
   :license "GNU General Public License"
-  :depends-on (:cl-xmpp-tls :lispbuilder-sdl :cl-opengl :cl-glu #+clunit :clunit #+agar :agar)
+  :depends-on (:cl-xmpp-tls
+	       #+clunit :clunit
+	       ;; OpenGL-ui-specific dependencies
+	       :cffi :trivial-garbage
+	       :lispbuilder-sdl :cl-opengl :cl-glu
+	       #+agar :agar)
   :serial t
   :components (;(:file skat-packages)
 	       (:file hacks)
@@ -31,14 +36,16 @@
 				     (:file stub-ui)
 				     (:file host-ui)
 				     (:module opengl-ui
-					      :serial t
 					      :components ((:file package)
-							   (:file module)
-							   (:file gfx-utils)
-							   (:file gl-ui)
-							   (:file test-module)
-							   #+agar (:file login-and-register)
-							   (:file test-utils)))))
+							   (:file module :depends-on (package))
+							   (:file gfx-utils :depends-on (package))
+							   (:file gl-ui :depends-on (module gfx-utils))
+							   (:file test-module :depends-on (gl-ui))
+							   #+agar (:file login-and-register :depends-on (gl-ui))
+							   (:file test-utils :depends-on (gl-ui))
+							   (:file selection :depends-on (package))
+							   (:file selection-test :depends-on (selection module gl-ui))
+							   (:file cards :depends-on (selection gl-ui))))))
 	       (:module kernel
 			:serial t
 			:components ((:file cards)
