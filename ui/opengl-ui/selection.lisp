@@ -9,7 +9,8 @@
 (cffi:define-foreign-type hit-records-type ()
   ((n-hits :accessor n-hits :initarg :n-hits))
   (:simple-parser hit-records)
-  (:actual-type :pointer))
+  (:actual-type :pointer)
+  (:documentation "A type to designate the hit record buffer of OpenGL Selection (5.2)"))
 
 (defmethod print-object ((hit-records-type hit-records-type) stream)
   (print-unreadable-object (hit-records-type stream :type t)
@@ -19,6 +20,7 @@
 (defstruct hit-record n-names-on-stack min-z max-z names-on-stack)
 
 (defmethod cffi:translate-from-foreign (buffer-ptr (type hit-records-type))
+  "Parses the hit record buffer into a list of hit-record structures"
   (loop with ptr = buffer-ptr
      for n from 1 to (n-hits type)
      collect (let ((n-names (cffi:mem-aref ptr :uint))) ; during the last iteration the ptr was moved beyond the names array
@@ -34,8 +36,7 @@
 						     do (cffi:incf-pointer ptr (cffi:foreign-type-size :uint)))))))) ; advance to next item
 
 (defun end-selection (new-mode buffer-ptr)
-  "Switches glRenderMode to new-mode and return the parsed selection buffer"
-  ;; FIXME: momentan kommt immer nil zurück, n-hits immer = 0
+  "Switches glRenderMode to new-mode and returns the parsed selection buffer"
   (let ((n-hits (gl:render-mode new-mode)))
     (if (< n-hits 0)
 	(warn "Selection buffer overflow!")
@@ -43,6 +44,9 @@
 		n-hits))))
 
 (defun selection (x y buffer buffer-size draw-function &rest fn-args)
+  "Performs an OpenGL selection about 1px at Point (x, y) and uses
+buffer with size buffer-size as the hit record buffer. draw-function should
+perform the rendering from which objects can be selected when called with fn-args"
   (let ((viewport (gl:get-integer :viewport)))
     (%gl:select-buffer buffer-size buffer)
     (gl:render-mode :select)
@@ -57,6 +61,8 @@
 	  (with-matrix-mode :modelview
 	    (apply draw-function fn-args)))))
     (end-selection :render buffer)))
+
+;; testing stuff
 
 (let ((last-mm nil)
       (last-pm nil))
