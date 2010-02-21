@@ -1,6 +1,6 @@
 (in-package skat-opengl-ui)
 
-(defclass login-and-register-module (module)
+(defclass login-and-register (module)
   ((state :accessor state :initform 'enter-login)
    (login-struct-type :accessor login-struct-type :initarg :login-struct-type)
    (login-window :accessor login-window)
@@ -24,21 +24,15 @@
 
 (defmethod initialize-instance :after ((login-window login-window) &key)
   "Creates the Agar Window"
-  (let ((win (agar:window-new :modal :noclose)))
+  (let ((win (agar:window-new :modal)))
     (ag:window-set-caption win "Beim XMPP-Server einlogen")
     (ag:with-widgets (win
-		      (ag:vbox box1 ()
-			       (ag:hbox username-box ()
-					(ag:textbox username-textbox :label-text "Benutzername:" :flags '(:abandon-focus)))
-			       (ag:hbox server-box ()
-					(ag:textbox server-textbox :label-text "Serveradresse:" :flags '(:abandon-focus)))
-			       (ag:hbox domain-box ()
-					(ag:textbox  domain-textbox :label-text "Serverdomäne (optional):" :flags '(:abandon-focus)))
-			       (ag:hbox password-box ()
-					(ag:textbox password-textbox :label-text "Passwort:" :flags '(:password :abandon-focus)))
-			       (ag:hbox resource-box ()
-					(ag:textbox resource-textbox :label-text "Standard (optional):" :init-text "skat"
-						     :flags '(:abandon-focus)))))
+		      (ag:textbox username-textbox :label-text "Benutzername:" :flags '(:abandon-focus))
+		      (ag:textbox server-textbox :label-text "Serveradresse:" :flags '(:abandon-focus))
+		      (ag:textbox domain-textbox :label-text "Serverdomäne (optional):" :flags '(:abandon-focus))
+		      (ag:textbox password-textbox :label-text "Passwort:" :flags '(:password :abandon-focus))
+		      (ag:textbox resource-textbox :label-text "Standard (optional):" :init-text "skat"
+					   :flags '(:abandon-focus)))
       (with-slots (widgets window) login-window
 	(setf window win
 	      widgets (list (cons :username username-textbox)
@@ -52,19 +46,16 @@
   (setf (login-window module) (make-instance 'login-window))
   (show (login-window module)))
 
-(defmethod initialize-instance :after ((module login-and-register-module)
+(defmethod initialize-instance :after ((module login-and-register)
 				       &rest initargs
 				       &key
 				       &allow-other-keys)
   (declare (ignore initargs))
   (init-login-window module))
 
-(defmethod draw ((module login-and-register-module))
-  "Zeichne das Logindaten- oder Registrierungsdaten-Fenster"
-  ;; zeichne deine Fenster
-  (case (state module)
-    (enter-login (draw (login-window module)))))
+(defmethod draw ((module login-and-register))
+  "Zeichne das Logindaten- oder Registrierungsdaten-Fenster")
 
-(defmethod handle-event ((module login-and-register-module) event)
+(defmethod handle-event ((module login-and-register) event)
   ;; handle event
   (ag:process-event event))
