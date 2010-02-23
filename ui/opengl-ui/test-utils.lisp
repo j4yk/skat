@@ -27,13 +27,16 @@
 ;;        ,@body)))
 
 (defun init-window (&optional sdl-flags)
-  (sdl:init-sdl :flags sdl-flags)
+  (sdl:init-sdl :flags sdl-flags :video t)
+  #+windows (sdl:init-image :png)
   (defparameter *sdl-screen* (skat-window)))
 
 (defun init-agar (&rest flags)
+  #+agar
   (apply #'ag::init-video-sdl (sdl:fp *sdl-screen*) flags))
 
 (defun kill-video ()
+  #+agar
   (ag::destroy-video)
   (sdl:quit-sdl)
   (defparameter *sdl-screen* nil)

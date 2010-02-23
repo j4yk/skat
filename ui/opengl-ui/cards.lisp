@@ -30,7 +30,7 @@
 	 (loop for suit in (list "diamond" "heart" "spade" "club")
 	    append (loop for rank in (list "7" "8" "9" "10" "queen" "king" "1" "jack")
 		      collect (sdl-surface-to-gl-texture
-			       (sdl:load-image
+			       (sdl-image:load-image
 				(merge-pathnames
 				 (concatenate 'string rank "_" suit ".png")))))))))
 
