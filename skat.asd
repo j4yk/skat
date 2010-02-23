@@ -62,7 +62,7 @@
 							   #+agar (:file agar-test :depends-on (gl-ui agar))
 							   #+agar (:file login-and-register :depends-on (gl-ui))
 							   (:file test-utils :depends-on (gl-ui))
-							   (:file selection :depends-on (package))
+							   (:file selection :depends-on (gfx-utils gl-ui))
 							   (:file selection-test :depends-on (selection module gl-ui))
 							   (:file cards :depends-on (selection gl-ui))))))))
 
