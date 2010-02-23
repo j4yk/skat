@@ -4,11 +4,18 @@
   ((own-cards :accessor cards :type list :initform nil)
    (left-cards :accessor cards :type list :initform nil)
    (right-cards :accessor cards :type list :initform nil)
-   (back-texture :accessor back-texture :type fixnum)
-   (textures :accessor textures :type list :initform nil))
+   (textures :accessor textures :type list :initform nil :documentation "Property list of texture names and IDs")
+   (select :accessor select-p :initform nil :documentation "Controls whether selection is performed on clicks or not"))
   (:documentation "Module zum Zeichnen der Karten und zum Verarbeiten kartenspezifischer Aktionen"))
 
+(defconstant +own-cards+ 1000 "Selection name for the player's own cards")
+
+(defun own-card-selname (nthcard)
+  "Returns the specific selection name for the card at this position in the hand"
+  (+ +own-cards+ nthcard))
+
 (defun add-texture (module name texture)
+  "Adds a texture to (textures module). The texture will be freed when module is finalized."
   (setf (getf (textures module) name)
 	texture)
   ;; automatically delete texture on module garbage collect
@@ -19,29 +26,33 @@
 
 (defmethod load-textures ((module cards))
   "Lädt die Texturen"
-  (map nil
-       #'(lambda (name texture)
-	   (add-texture module name texture))
-       (list :d7 :d8 :d9 :dq :dk :d10 :da :dj
-	     :h7 :h8 :h9 :hq :hk :h10 :ha :hj
-	     :s7 :s8 :s9 :sq :sk :s10 :sa :sj
-	     :c7 :c8 :c9 :cq :ck :c10 :ca :cj)
-       (let ((*default-pathname-defaults* (merge-pathnames "resources/cards/")))
+  (let ((*default-pathname-defaults* (merge-pathnames "resources/cards/")))
+    (map nil
+	 #'(lambda (name texture)
+	     (add-texture module name texture))
+	 (list :d7 :d8 :d9 :dq :dk :d10 :da :dj
+	       :h7 :h8 :h9 :hq :hk :h10 :ha :hj
+	       :s7 :s8 :s9 :sq :sk :s10 :sa :sj
+	       :c7 :c8 :c9 :cq :ck :c10 :ca :cj)
 	 (loop for suit in (list "diamond" "heart" "spade" "club")
-	    append (loop for rank in (list "7" "8" "9" "10" "queen" "king" "1" "jack")
+	    append (loop for rank in (list "7" "8" "9" "queen" "king" "10" "1" "jack")
 		      collect (sdl-surface-to-gl-texture
 			       (sdl-image:load-image
 				(merge-pathnames
-				 (concatenate 'string rank "_" suit ".png")))))))))
+				 (concatenate 'string rank "_" suit ".png")))))))
+    ;; backside of the cards
+    (add-texture module :backside (sdl-surface-to-gl-texture (sdl-image:load-image (merge-pathnames "back.png"))))))
 
 (defmethod initialize-instance :after ((module cards) &key)
+  "Loads the card textures"
   (load-textures module))
 
-(defstruct card texture selection-name)
+(defstruct card (card #!D7 :type kern:card) selection-name)
 
-(defun own-card-selname (nthcard)
-  (let ((own-cards-offset 1000))
-    (+ own-cards-offset nthcard)))
+(defun card-to-texture-name (card)
+  "Returns the texture name for this specific card"
+  (check-type card kern:card)
+  (intern (subseq (with-output-to-string (s) (kern:print-card card s)) 2) 'keyword))
 
 (defun draw-card-here (cards texture back-p selection-name)
   (when (and back-p (slot-boundp cards 'back-texture))
@@ -76,7 +87,7 @@
 	      (gl:translate 0 5 (* n dz))
 	      (draw-card-here module
 			      (getf (textures module)
-					   (card-texture card))
+					   (card-to-texture-name card))
 			      nil
 			      (own-card-selname n)))))))
 
@@ -93,23 +104,32 @@
   (gl:color 1 1 1)
   (gl:with-pushed-matrix
     (gl:translate 0 -2 0)
-    (draw-hand module (list (make-card :texture :d7)
-			    (make-card :texture :d8)
-			    (make-card :texture :d9)
-			    (make-card :texture :dq)
-			    (make-card :texture :dk)
-			    (make-card :texture :d10)
-			    (make-card :texture :da)
-			    (make-card :texture :dj))))
+    (with-selname 1000
+      (draw-hand module (cards module))))
 ;  (gl:disable :blend)
   (gl:disable :alpha-test)
   (gl:disable :texture-2d))
 
+(defmethod select-card ((module cards) x y)
+  "Does a selection at P(x,y) and returns the card that the clicked object represents"
+  (declare (optimize (debug 3)))
+  (let ((hit-records (sort (select-gl-object x y #'draw module) #'< :key #'hit-record-max-z)))
+    (declare (optimize debug))
+    (when hit-records
+      (let ((record (dolist (r hit-records) ; look for a card hit
+		      (declare (optimize debug))
+		      (when (= +own-cards+ (car (hit-record-names-on-stack r))) ; card hit
+			(return r)))))
+	(declare (optimize debug))
+	(when record
+	  (let ((nth-card (1- (- (second (hit-record-names-on-stack record)) +own-cards+)))) ; offset
+	    (nth nth-card (cards module))))))))
+
 (defmethod handle-event ((module cards) event)
   (case-event event
     (:mouse-button-down-event (:x x :y y)
-			      (print (select-gl-object x y #'draw module))
-			      )
+			      (when (select-p module)
+				(print (select-card module x y))))
     (:mouse-button-up-event (:x x :y y)
 			    (declare (ignore x y))
 			    ;; selection --> welche Karte?

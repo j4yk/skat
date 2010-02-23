@@ -126,6 +126,10 @@ Lispbuilders Funktionen."
 (defmacro non-agar-rendering (&body body)
   `(progn ,@body))
 
+(defun find-module (class ui)
+  "Returns the first module of given class from (modules ui)"
+  (find (find-class class) (modules ui) :key #'class-of))
+
 (defun standard-main-loop (ui)
   (let ((agar-module (find (find-class 'agar) (modules ui) :key #'class-of)))
     (macrolet ((process-event ()

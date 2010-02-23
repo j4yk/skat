@@ -12,7 +12,12 @@
 	   error-in-handler
 	   define-login-data	        ; Login- Strutkturen für Comm
 	   define-registration-data	; Registrierungs-Strutkturen für Comm
-	   slots-of-class))		; Slotliste holen
+	   slots-of-class		; Slotliste holen
+	   make-card
+	   print-card
+	   suit
+	   rank))
+  
 
 (define-package-which-exports-all-requests skat-ui
   (:nicknames :ui)
