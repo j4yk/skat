@@ -26,7 +26,7 @@
 				     (:file stub-ui :depends-on (base-ui))
 				     (:file host-ui :depends-on (base-ui))))
 	       (:module kernel
-			:depends-on (components)
+			:depends-on (comm request-handling login-and-registration)
 			:components ((:file cards)
 				     (:file tricks :depends-on (cards))
 				     (:file bidding)
@@ -35,7 +35,7 @@
 				     (:file kernel)
 				     (:file states :depends-on (kernel))
 				     (:file host :depends-on (kernel states))
-				     (:file player :depends-on (kernel states))
+				     (:file player :depends-on (kernel states cards))
 				     #+clunit (:file player-tests :depends-on (host player))))))
 
 (defsystem skat-xmpp-comm
