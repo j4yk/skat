@@ -92,3 +92,6 @@ perform the rendering from which objects can be selected when called with fn-arg
 	      (apply draw-function fn-args)))))
       (end-selection :render buffer))))
 
+(defun select-gl-object (x y draw-function &rest fn-args)
+  (cffi:with-foreign-object (buffer :uint 1024) ; Uint[1024]
+    (apply #'selection x y buffer 1024 draw-function fn-args)))

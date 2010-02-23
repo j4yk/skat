@@ -108,8 +108,7 @@
 (defmethod handle-event ((module cards) event)
   (case-event event
     (:mouse-button-down-event (:x x :y y)
-			      (declare (ignore x y))
-			      ;; selection --> welche Karte?
+			      (print (select-gl-object x y #'draw module))
 			      )
     (:mouse-button-up-event (:x x :y y)
 			    (declare (ignore x y))
