@@ -19,8 +19,9 @@ STUB"
 
 (defun skat-window ()
   "Erstellt das Skat-SDL-Fenster inklusive OpenGL-Kontext."
-  (sdl:window 640 480 :title-caption "Skat"
-	      :flags '(sdl:sdl-opengl sdl:sdl-doublebuf)))
+  (prog1 (sdl:window 640 480 :title-caption "Skat"
+		     :flags '(sdl:sdl-opengl sdl:sdl-doublebuf))
+    (init-gl 640 480)))
 
 (defmacro restartable (&body body)
   `(restart-case (progn ,@body)
