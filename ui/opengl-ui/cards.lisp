@@ -67,15 +67,13 @@
    (gl:translate 0 -5 0)
     (let ((ncards (length cards))
 	  (dzrot 7)
-;	  (dyrot 5)
-	  (backstep -0.1))
+	  (dz 0.1))
       (loop
-	 for n from 0 to (1- ncards)
+	 for n from 1 to ncards
 	 and card in cards
 	 do (gl:with-pushed-matrix
-;	      (gl:rotate (* (+ (- (/ ncards 2)) n) dyrot) 0 1 0)
-	      (gl:rotate (* (+ (- (/ ncards 2)) n) dzrot) 0 0 1)
-	      (gl:translate 0 5 (* n backstep))
+	      (gl:rotate (* (- (+ (/ ncards 2)) n) dzrot) 0 0 1)
+	      (gl:translate 0 5 (* n dz))
 	      (draw-card-here module
 			      (getf (textures module)
 					   (card-texture card))
