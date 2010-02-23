@@ -36,8 +36,8 @@
     (gl:disable :texture-2d)))		; braucht man bestimmt auch nicht
 
 (progn
-  (eval-when (:compile-toplevel)
-    (defparameter *textures-updated* nil))
+  (defparameter *textures-updated* nil)
+
   (defmethod update-textures ((module test-module))
     (unless (and *textures-updated* (textures-updated-p module))
       (setf *textures-updated* t
