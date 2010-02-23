@@ -41,7 +41,7 @@
 (defsystem skat-xmpp-comm
   :author "Jakob Reschke <jakob@resfarm.de>"
   :license "GNU General Public License"
-  :depends-on (skat-core)
+  :depends-on (skat-core :cl-xmpp-tls)
   :components ((:module comm
 			:components ((:file xmpp-comm)))))
 
@@ -50,7 +50,7 @@
   :license "GNU General Public License"
   :depends-on (skat-core skat-xmpp-comm	; objective should be to remove the xmpp dependency
 	       :cffi :trivial-garbage
-	       :lispbuilder-sdl :cl-opengl :cl-glu #+agar :agar)
+	       :lispbuilder-sdl :lispbuilder-sdl-image :cl-opengl :cl-glu #+agar :agar)
   :components ((:module ui
 			:components ((:module opengl-ui
 					      :components ((:file package)
