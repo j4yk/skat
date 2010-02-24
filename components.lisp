@@ -31,6 +31,7 @@
 	   host-ui
 	   just-one-step
 	   defhandler
+	   call-kernel-handler
 	   ui				; manche UIs haben eigene Packages, defhandler benutzt aber dieses Symbol
 	   kernel))			; gleiches Problem, UIs mit eigenen Packages müssen an den Kernel rankommen
 
@@ -46,4 +47,5 @@
 	   stop  ; gibt ihm das Signal, die Arbeit einzustellen
 	   received-other-content ; Condition für den Fall, dass Daten empfangen wurden, die nicht als Anfragen interpretiert werden konnten
 	   address-compare-function ; Slot-Accessor für die Adressenvergleichende Funktion
+	   stub-comm
 	   xmpp-comm))

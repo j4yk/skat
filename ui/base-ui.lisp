@@ -15,3 +15,7 @@ einstellen soll."))
 
 (defgeneric just-one-step (ui)
   (:documentation "Wenn eine UI dies implementiert, weist man sie hiermit an, nur eine Hauptschleifenausführung vorzunehmen."))
+
+(defun call-kernel-handler (ui request-name &rest request-args)
+  "Calls the Kernel's appropriate handler function with UI as the sender of the request"
+  (apply (kern:handler-fn request-name) (kernel ui) ui request-args))
