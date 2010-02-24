@@ -2,11 +2,24 @@
 
 (defclass cards (module)
   ((own-cards :accessor cards :type list :initform nil)
-   (left-cards :accessor cards :type list :initform nil)
-   (right-cards :accessor cards :type list :initform nil)
+   (left-cards :type list :initform nil)
+   (right-cards :type list :initform nil)
    (textures :accessor textures :type list :initform nil :documentation "Property list of texture names and IDs")
-   (select :accessor select-p :initform nil :documentation "Controls whether selection is performed on clicks or not"))
+   (select :accessor select-p :initform nil :documentation "Controls whether selection is performed on clicks or not")
+   (n-max-select :accessor n-max-select :initform 1 :documentation "How many cards can be selected simultaneously")
+   (selected-cards :reader selected-cards :initform nil :documentation "The currently selected cards"))
   (:documentation "Module zum Zeichnen der Karten und zum Verarbeiten kartenspezifischer Aktionen"))
+
+(defmethod toggle-selected-card ((module cards) card)
+  "If the card is not yet selected it will be added to the list of selected cards.
+If the card is already selected it will be removed from that list."
+  (when (member nil (selected-cards module))
+    (warn "Removing NIL from (selected-cards cards-module)")
+    (setf (slot-value module 'selected-cards) (delete nil (selected-cards module))))
+  (let ((cards (selected-cards module)))
+    (if (member card cards :test #'equalp)
+	(setf (slot-value module 'selected-cards) (delete card cards :test #'equalp))
+	(push card (slot-value module 'selected-cards)))))
 
 (defconstant +own-cards+ 1000 "Selection name for the player's own cards")
 
@@ -54,11 +67,14 @@
   (check-type card kern:card)
   (intern (subseq (with-output-to-string (s) (kern:print-card card s)) 2) 'keyword))
 
-(defun draw-card-here (cards texture back-p selection-name)
-  (when (and back-p (getf (textures cards) :backside))
-    (gl:bind-texture :texture-2d (getf (textures cards) :backside)))
+(defun draw-card-here (module texture selection-name &key back-p selected-p)
+  (when (and back-p (getf (textures module) :backside))
+    (gl:bind-texture :texture-2d (getf (textures module) :backside)))
   (when texture
     (gl:bind-texture :texture-2d texture))
+  (when selected-p
+    (gl:enable :color-logic-op)
+    (gl:logic-op :copy-inverted))
   (gl:color 1 1 1)			; Textur unverändert
   (gl:with-pushed-matrix
     (let ((f (/ 1 3)))
@@ -69,7 +85,9 @@
 	(gl:tex-coord 0 1) (gl:vertex (/ -6 2) (/ -9 2)) ; unten links
 	(gl:tex-coord 1 1) (gl:vertex (/  6 2) (/ -9 2)) ; unten rechts
 	(gl:tex-coord 1 0) (gl:vertex (/  6 2) (/  9 2)) ; oben rechts
-	(gl:tex-coord 0 0) (gl:vertex (/ -6 2) (/  9 2)))))) ; oben links
+	(gl:tex-coord 0 0) (gl:vertex (/ -6 2) (/  9 2))))) ; oben links
+  (when selected-p
+    (gl:disable :color-logic-op)))
 
 
 (defun draw-hand (module cards)
@@ -88,8 +106,8 @@
 	      (draw-card-here module
 			      (getf (textures module)
 					   (card-to-texture-name card))
-			      nil
-			      (own-card-selname n)))))))
+			      (own-card-selname n)
+			      :selected-p (member card (selected-cards module) :test #'equalp)))))))
 
 (defmethod draw ((module cards))
   "Zeichnet die Karten"
@@ -98,6 +116,7 @@
 ;  (gl:enable :blend)
 ;  (gl:blend-func :src-alpha :one-minus-src-alpha)
   (gl:enable :alpha-test)
+  (gl:tex-env :texture-env :texture-env-mode :modulate)
   (gl:alpha-func :greater 0.1)
   (gl:load-identity)
   (gl:translate 0 0 -10)
@@ -129,8 +148,19 @@
   (case-event event
     (:mouse-button-down-event (:x x :y y)
 			      (when (select-p module)
-				(print (select-card module x y))))
+				(let ((card (select-card module x y)))
+				  (when card
+				    (unless (and (= (length (selected-cards module)) (n-max-select module))
+						 (not (member card (selected-cards module) :test #'equalp)))
+				      (toggle-selected-card module card))))))
     (:mouse-button-up-event (:x x :y y)
 			    (declare (ignore x y))
 			    ;; selection --> welche Karte?
 			    )))
+
+;; convenience functions
+
+(defmethod prepare-choose-skat ((module cards))
+  "Prepare the cards module to let the player choose two cards for the skat"
+  (setf (select-p module) t		; make cards selectable
+	(n-max-select module) 2))
