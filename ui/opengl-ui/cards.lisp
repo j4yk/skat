@@ -55,8 +55,8 @@
   (intern (subseq (with-output-to-string (s) (kern:print-card card s)) 2) 'keyword))
 
 (defun draw-card-here (cards texture back-p selection-name)
-  (when (and back-p (slot-boundp cards 'back-texture))
-    (gl:bind-texture :texture-2d (back-texture cards)))
+  (when (and back-p (getf (textures cards) :backside))
+    (gl:bind-texture :texture-2d (getf (textures cards) :backside)))
   (when texture
     (gl:bind-texture :texture-2d texture))
   (gl:color 1 1 1)			; Textur unverändert
