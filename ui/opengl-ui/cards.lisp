@@ -10,6 +10,14 @@
    (selected-cards :reader selected-cards :initform nil :documentation "The currently selected cards"))
   (:documentation "Module zum Zeichnen der Karten und zum Verarbeiten kartenspezifischer Aktionen"))
 
+(defmethod remove-cards ((module cards) cards)
+  "Recursively removes the supplied cards from the player's hand"
+  (if (null cards)
+      (values)
+      (progn
+	(setf (cards module) (delete (first cards) (cards module) :test #'equalp))
+	(remove-cards module (rest cards)))))
+
 (defmethod toggle-selected-card ((module cards) card)
   "If the card is not yet selected it will be added to the list of selected cards.
 If the card is already selected it will be removed from that list."
@@ -20,6 +28,10 @@ If the card is already selected it will be removed from that list."
     (if (member card cards :test #'equalp)
 	(setf (slot-value module 'selected-cards) (delete card cards :test #'equalp))
 	(push card (slot-value module 'selected-cards)))))
+
+(defmethod clear-selected-cards ((module cards))
+  "Deselects all cards"
+  (setf (slot-value module 'selected-cards) nil))
 
 (defconstant +own-cards+ 1000 "Selection name for the player's own cards")
 
@@ -164,3 +176,8 @@ If the card is already selected it will be removed from that list."
   "Prepare the cards module to let the player choose two cards for the skat"
   (setf (select-p module) t		; make cards selectable
 	(n-max-select module) 2))
+
+(defmethod end-choose-skat ((module cards))
+  "Make cards no longer selectable and clear selection"
+  (clear-selected-cards module)
+  (setf (select-p module) nil))

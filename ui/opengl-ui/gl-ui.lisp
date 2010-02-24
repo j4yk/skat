@@ -13,6 +13,9 @@
 (defun insert-module (module ui)
   (push module (modules ui)))
 
+(defun remove-module (module ui)
+  (setf (modules ui) (delete module (modules ui))))
+
 (defmethod ui:start ((ui opengl-ui) &optional no-new-thread-p)
   "Startet die OpenGL-Benutzerschnittstelle.
 STUB"
@@ -46,6 +49,16 @@ Hands the cards over to the cards module."
 	(setf cards-mod mod)))
     (setf (cards cards-mod) cards)))
 
+(defmethod send-skat ((ui opengl-ui) skat)
+  "Sends the chosed cards back to Kernel and removes the cards from
+  the player's hand"
+  (unless (= 2 (length skat)) (error "Must push two cards into the skat!"))
+  (let ((cards-mod (find-module 'cards ui)))
+    (remove-cards cards-mod skat)
+    (end-choose-skat cards-mod)		; cleanup
+    (ui:call-kernel-handler ui 'skat skat)) ; pass it on
+  (remove-module (find-module 'send-button ui) ui))
+
 (defhandler ui:skat (opengl-ui skat)
   "Called by Kernel when the skat is received from the host.
 Adds two cards and lets the player select two."
@@ -53,7 +66,10 @@ Adds two cards and lets the player select two."
   (let ((cards-mod (find-module 'cards ui)))
     (assert cards-mod)
     (setf (cards cards-mod) (append (cards cards-mod) skat))
-    (
+    ;; send button
+    (insert-module (make-instance 'send-button :ui ui) ui)
+    (setf (click-handler-function (find-module 'send-button ui))
+	  #'(lambda () (send-skat ui (selected-cards cards-mod))))))
 
 (defun standard-main-loop (ui)
   (when (running-p ui) (return-from standard-main-loop))
