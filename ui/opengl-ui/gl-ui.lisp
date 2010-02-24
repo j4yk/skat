@@ -2,7 +2,8 @@
 
 (defclass opengl-ui (ui::base-ui)
   ((modules :accessor modules :initform nil :documentation "Liste der aktiven Module")
-   (priortized-modules :accessor priortized-modules :initform nil :documentation "Liste der aktiven Module, die Events zuerst verarbeiten dürfen"))
+   (priortized-modules :accessor priortized-modules :initform nil :documentation "Liste der aktiven Module, die Events zuerst verarbeiten dürfen")
+   (running-p :reader running-p :initform nil))
   (:documentation "OpenGL-UI Klasse. Zentrales Objekt für die OpenGL-Schnittstelle"))
 
 (defun find-module (class ui)
@@ -45,40 +46,53 @@ Hands the cards over to the cards module."
 	(setf cards-mod mod)))
     (setf (cards cards-mod) cards)))
 
+(defhandler ui:skat (opengl-ui skat)
+  "Called by Kernel when the skat is received from the host.
+Adds two cards and lets the player select two."
+  (assert (= 2 (length skat)) () "Skat must be two cards")
+  (let ((cards-mod (find-module 'cards ui)))
+    (assert cards-mod)
+    (setf (cards cards-mod) (append (cards cards-mod) skat))
+    (
+
 (defun standard-main-loop (ui)
-  (let ((agar-module (find (find-class 'agar) (modules ui) :key #'class-of)))
-    (macrolet ((process-event ()
-		 `(dolist (module (modules ui))
-		    (handle-event module sdl-event))))
-      (sdl:with-events (:poll sdl-event)
-	(:quit-event () t)
-	(:active-event () (process-event))
-	(:key-down-event () (process-event))
-	(:key-up-event () (process-event))
-	(:mouse-motion-event () (process-event))
-	(:mouse-button-down-event () (process-event))
-	(:mouse-button-up-event () (process-event))
-	(:video-resize-event (:w w :h h)
-			     (init-gl w h)
-			     (process-event))
-	(:video-expose-event () (process-event))
-	(:sys-wm-event () (process-event))
-	(:user-event () (process-event))
-	(:idle ()
-	       (handle-swank-requests)
-	       (gl:clear :color-buffer-bit :depth-buffer-bit)
-	       ;; reset view
-	       #+agar
-	       (if ag::*video-initialized*
-		   (ag:render
-		     (non-agar-rendering
-		       (dolist (module (remove agar-module (modules ui)))
-			 (draw module)))
-		     (draw agar-module))
-		   (dolist (module (remove agar-module (modules ui)))
-		     (draw module)))
-	       #-agar
-	       (dolist (module (modules ui))
-		 (draw module))
-	       (gl:flush)
-	       (sdl:update-display))))))
+  (when (running-p ui) (return-from standard-main-loop))
+  (setf (slot-value ui 'running-p) t)
+  (unwind-protect
+       (let ((agar-module (find (find-class 'agar) (modules ui) :key #'class-of)))
+	 (macrolet ((process-event ()
+		      `(dolist (module (modules ui))
+			 (handle-event module sdl-event))))
+	   (sdl:with-events (:poll sdl-event)
+	     (:quit-event () t)
+	     (:active-event () (process-event))
+	     (:key-down-event () (process-event))
+	     (:key-up-event () (process-event))
+	     (:mouse-motion-event () (process-event))
+	     (:mouse-button-down-event () (process-event))
+	     (:mouse-button-up-event () (process-event))
+	     (:video-resize-event (:w w :h h)
+				  (init-gl w h)
+				  (process-event))
+	     (:video-expose-event () (process-event))
+	     (:sys-wm-event () (process-event))
+	     (:user-event () (process-event))
+	     (:idle ()
+		    (handle-swank-requests)
+		    (gl:clear :color-buffer-bit :depth-buffer-bit)
+		    ;; reset view
+		    #+agar
+		    (if ag::*video-initialized*
+			(ag:render
+			  (non-agar-rendering
+			    (dolist (module (remove agar-module (modules ui)))
+			      (draw module)))
+			  (draw agar-module))
+			(dolist (module (remove agar-module (modules ui)))
+			  (draw module)))
+		    #-agar
+		    (dolist (module (modules ui))
+		      (draw module))
+		    (gl:flush)
+		    (sdl:update-display)))))
+    (setf (slot-value ui 'running-p) nil)))
