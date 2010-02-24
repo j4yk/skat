@@ -9,6 +9,9 @@
   "Returns the first module of given class from (modules ui)"
   (find (find-class class) (modules ui) :key #'class-of))
 
+(defun insert-module (module ui)
+  (push module (modules ui)))
+
 (defmethod ui:start ((ui opengl-ui) &optional no-new-thread-p)
   "Startet die OpenGL-Benutzerschnittstelle.
 STUB"
@@ -31,6 +34,16 @@ STUB"
 (defhandler ui:login-struct (opengl-ui struct-classname)
   (let ((module (make-instance 'login-and-register-module :login-struct-type struct-classname)))
     (push module (modules ui))))
+
+(defhandler ui:cards (opengl-ui cards)
+  "Called by Kernel when the Host has distrubuted the cards.
+Hands the cards over to the cards module."
+  (let ((cards-mod (find-module 'cards ui)))
+    (unless cards-mod
+      (let ((mod (make-instance 'cards :ui ui)))
+	(insert-module mod ui)
+	(setf cards-mod mod)))
+    (setf (cards cards-mod) cards)))
 
 (defun standard-main-loop (ui)
   (let ((agar-module (find (find-class 'agar) (modules ui) :key #'class-of)))
