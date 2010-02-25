@@ -54,10 +54,11 @@
   :components ((:module ui
 			:components ((:module opengl-ui
 					      :components ((:file package)
+							   (:file test-functions :depends-on (package))
 							   (:file module :depends-on (package))
 							   (:file gfx-utils :depends-on (package))
 							   (:file agar :depends-on (module))
-							   (:file gl-ui-utils :depends-on ())
+							   (:file gl-ui-utils :depends-on (gfx-utils))
 							   (:file gl-ui :depends-on (module gfx-utils agar gl-ui-utils))
 							   (:file test-module :depends-on (gl-ui))
 							   #+agar (:file agar-test :depends-on (gl-ui agar))
