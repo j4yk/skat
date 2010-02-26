@@ -28,15 +28,19 @@
   (init-window)
   (init-agar :overlay))
 
+(defun clean-agar ()
+  (ag::destroy-video)
+  (init-agar :overlay))
+
 (defparameter *ui* nil)
 (defparameter *module* nil)
 
 (defun test-module (module-class &rest initargs)
   (assert (find-class module-class))
-  (setq *module* (apply #'make-instance module-class initargs))
   (unless *ui*
     (setq *ui* (make-instance 'opengl-ui))
-    (push (make-instance 'agar) (modules *ui*)))
-  (unless (member (find-class module-class) (modules *ui*) :key #'class-of)
+    (push (make-instance 'agar :ui *ui*) (modules *ui*)))
+  (unless (find-module module-class *ui*)
+    (setq *module* (apply #'make-instance module-class :ui *ui* initargs))
     (push *module* (modules *ui*)))
   (standard-main-loop *ui*))
