@@ -38,61 +38,36 @@ Lispbuilders Funktionen."
   (gl:clear-color 0 0 0 0)
   (gl:shade-model :smooth)
   ;; Perspektive
-  (with-matrix-mode :projection
+  (matrix-mode :projection
     (gl:load-identity)
     (set-perspective w h))
-  (gl:matrix-mode :modelview)
-  (gl:load-identity)
+  ;; Mitte...
+  (matrix-mode :modelview
+    (gl:load-identity))
   ;; save matrices
   (setq *modelview-root-matrix* (gl:get-float :modelview-matrix)
 	*texture-root-matrix* (gl:get-float :texture-matrix)
-	*projection-root-matrix* (gl:get-float :projection-matrix)))     
+	*projection-root-matrix* (gl:get-float :projection-matrix)))
 
-(defmacro with-root-matrices ((&key (modelview-p t) (projection-p t) (texture-p t)) &body body)
+(defmacro with-standard-rendering (&body body)
+  "Pushes the current matrices and GL attributes,
+loads teh root matrices saved by #'init-gl and executes body with them
+and finally restores the pushed matrices and GL attributes"
   `(progn
-     ,(when modelview-p
-	    `(with-matrix-mode :modelview (gl:push-matrix)
-		    (gl:load-matrix *modelview-root-matrix*)))
-     ,(when projection-p
-	    `(with-matrix-mode :projection (gl:push-matrix)
-		    (gl:load-matrix *projection-root-matrix*)))
-     ,(when texture-p
-	    `(with-matrix-mode :texture (gl:push-matrix)
-		    (gl:load-matrix *texture-root-matrix*)))
-     ,@body
-     ,(when modelview-p
-	    `(progn (gl:matrix-mode :modelview) (gl:pop-matrix)))
-     ,(when projection-p
-	    `(progn (gl:matrix-mode :projection) (gl:pop-matrix)))
-     ,(when texture-p
-	    `(progn (gl:matrix-mode :texture) (gl:pop-matrix)))))
-
-#+agar
-(defmacro non-agar-rendering (&body body)
-  `(progn
-     ;; restore our own matrices
-     (with-root-matrices ()
-       (with-matrix-mode :modelview
-	 (gl:load-identity))		; sollte man das wirklich hier lassen?
-       ;; restore our attributes
-       (gl:push-attrib :all-attrib-bits)
-       (gl:disable :clip-plane0 :clip-plane1 :clip-plane2 :clip-plane3) ; agar uses up to clip-plane3
-       (gl:enable :cull-face)
-
-       ;; this saves from Agar's distortion, but don't ask me why
-       (with-matrix-mode :projection
-	 (gl:with-pushed-matrix
-	   (gl:load-identity)
-	   (let ((viewport (gl:get-integer :viewport)))
-	     (set-perspective (aref viewport 2) (aref viewport 3)))
-
-	   ,@body
-
-	   ))
-
-       ;; restore Agar's attributes
-       (gl:pop-attrib))))
-
-#-agar
-(defmacro non-agar-rendering (&body body)
-  `(progn ,@body))
+     (matrix-mode :texture
+       (gl:push-matrix)
+       (gl:load-matrix *texture-root-matrix*))
+     (matrix-mode :projection
+       (gl:push-matrix)
+       (gl:load-matrix *projection-root-matrix*))
+     (matrix-mode :modelview
+       (gl:push-matrix)
+       (gl:load-matrix *modelview-root-matrix*))
+     (gl:push-attrib :all-attrib-bits)
+     (gl:enable :cull-face)
+     (gl:disable :clip-plane0 :clip-plane1 :clip-plane2 :clip-plane3)
+     (unwind-protect (progn ,@body)
+       (gl:pop-attrib)
+       (matrix-mode :modelview (gl:pop-matrix))
+       (matrix-mode :texture (gl:pop-matrix))
+       (matrix-mode :projection (gl:pop-matrix)))))

@@ -51,14 +51,14 @@ perform the rendering from which objects can be selected when called with fn-arg
     (%gl:select-buffer buffer-size buffer)
     (gl:render-mode :select)
     (%gl:init-names)
-    (non-agar-rendering		; get rid of the Agar matrices
-      (with-matrix-mode :projection
+    (with-standard-rendering		; get rid of the Agar matrices
+      (matrix-mode :projection
 	(gl:with-pushed-matrix		; push the projection matrix
 	  ;; get an equivalent projection matrix which only shows the Pixel about (x, y)
 	  (gl:load-identity)
 	  (glu:pick-matrix x (- (aref viewport 3) y) 1.0 1.0 viewport)
 	  (set-perspective (aref viewport 2) (aref viewport 3))
-	  (with-matrix-mode :modelview
+	  (matrix-mode :modelview
 	    (apply draw-function fn-args)))))
     (end-selection :render buffer)))
 
@@ -72,16 +72,16 @@ perform the rendering from which objects can be selected when called with fn-arg
       (%gl:select-buffer buffer-size buffer)
       ;; gl:render-mode left out
       (%gl:init-names)
-      (non-agar-rendering		; get rid of the Agar matrices
-	(with-matrix-mode :projection
+      (with-standard-rendering		; get rid of the Agar matrices
+	(matrix-mode :projection
 	  (gl:with-pushed-matrix		; push the projection matrix
 	    ;; get an equivalent projection matrix which only shows the Pixel about (x, y)
 	    (gl:load-identity)
 	    ;; glu:pick-matrix left out
 	    (set-perspective (aref viewport 2) (aref viewport 3))
 	    ;; ich konstatiere: die Matritzen sind hier noch korrekt
-	    (let ((mm (gl:get-integer :modelview-matrix))
-		  (pm (gl:get-integer :projection-matrix)))
+	    (let ((mm (gl:get-float :modelview-matrix))
+		  (pm (gl:get-float :projection-matrix)))
 	      (unless (equalp last-mm mm)
 		(setf last-mm mm)
 		(format t "~%dry selection modelview: ~s" mm))

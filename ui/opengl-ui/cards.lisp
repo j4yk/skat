@@ -128,9 +128,9 @@ If the card is already selected it will be removed from that list."
   (gl:enable :alpha-test)
   (gl:tex-env :texture-env :texture-env-mode :modulate)
   (gl:alpha-func :greater 0.1)
-;  (gl:enable :blend)
-;  (gl:blend-func :src-alpha :one-minus-src-alpha)
-  (with-matrix-mode :modelview
+;;  (gl:enable :blend)
+;;  (gl:blend-func :src-alpha :one-minus-src-alpha)
+  (matrix-mode :modelview
     (gl:load-identity)
     (gl:translate 0 0 -10)
     (gl:color 1 1 1)
@@ -138,7 +138,7 @@ If the card is already selected it will be removed from that list."
       (gl:translate 0 -2 0)
       (with-selname 1000
 	(draw-hand module (cards module)))))
-;  (gl:disable :blend)
+;;  (gl:disable :blend)
   (gl:disable :alpha-test)
   (gl:disable :texture-2d))
 

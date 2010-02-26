@@ -8,32 +8,30 @@
 (defmethod draw ((module test-module))
   (update-textures module)			; wenn es neues in dieser Funktion gibt, führe das aus
   (gl:enable :texture-2d)
-  (with-matrix-mode :modelview
+  (matrix-mode :modelview
     (gl:load-identity)
-    (gl:translate 0 0 -10)
-    (gl:bind-texture :texture-2d (blue-tex module))
-    (with-matrix-mode :texture
-      (gl:load-identity))			; wahrscheinlich braucht man das gar nicht immer
-;    (gl:matrix-mode :modelview)
-    ;; Blaues Dreieck
-    (gl:color 1 1 1)
-    (gl:with-primitive :triangles
-      (gl:tex-coord 0 1) (gl:vertex 0 2 -1)
-      (gl:tex-coord 0 0) (gl:vertex 0 0 -1)
-      (gl:tex-coord 1 0) (gl:vertex 1 0 -2))
-    (gl:bind-texture :texture-2d (texture module))
-    (with-matrix-mode :texture
-      (gl:load-identity))			; siehe oben
-;    (gl:matrix-mode :modelview)
-    ;; verzerrte Testkarte
-    (gl:color 1 1 1)
-    (gl:with-primitive :quads
-      (gl:tex-coord 0 1) (gl:vertex -3 -3)
-      (gl:tex-coord 1 1) (gl:vertex 5 -3)
-      (gl:tex-coord 1 0) (gl:vertex 5 0)
-      (gl:tex-coord 0 0) (gl:vertex -3 0))
-    ;; zeigen
-    (gl:disable :texture-2d)))		; braucht man bestimmt auch nicht
+    (gl:translate 0 0 -10))
+  (gl:bind-texture :texture-2d (blue-tex module))
+  (matrix-mode :texture
+    (gl:load-identity))			; wahrscheinlich braucht man das gar nicht immer
+  ;; Blaues Dreieck
+  (gl:color 1 1 1)
+  (gl:with-primitive :triangles
+    (gl:tex-coord 0 1) (gl:vertex 0 2 -1)
+    (gl:tex-coord 0 0) (gl:vertex 0 0 -1)
+    (gl:tex-coord 1 0) (gl:vertex 1 0 -2))
+  (gl:bind-texture :texture-2d (texture module))
+  (matrix-mode :texture
+    (gl:load-identity))			; siehe oben
+  ;; verzerrte Testkarte
+  (gl:color 1 1 1)
+  (gl:with-primitive :quads
+    (gl:tex-coord 0 1) (gl:vertex -3 -3)
+    (gl:tex-coord 1 1) (gl:vertex 5 -3)
+    (gl:tex-coord 1 0) (gl:vertex 5 0)
+    (gl:tex-coord 0 0) (gl:vertex -3 0))
+  ;; zeigen
+  (gl:disable :texture-2d))		; braucht man bestimmt auch nicht
 
 (progn
   (defparameter *textures-updated* nil)

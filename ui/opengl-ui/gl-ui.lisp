@@ -50,7 +50,7 @@ Hands the cards over to the cards module."
     (setf (cards cards-mod) cards)))
 
 (defmethod send-skat ((ui opengl-ui) skat)
-  "Sends the chosed cards back to Kernel and removes the cards from
+  "Sends the chosen cards back to Kernel and removes the cards from
   the player's hand"
   (unless (= 2 (length skat)) (error "Must push two cards into the skat!"))
   (let ((cards-mod (find-module 'cards ui)))
@@ -70,6 +70,23 @@ Adds two cards and lets the player select two."
     (insert-module (make-instance 'send-button :ui ui) ui)
     (setf (click-handler-function (find-module 'send-button ui))
 	  #'(lambda () (send-skat ui (selected-cards cards-mod))))))
+
+(defmethod render-everything ((ui opengl-ui) agar-module)
+  (gl:clear :color-buffer-bit :depth-buffer-bit)
+  #+agar
+  (if ag::*video-initialized*
+      (ag:render
+	(with-standard-rendering
+	  ;; draw all modules with normal GL matrices
+	  (dolist (module (remove agar-module (modules ui)))
+	    (draw module)))
+	;; draw Agar's world with its own matrices
+	(draw agar-module))
+      (dolist (module (remove agar-module (modules ui)))
+	(draw module)))
+  #-agar
+  (dolist (module (modules ui))
+    (draw module)))
 
 (defun standard-main-loop (ui)
   (when (running-p ui) (return-from standard-main-loop))
@@ -96,20 +113,7 @@ Adds two cards and lets the player select two."
 	     (:user-event () (process-event))
 	     (:idle ()
 		    (handle-swank-requests)
-		    (gl:clear :color-buffer-bit :depth-buffer-bit)
-		    ;; reset view
-		    #+agar
-		    (if ag::*video-initialized*
-			(ag:render
-			  (non-agar-rendering
-			    (dolist (module (remove agar-module (modules ui)))
-			      (draw module)))
-			  (draw agar-module))
-			(dolist (module (remove agar-module (modules ui)))
-			  (draw module)))
-		    #-agar
-		    (dolist (module (modules ui))
-		      (draw module))
+		    (render-everything ui agar-module)
 		    (gl:flush)
 		    (sdl:update-display)))))
     (setf (slot-value ui 'running-p) nil)))

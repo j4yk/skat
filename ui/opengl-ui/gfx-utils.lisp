@@ -42,3 +42,9 @@ Gibt die Textur-ID zurück."
      (gl:matrix-mode ,mode)
      (multiple-value-prog1 (progn ,@body)
        (gl:matrix-mode old-matrix-mode))))
+
+(defmacro matrix-mode (mode &body body)
+  "Executes body with mode as matrix mode but doesn't restore the previous matrix mode afterwards!"
+  `(progn
+     (gl:matrix-mode ,mode)
+     ,@body))
