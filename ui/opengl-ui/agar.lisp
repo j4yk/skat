@@ -9,9 +9,9 @@
   (ag:process-event sdl-event))
 
 (defmethod draw ((module agar))
-  "Draw Agar's windows"      
+  "Draw Agar's windows"
   #+agar
-  (let ((win (ag::tailqueue-first (ag::windows ag::*view*))))
-    ;; TODO: render the other windows as well....
-    (unless (cffi:null-pointer-p win)
-      (ag:window-draw win))))
+  (let ((winlist (ag::tailqueue-to-list (ag::windows ag::*view*) #'ag::next-window)))
+    (dolist (win winlist)
+      (unless (cffi:null-pointer-p win)
+	(ag:window-draw win)))))
