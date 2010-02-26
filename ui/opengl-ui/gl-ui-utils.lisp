@@ -44,9 +44,9 @@ Lispbuilders Funktionen."
   (gl:matrix-mode :modelview)
   (gl:load-identity)
   ;; save matrices
-  (setq *modelview-root-matrix* (gl:get-integer :modelview-matrix)
-	*texture-root-matrix* (gl:get-integer :texture-matrix)
-	*projection-root-matrix* (gl:get-integer :projection-matrix)))
+  (setq *modelview-root-matrix* (gl:get-float :modelview-matrix)
+	*texture-root-matrix* (gl:get-float :texture-matrix)
+	*projection-root-matrix* (gl:get-float :projection-matrix)))     
 
 (defmacro with-root-matrices ((&key (modelview-p t) (projection-p t) (texture-p t)) &body body)
   `(progn
@@ -66,7 +66,6 @@ Lispbuilders Funktionen."
 	    `(progn (gl:matrix-mode :projection) (gl:pop-matrix)))
      ,(when texture-p
 	    `(progn (gl:matrix-mode :texture) (gl:pop-matrix)))))
-     
 
 #+agar
 (defmacro non-agar-rendering (&body body)
