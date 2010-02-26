@@ -47,15 +47,13 @@
   (show (login-window module)))
 
 (defmethod initialize-instance :after ((module login-and-register)
-				       &rest initargs
-				       &key
-				       &allow-other-keys)
-  (declare (ignore initargs))
+				       &key)
   (init-login-window module))
+
+(defun hide-login-window (module)
+  (ag::hide-window (login-window module)))
 
 (defmethod draw ((module login-and-register))
   "Zeichne das Logindaten- oder Registrierungsdaten-Fenster")
 
-(defmethod handle-event ((module login-and-register) event)
-  ;; handle event
-  (ag:process-event event))
+(defmethod handle-event ((module login-and-register) event))
