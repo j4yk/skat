@@ -75,7 +75,8 @@ Adds two cards and lets the player select two."
   (when (running-p ui) (return-from standard-main-loop))
   (setf (slot-value ui 'running-p) t)
   (unwind-protect
-       (let ((agar-module (find (find-class 'agar) (modules ui) :key #'class-of)))
+       (let ((agar-module (find-module 'agar ui)))
+	 (defun %used-agar-module () agar-module)
 	 (macrolet ((process-event ()
 		      `(dolist (module (modules ui))
 			 (handle-event module sdl-event))))
