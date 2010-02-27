@@ -14,6 +14,7 @@
   (push module (modules ui)))
 
 (defun remove-module (module ui)
+  (cleanup module)
   (setf (modules ui) (delete module (modules ui))))
 
 (defmethod ui:start ((ui opengl-ui) &optional no-new-thread-p)
