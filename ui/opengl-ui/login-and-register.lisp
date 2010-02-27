@@ -51,7 +51,7 @@
   (init-login-window module))
 
 (defun hide-login-window (module)
-  (ag::hide-window (login-window module)))
+  (ag:hide-window (login-window module)))
 
 (defmethod draw ((module login-and-register))
   "Zeichne das Logindaten- oder Registrierungsdaten-Fenster")
