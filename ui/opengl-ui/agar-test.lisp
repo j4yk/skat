@@ -11,6 +11,7 @@
       (ag:window-show w))))
 
 (defmethod cleanup ((module agar-test))
+  (mapcar #'ag:hide-window (wins module))
   (mapcar #'ag:detach-object (wins module)))
 
 
