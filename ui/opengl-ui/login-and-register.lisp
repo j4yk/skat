@@ -27,11 +27,11 @@
   (let ((win (agar:window-new :modal)))
     (ag:window-set-caption win "Beim XMPP-Server einlogen")
     (ag:with-widgets (win
-		      (ag:textbox username-textbox :label-text "Benutzername:" :flags '(:abandon-focus))
-		      (ag:textbox server-textbox :label-text "Serveradresse:" :flags '(:abandon-focus))
-		      (ag:textbox domain-textbox :label-text "Serverdomäne (optional):" :flags '(:abandon-focus))
-		      (ag:textbox password-textbox :label-text "Passwort:" :flags '(:password :abandon-focus))
-		      (ag:textbox resource-textbox :label-text "Standard (optional):" :init-text "skat"
+		      (ag:textbox username-textbox :label-text "Benutzername: ")
+		      (ag:textbox server-textbox :label-text "Serveradresse: ")
+		      (ag:textbox domain-textbox :label-text "Serverdomäne (optional): ")
+		      (ag:textbox password-textbox :label-text "Passwort: " :flags '(:password))
+		      (ag:textbox resource-textbox :label-text "Standard (optional): " :init-text "skat"
 					   :flags '(:abandon-focus)))
       (with-slots (widgets window) login-window
 	(setf window win
