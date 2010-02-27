@@ -18,7 +18,7 @@
 
 (defun kill-video ()
   #+agar
-  (ag::destroy-video)
+  (ag:destroy-video)
   (sdl:close-audio)
   (sdl:quit-sdl)
   (setq *sdl-screen* nil)
@@ -26,11 +26,11 @@
 
 (defun setup-video ()
   (init-window)
-  (init-agar :overlay))
+  (init-agar))
 
 (defun clean-agar ()
-  (ag::destroy-video)
-  (init-agar :overlay))
+  (ag:destroy-video)
+  (init-agar))
 
 (defparameter *ui* nil)
 (defparameter *module* nil)
