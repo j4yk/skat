@@ -66,11 +66,13 @@ Adds two cards and lets the player select two."
   (assert (= 2 (length skat)) () "Skat must be two cards")
   (let ((cards-mod (find-module 'cards ui)))
     (assert cards-mod)
-    (setf (cards cards-mod) (append (cards cards-mod) skat))
+    (setf (cards cards-mod) (nconc (cards cards-mod) skat))
     ;; send button
-    (insert-module (make-instance 'send-button :ui ui) ui)
-    (setf (click-handler-function (find-module 'send-button ui))
-	  #'(lambda () (send-skat ui (selected-cards cards-mod))))))
+    (insert-module (make-instance 'send-button
+				  :ui ui
+				  :handler-fn #'(lambda ()
+						  (send-skat ui (selected-cards cards-mod))))
+		   ui)))
 
 (defmethod render-everything ((ui opengl-ui) agar-module)
   (gl:clear :color-buffer-bit :depth-buffer-bit)

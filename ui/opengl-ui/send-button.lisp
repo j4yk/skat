@@ -2,7 +2,7 @@
 
 (defclass send-button (module)
   ((window) (button)
-   (click-handler :accessor click-handler-function)))
+   (click-handler :accessor click-handler-function :initarg :handler-fn)))
 
 (defvar *send-button-table* (make-hash-table)
   "This table is used to dispatch the button pointer to the module")
