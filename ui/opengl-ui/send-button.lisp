@@ -1,32 +1,36 @@
 (in-package gl-ui)
 
 (defclass send-button (module)
-  ((texture :accessor texture)
+  ((window) (button)
    (click-handler :accessor click-handler-function)))
 
-(defconstant +send-button+ 100)
+(defvar *send-button-table* (make-hash-table)
+  "This table is used to dispatch the button pointer to the module")
 
-(defmethod draw ((module send-button))
-  (with-matrix-mode :modelview
-    (gl:with-pushed-matrix
-      (gl:load-identity)
-      (gl:scale 2 1 1)
-      (gl:translate 3 -4 -10)
-      (when (slot-boundp module 'texture)
-	(gl:enable :texture-2d)
-	(gl:bind-texture :texture-2d (texture module)))
-      (gl:color 1 1 1)
-      (with-selname +send-button+
-	(gl:with-primitives :quads
-	  (gl:tex-coord 0 1) (gl:vertex 0 0)
-	  (gl:tex-coord 1 1) (gl:vertex 0.4 0)
-	  (gl:tex-coord 1 0) (gl:vertex 0.4 0.4)
-	  (gl:tex-coord 0 0) (gl:vertex 0 0.4))))))
+(cffi:defcallback send-button-pushed :void ((event ag::event))
+  (let* ((btn-pointer (ag:event-self event))
+	 (module (gethash (cffi:pointer-address btn-pointer) *send-button-table*)))
+    (if module
+	(funcall (click-handler-function module))
+	(warn "No module to send button found!"))))
 
-(defmethod handle-event ((module send-button) event)
-  (case-event event
-    (:mouse-button-down-event (:x x :y y)
-			      (when (slot-boundp module 'click-handler)
-				(let ((records (sort (select-gl-object x y #'draw module) #'< :key #'hit-record-max-z)))
-				  (when (and records (= +send-button+ (car (hit-record-names-on-stack (car records)))))
-				    (funcall (click-handler-function module))))))))
+(defmethod setup-event-handlers ((module send-button))
+  (with-slots (button) module
+    (ag:set-event button "button-pushed" (cffi:callback send-button-pushed) "")))
+
+(defmethod initialize-instance :after ((module send-button) &key)
+  "Creates the Agar window with the button"
+  ;; allocate a foreign pointer... what is allocated is equal
+  ;; important is the SAP that foreign-alloc returns
+  (with-slots (window button) module
+    (setf window (ag:window-new :noborders :notitle))
+    (setf button (ag:button-new window 0 "Send"))
+    (setup-event-handlers module)
+    (setf (gethash (cffi:pointer-address button) *send-button-table*) module) ; setup dispatch path from button SAP to module
+    (ag:window-show window)))
+
+(defmethod cleanup ((module send-button))
+  (with-slots (window button) module
+    (ag:hide-window window)
+    (ag:detach-object window)
+    (remhash (cffi:pointer-address button) *send-button-table*)))
