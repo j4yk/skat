@@ -2,7 +2,7 @@
 
 ;; Testing routines that are not modules but are just to be tried at the REPL go here
 
-(cffi:defcallback say-hello :void ((event ag::event))
+(cffi:defcallback say-hello :void ((event ag:event))
   (let ((s (ag:event-string event 1))
 	(new-state (ag:event-int event 2)))
     (print s)
