@@ -41,3 +41,8 @@
     (setq *module* (apply #'make-instance module-class :ui *ui* initargs))
     (push *module* (modules *ui*)))
   (standard-main-loop *ui*))
+
+(defun reset-module (module-class &rest initargs)
+  (when (find-module module-class *ui*)
+    (remove-module (find-module module-class *ui*) *ui*))
+  (apply #'test-module module-class initargs))
