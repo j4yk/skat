@@ -72,19 +72,22 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
 	(sender (nth (1+ (position :sender options)) options))
 	(receiver (nth (1+ (position :receiver options)) options)))
     `(progn
-       (eval-when (:compile-toplevel)
-	 ;; create Documentation
-	 (when (fboundp 'print-request-latex)
-	   (with-open-file (fs (cond ((probe-file "../skat-doc/requests-table.tex") "../skat-doc/requests-table.tex")
-				     ((probe-file "/home/jakob/dev/skat-doc/requests-table.tex") "/home/jakob/dev/skat-doc/requests-table.tex")
-				     ((probe-file "requests-table.tex") "requests-table.tex"))
-			       :direction :output
-			       :if-exists (if (boundp '*request-printing-started*)
-					      (print :append)
-					      (print :supersede)))
-	     (print-request-latex ',name ',parameters ,documentation ,sender ,receiver fs)
-	     (format t "printed request ~a" ',name))
-	   (defvar *request-printing-started* t)))
+       (restart-case 
+	   (eval-when (:compile-toplevel)
+	     ;; create Documentation
+	     (when (fboundp 'print-request-latex)
+	       (with-open-file (fs (cond ((probe-file "../skat-doc/requests-table.tex") "../skat-doc/requests-table.tex")
+					 ((probe-file "/home/jakob/dev/skat-doc/requests-table.tex") "/home/jakob/dev/skat-doc/requests-table.tex")
+					 ((probe-file "requests-table.tex") "requests-table.tex")
+					 (t (error "No requests-table file found!")))
+				   :direction :output
+				   :if-exists (if (boundp '*request-printing-started*)
+						  (print :append)
+						  (print :supersede)))
+		 (print-request-latex ',name ',parameters ,documentation ,sender ,receiver fs)
+		 (format t "printed request ~a" ',name))
+	       (defvar *request-printing-started* t)))
+	 (continue () t))
        (eval-when (:load-toplevel :execute)
 	 (apply #'add-request-definition ',name ',parameter-symbols)))))
 
