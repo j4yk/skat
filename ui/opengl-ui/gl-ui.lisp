@@ -35,7 +35,6 @@ STUB"
 		     :flags '(sdl:sdl-opengl sdl:sdl-doublebuf))
     (init-gl 640 480)))
 
-#+agar
 (defhandler ui:login-struct (opengl-ui struct-classname)
   (let ((module (make-instance 'login-and-register-module :login-struct-type struct-classname)))
     (push module (modules ui))))
@@ -76,7 +75,6 @@ Adds two cards and lets the player select two."
 
 (defmethod render-everything ((ui opengl-ui) agar-module)
   (gl:clear :color-buffer-bit :depth-buffer-bit)
-  #+agar
   (if ag:*video-initialized*
       (ag:render
 	(with-standard-rendering
@@ -86,10 +84,7 @@ Adds two cards and lets the player select two."
 	;; draw Agar's world with its own matrices
 	(draw agar-module))
       (dolist (module (remove agar-module (modules ui)))
-	(draw module)))
-  #-agar
-  (dolist (module (modules ui))
-    (draw module)))
+	(draw module))))
 
 (defun standard-main-loop (ui)
   (when (running-p ui) (return-from standard-main-loop))

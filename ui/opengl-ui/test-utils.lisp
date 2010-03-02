@@ -11,13 +11,10 @@
 
 (defun init-agar (&rest flags)
   (assert *sdl-screen*)
-  #+agar
   (ag::init-core "skat" 0)
-  #+agar
   (apply #'ag::init-video-sdl (sdl:fp *sdl-screen*) flags))
 
 (defun kill-video ()
-  #+agar
   (ag:destroy-video)
   (sdl:close-audio)
   (sdl:quit-sdl)

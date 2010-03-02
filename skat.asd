@@ -50,7 +50,7 @@
   :license "GNU General Public License"
   :depends-on (skat-core skat-xmpp-comm	; objective should be to remove the xmpp dependency
 	       :cffi :trivial-garbage
-	       :lispbuilder-sdl :lispbuilder-sdl-image :cl-opengl :cl-glu #+agar :agar)
+	       :lispbuilder-sdl :lispbuilder-sdl-image :cl-opengl :cl-glu :agar)
   :components ((:module ui
 			:components ((:module opengl-ui
 					      :components ((:file package)
@@ -62,8 +62,8 @@
 							   (:file send-button :depends-on (module))
 							   (:file gl-ui :depends-on (module gfx-utils agar gl-ui-utils send-button))
 							   (:file test-module :depends-on (gl-ui))
-							   #+agar (:file agar-test :depends-on (gl-ui agar))
-							   #+agar (:file login-and-register :depends-on (gl-ui))
+							   (:file agar-test :depends-on (gl-ui agar))
+							   (:file login-and-register :depends-on (gl-ui))
 							   (:file test-utils :depends-on (gl-ui))
 							   (:file selection :depends-on (gfx-utils gl-ui))
 							   (:file selection-test :depends-on (selection module gl-ui))
