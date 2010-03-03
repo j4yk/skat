@@ -82,4 +82,15 @@
 (defmethod handle-event ((module login-and-register) event))
 
 (defmethod send-login-data ((module login-and-register))
-  (print 'send-login-data))
+  (let ((widgets (widgets (login-window module))))
+    (call-kernel-handler (ui module) 'login-data
+			 (comm::make-xmpp-login-data
+			  :username (ag:text (cdr (assoc :username widgets)))
+			  :hostname (ag:text (cdr (assoc :hostname widgets)))
+			  :domain (let ((text (ag:text (cdr (assoc :domain widgets)))))
+				    (if (string= text "")
+					nil
+					text))
+			  :resource (ag:text (cdr (assoc :resource widgets)))
+			  :password (ag:text (cdr (assoc :password widgets)))
+			  :mechanism :sasl-plain))))
