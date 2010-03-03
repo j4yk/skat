@@ -37,7 +37,7 @@ STUB"
 
 (defhandler ui:login-struct (opengl-ui struct-classname)
   (let ((module (make-instance 'login-and-register-module :login-struct-type struct-classname)))
-    (push module (modules ui))))
+    (insert-module module ui)))
 
 (defhandler ui:cards (opengl-ui cards)
   "Called by Kernel when the Host has distrubuted the cards.
