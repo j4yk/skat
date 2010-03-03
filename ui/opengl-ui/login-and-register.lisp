@@ -68,6 +68,11 @@
 				       &key)
   (init-login-window module))
 
+(defmethod cleanup ((module login-and-register))
+  "Hides and detaches the login-window"
+  (ag:hide-window (window (login-window module)))
+  (ag:detach-object (window (login-window module))))
+		     
 (defun hide-login-window (module)
   (ag:hide-window (login-window module)))
 
