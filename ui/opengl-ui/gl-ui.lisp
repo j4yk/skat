@@ -39,8 +39,39 @@ STUB"
     (init-gl 640 480)))
 
 (defhandler ui:login-struct (opengl-ui struct-classname)
-  (let ((module (make-instance 'login-and-register-module :login-struct-type struct-classname)))
+  (let ((module (make-instance 'login-and-register-module :module ui :login-struct-type struct-classname)))
     (insert-module module ui)))
+
+;; zu Senden: Login-Data
+
+(defhandler ui:registration-struct (opengl-ui struct-classname)
+  (let ((module (find-module 'login-and-register-module ui)))
+    (start-registration module)))
+
+;; zu Senden: Registration-Data
+
+(defhandler ui:registration-reply (opengl-ui accepted)
+  (let ((module (find-module 'login-and-register-module ui)))
+    (if accepted
+	(registration-accepted module)
+	(registration-denied module))))
+
+(defhandler ui:server-update (opengl-ui events)
+  #| idle |#)
+
+;; zu Senden: Unregister
+
+(defhandler ui:logout (opengl-ui address)
+  #| idle |#)
+
+(defhandler ui:playmates (opengl-ui left right)
+  (let ((module (find-module 'players ui)))
+    (playmates module left right)))
+
+;; zu Senden: Game-Start
+
+(defhandler ui:game-start (opengl-ui)
+  #| keine Ahnung |#)
 
 (defhandler ui:cards (opengl-ui cards)
   "Called by Kernel when the Host has distrubuted the cards.
@@ -51,6 +82,26 @@ Hands the cards over to the cards module."
 	(insert-module mod ui)
 	(setf cards-mod mod)))
     (setf (cards cards-mod) cards)))
+
+(defhandler ui:start-bidding (opengl-ui listener min-value)
+  (let ((module (find-module 'bidding ui)))
+    (start-bidding module listener min-value)))
+
+(defhandler ui:listen (opengl-ui bidder)
+  (let ((module (find-module 'bidding ui)))
+    (new-listener module bidder)))
+
+(defhandler ui:bid (opengl-ui value)
+  (let ((module (find-module 'bidding ui)))
+    (bid-received module sender value)))
+
+(defhandler ui:reply-to-bid (opengl-ui value)
+  (let ((module (find-module 'bidding ui)))
+    (query-join module value)))
+
+(defhandler ui:pass (opengl-ui value)
+  (let ((module (find-module 'bidding ui)))
+    (player-passed module sender value)))
 
 (defmethod send-skat ((ui opengl-ui) skat)
   "Sends the chosen cards back to Kernel and removes the cards from
