@@ -19,6 +19,9 @@
 (defmethod draw ((agar-window agar-window))
   (ag:window-draw (window agar-window)))
 
+(defmethod hide ((agar-window agar-window))
+  (ag:hide-window (window agar-window)))
+
 (defclass login-window (agar-window)
   ((module :accessor module :initarg :module)))
 
@@ -42,7 +45,7 @@
     (ag:window-set-caption win "Beim XMPP-Server einlogen")
     (ag:with-widgets (win
 		      (ag:textbox username-textbox :label-text "Benutzername: ")
-		      (ag:textbox server-textbox :label-text "Serveradresse: ")
+		      (ag:textbox hostname-textbox :label-text "Serveradresse: ")
 		      (ag:textbox domain-textbox :label-text "Serverdomäne (optional): ")
 		      (ag:textbox password-textbox :label-text "Passwort: " :flags '(:password))
 		      (ag:textbox resource-textbox :label-text "Standard (optional): " :init-text "skat")
@@ -53,7 +56,7 @@
       (with-slots (widgets window widget-instances) login-window
 	(setf window win
 	      widgets (list (cons :username username-textbox)
-			    (cons :server server-textbox)
+			    (cons :hostname hostname-textbox)
 			    (cons :domain domain-textbox)
 			    (cons :password password-textbox)
 			    (cons :resource resource-textbox)))))))
@@ -73,7 +76,7 @@
   (ag:detach-object (window (login-window module))))
 		     
 (defun hide-login-window (module)
-  (ag:hide-window (login-window module)))
+  (hide (login-window module)))
 
 (defmethod draw ((module login-and-register))
   "Zeichne das Logindaten- oder Registrierungsdaten-Fenster")
