@@ -5,7 +5,9 @@
 (define-package-which-exports-all-requests skat-kernel
   (:nicknames :kernel :kern)
   (:use cl skat-utils org.ancar.clunit)
-  (:export handler-fn-name
+  (:export host
+	   player
+	   handler-fn-name
 	   handler-fn
 	   receive-requests
 	   call-handler-fn
