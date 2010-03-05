@@ -35,6 +35,7 @@ STUB"
 (defun skat-window ()
   "Erstellt das Skat-SDL-Fenster inklusive OpenGL-Kontext."
   (prog1 (sdl:window 640 480 :title-caption "Skat"
+		     :fps (make-instance 'sdl:fps-timestep)
 		     :flags '(sdl:sdl-opengl sdl:sdl-doublebuf))
     (init-gl 640 480)))
 
