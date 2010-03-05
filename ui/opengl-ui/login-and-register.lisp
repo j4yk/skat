@@ -10,7 +10,8 @@
 
 (defclass agar-window ()
   ((widgets :accessor widgets)
-   (window :accessor window)))
+   (window :accessor window)
+   (module :accessor module :initarg :module)))
 
 (defmethod show ((agar-window agar-window))
   "Calls AG_WindowShow on the Agar window"
@@ -23,7 +24,7 @@
   (ag:hide-window (window agar-window)))
 
 (defclass login-window (agar-window)
-  ((module :accessor module :initarg :module)))
+  nil)
 
 (defmacro callback (name return-type args &body body)
   "Defines and returns the pointer to a callback function"
@@ -41,7 +42,7 @@
 
 (defmethod initialize-instance :after ((login-window login-window) &key)
   "Creates the Agar Window"
-  (let ((win (agar:window-new :modal)))
+  (let ((win (agar:window-new-named "login-window" :modal :noclose)))
     (ag:window-set-caption win "Beim XMPP-Server einlogen")
     (ag:with-widgets (win
 		      (ag:textbox username-textbox :label-text "Benutzername: ")
@@ -59,40 +60,74 @@
 			    (cons :hostname hostname-textbox)
 			    (cons :domain domain-textbox)
 			    (cons :password password-textbox)
-			    (cons :resource resource-textbox)))))))
+			    (cons :resource resource-textbox)
+			    (cons :login-btn login-btn)))))))
+
+(defclass register-window (agar-window)
+  nil)
+
+(defmethod initialize-instance :after ((register-window register-window) &key)
+  "Initilializes the register window by creating the widgets etc."
+  (let ((win (ag:window-new-named "register-window" :modal :noclose :nominimize)))
+    (ag:with-widgets (win
+		      (ag:textbox host-jid-textbox :label-text "Jabber-ID des Hostes: ")
+		      (ag:button register-btn "Registrierung anfragen"))
+      (ag:set-event register-btn "button-pushed"
+		    (event-handler #'(lambda (event)
+				       (declare (ignore event))
+				       (send-registration-data (module register-window))))
+		    "")
+      (with-slots (widgets window) register-window
+	(setf window win
+	      widgets (list (cons :host-jid host-jid-textbox)))))))
 
 (defun init-login-window (module)
   "Erstelle das Login-Daten-Fenster und zeige es an."
-  (setf (login-window module) (make-instance 'login-window :module module))
-  (show (login-window module)))
+  (setf (login-window module) (make-instance 'login-window :module module)))
+
+(defun init-register-window (module)
+  (setf (register-window module) (make-instance 'register-window :module module)))
 
 (defmethod initialize-instance :after ((module login-and-register)
 				       &key)
-  (init-login-window module))
+  "Initializes the Login window and the Registration window"
+  (init-login-window module)
+  (init-register-window module))
 
 (defmethod cleanup ((module login-and-register))
   "Hides and detaches the login-window"
-  (ag:hide-window (window (login-window module)))
-  (ag:detach-object (window (login-window module))))
-		     
-(defun hide-login-window (module)
-  (hide (login-window module)))
+  (hide (login-window module))
+  (hide (register-window module))
+  (ag:detach-object (window (login-window module)))
+  (ag:detach-object (window (register-window module))))
 
-(defmethod draw ((module login-and-register))
-  "Zeichne das Logindaten- oder Registrierungsdaten-Fenster")
+(defmethod query-login ((module login-and-register))
+  "Shows the login-window"
+  (show (login-window module)))
 
-(defmethod handle-event ((module login-and-register) event))
+(defmethod query-registration ((module login-and-register))
+  "Shows the register-window"
+  (show (register-window module)))
 
 (defmethod send-login-data ((module login-and-register))
+  (declare (optimize debug))
   (let ((widgets (widgets (login-window module))))
     (call-kernel-handler (ui module) 'login-data
 			 (comm::make-xmpp-login-data
 			  :username (ag:text (cdr (assoc :username widgets)))
 			  :hostname (ag:text (cdr (assoc :hostname widgets)))
-			  :domain (let ((text (ag:text (cdr (assoc :domain widgets)))))
-				    (if (string= text "")
-					nil
-					text))
+			  :domain (ag:text (cdr (assoc :domain widgets)))
 			  :resource (ag:text (cdr (assoc :resource widgets)))
 			  :password (ag:text (cdr (assoc :password widgets)))
-			  :mechanism :sasl-plain))))
+			  :mechanism :sasl-plain))
+    (with-slots (widgets window) (login-window module)
+      (let* ((wait-label (ag:label-new-string window "Bitte warten...")))
+	(push (cons :wait-label wait-label) widgets)
+	(ag:disable-widget (cdr (assoc :login-btn widgets)))))))
+
+(defmethod send-registration-data ((module login-and-register))
+  "Sends the registration data back to kernel and gets the data from register-window"
+  (let ((widgets (widgets (register-window module))))
+    (call-kernel-handler (ui module) 'registration-data
+			 (comm::make-xmpp-registration-data
+			  :host-jid (ag:text (cdr (assoc :host-jid widgets)))))))
