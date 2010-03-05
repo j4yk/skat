@@ -94,7 +94,7 @@ Hands the cards over to the cards module."
 
 (defhandler ui:bid (opengl-ui value)
   (let ((module (find-module 'bidding ui)))
-    (bid-received module sender value)))
+    (bid-received module ui:sender value)))
 
 (defhandler ui:reply-to-bid (opengl-ui value)
   (let ((module (find-module 'bidding ui)))
@@ -102,7 +102,7 @@ Hands the cards over to the cards module."
 
 (defhandler ui:pass (opengl-ui value)
   (let ((module (find-module 'bidding ui)))
-    (player-passed module sender value)))
+    (player-passed module ui:sender value)))
 
 (defmethod send-skat ((ui opengl-ui) skat)
   "Sends the chosen cards back to Kernel and removes the cards from
