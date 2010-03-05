@@ -39,19 +39,19 @@ STUB"
     (init-gl 640 480)))
 
 (defhandler ui:login-struct (opengl-ui struct-classname)
-  (let ((module (make-instance 'login-and-register-module :module ui :login-struct-type struct-classname)))
-    (insert-module module ui)))
+  (let ((module (find-module 'login-and-register ui)))
+    (query-login module)))
 
 ;; zu Senden: Login-Data
 
 (defhandler ui:registration-struct (opengl-ui struct-classname)
-  (let ((module (find-module 'login-and-register-module ui)))
-    (start-registration module)))
+  (let ((module (find-module 'login-and-register ui)))
+    (query-registration module)))
 
 ;; zu Senden: Registration-Data
 
 (defhandler ui:registration-reply (opengl-ui accepted)
-  (let ((module (find-module 'login-and-register-module ui)))
+  (let ((module (find-module 'login-and-register ui)))
     (if accepted
 	(registration-accepted module)
 	(registration-denied module))))
