@@ -43,7 +43,10 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
   "Stellt die XMPP-Verbindung zum Server her und loggt sich dort mit den bereitgestellten Daten ein."
   ;; data ist vom Typ xmpp-login-data (struct) 
   (let ((hostname (xmpp-login-data-hostname data))
-	(jid-domain-part (xmpp-login-data-domain data))
+	(jid-domain-part (let ((d (xmpp-login-data-domain data)))
+			   (if (string= d "")
+			       nil
+			       d)))
 	(username (xmpp-login-data-username data))
 	(resource (xmpp-login-data-resource data))
 	(password (xmpp-login-data-password data))
