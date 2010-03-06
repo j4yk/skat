@@ -18,6 +18,7 @@ einstellen soll."))
 
 (defun call-kernel-handler (ui request-name &rest request-args)
   "Calls the Kernel's appropriate handler function with UI as the sender of the request"
+  (assert (kern:handler-fn request-name) () "Kernel has no handler defined for request ~s" request-name)
   (if (slot-boundp ui 'kernel)
       (apply (kern:handler-fn request-name) (kernel ui) ui request-args)
       (warn "No kernel that can receive ~s ~s" request-name request-args)))
