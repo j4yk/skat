@@ -51,6 +51,7 @@ and the slots being setf-ed to the supplied let-values"
 
 (defmacro alloc-finalized (object type &rest foreign-alloc-args &key initial-element initial-contents (count 1) null-terminated-p)
   "Allocate foreign memory that is to be freed together with object"
+  (declare (ignorable initial-element initial-contents count null-terminated-p))
   `(let ((ptr (foreign-alloc ,type ,@foreign-alloc-args)))
      (prog1 ptr (trivial-garbage:finalize ,object #'(lambda () (foreign-free ptr))))))
 
@@ -209,6 +210,9 @@ and the slots being setf-ed to the supplied let-values"
 				   (prog1 btn (ag:disable-widget btn)))))
        (leave-button (expanded-h (ag:button-new window-vbox nil "Die Runde verlassen"))))
     (ag:window-set-caption window "Mitspieler")
+    (ag:set-event start-button "button-pushed" (event-handler #'(lambda (event)
+								  (declare (ignore event))
+								  (request-game-start w))) "")
     (setf (player1-name w) free-name)
     (setf (player2-name w) free-name)))
 
@@ -261,6 +265,10 @@ and the slots being setf-ed to the supplied let-values"
 	    (disable-start-button w))
 	  (warn "~s: ~a was not in the list of possible participators and thus has not been deleted"
 		(class-name (class-of w)) name))))
+
+(defmethod request-game-start ((w await-game-start-window))
+  "Sends kernel a game-start request"
+  (call-kernel-handler (ui (module w)) 'game-start))
 
 
 ;; Module
