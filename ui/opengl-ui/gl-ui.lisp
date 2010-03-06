@@ -69,8 +69,10 @@ STUB"
   #| idle |#)
 
 (defhandler ui:playmates (opengl-ui left right)
-  (let ((module (find-module 'players ui)))
-    (show-playmates module left right)))
+  (let ((players (find-module 'players ui))
+	(bidding (find-module 'bidding ui)))
+    (introduce-playmates bidding left right)
+    (show-playmates players left right)))
 
 (defhandler ui:game-start (opengl-ui)
   "Host sent game-start"
@@ -93,11 +95,15 @@ Hands the cards over to the cards module."
 
 (defhandler ui:listen (opengl-ui bidder)
   (let ((module (find-module 'bidding ui)))
-    (new-listener module bidder)))
+    (listen-to module bidder)))
 
 (defhandler ui:bid (opengl-ui value)
   (let ((module (find-module 'bidding ui)))
     (bid-received module ui:sender value)))
+
+(defhandler ui:join (opengl-ui value)
+  (let ((module (find-module 'bidding ui)))
+    (join-received module ui:sender value)))
 
 (defhandler ui:reply-to-bid (opengl-ui value)
   (let ((module (find-module 'bidding ui)))
@@ -105,7 +111,7 @@ Hands the cards over to the cards module."
 
 (defhandler ui:pass (opengl-ui value)
   (let ((module (find-module 'bidding ui)))
-    (player-passed module ui:sender value)))
+    (pass-received module ui:sender value)))
 
 (defmethod send-skat ((ui opengl-ui) skat)
   "Sends the chosen cards back to Kernel and removes the cards from
