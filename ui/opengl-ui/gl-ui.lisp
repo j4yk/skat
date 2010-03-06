@@ -58,7 +58,10 @@ STUB"
 	(registration-denied module))))
 
 (defhandler ui:server-update (opengl-ui events)
-  #| idle |#)
+  (when (getf events :player-join)
+    (player-joined (find-module 'login-and-register ui) (getf events :player-join)))
+  (when (getf events :player-leave)
+    (player-left (find-module 'login-and-register ui) (getf events :player-leave))))
 
 ;; zu Senden: Unregister
 
