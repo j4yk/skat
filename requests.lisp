@@ -157,7 +157,7 @@ parameter: Name eines dem Request immer zwingend beigefügten Parameters"
    :SENDER "Host" :RECEIVER "Player"))
 
 (DEFREQUEST SERVER-UPDATE
-    ((EVENTS ""))
+    ((EVENTS "Property-Liste mit den Ereignissen. Mögliche Indikatoren: :player-join :player-leave"))
   (comm->player player->ui)
   (:DOCUMENTATION
    "Statusmeldung des Hostes, die wartende Spieler über Neuigkeiten informiert."
