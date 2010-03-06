@@ -70,7 +70,7 @@ STUB"
 
 (defhandler ui:playmates (opengl-ui left right)
   (let ((module (find-module 'players ui)))
-    (playmates module left right)))
+    (show-playmates module left right)))
 
 (defhandler ui:game-start (opengl-ui)
   "Host sent game-start"

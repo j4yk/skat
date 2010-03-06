@@ -19,6 +19,8 @@
 
 ;; some utility functions for handling agar
 
+(defstruct foreign-variable "Stores a foreign pointer and optionally its size (buffer)" ptr size)
+
 (defclass agar-window ()
   ((window :accessor window)
    (module :accessor module :initarg :module))
@@ -72,6 +74,11 @@ and the slots being setf-ed to the supplied let-values"
   "Allocate foreign memory that is to be freed together with object"
   (declare (ignorable initial-element initial-contents count null-terminated-p))
   `(let ((ptr (foreign-alloc ,type ,@foreign-alloc-args)))
+     (prog1 ptr (trivial-garbage:finalize ,object #'(lambda () (foreign-free ptr))))))
+
+(defmacro alloc-finalized-string (object string)
+  "Allocate memory for this specific string and have it freed later together with object"
+  `(let ((ptr (cffi:foreign-string-alloc ,string)))
      (prog1 ptr (trivial-garbage:finalize ,object #'(lambda () (foreign-free ptr))))))
 
 (defmacro expanded-h (widget)
