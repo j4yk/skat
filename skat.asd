@@ -60,10 +60,11 @@
 							   (:file gl-ui-utils :depends-on (gfx-utils))
 							   (:file agar :depends-on (module))
 							   (:file send-button :depends-on (module))
-							   (:file gl-ui :depends-on (module gfx-utils agar gl-ui-utils send-button))
+							   (:file login-and-register :depends-on (module agar))
+							   (:file gl-ui :depends-on (module gfx-utils agar gl-ui-utils
+											    send-button login-and-register))
 							   (:file test-module :depends-on (gl-ui))
 							   (:file agar-test :depends-on (gl-ui agar))
-							   (:file login-and-register :depends-on (gl-ui))
 							   (:file test-utils :depends-on (gl-ui))
 							   (:file selection :depends-on (gfx-utils gl-ui))
 							   (:file selection-test :depends-on (selection module gl-ui))
