@@ -321,3 +321,9 @@ and the slots being setf-ed to the supplied let-values"
 
 (defmethod player-left ((module login-and-register) player-name)
   (remove-player player-name (await-game-start-window module)))
+
+(defmethod game-starts ((module login-and-register))
+  "Hides all login-and-register's windows"
+  (map nil #'hide (list (login-window module)
+			(register-window module)
+			(await-game-start-window module))))

@@ -72,10 +72,10 @@ STUB"
   (let ((module (find-module 'players ui)))
     (playmates module left right)))
 
-;; zu Senden: Game-Start
-
 (defhandler ui:game-start (opengl-ui)
-  #| keine Ahnung |#)
+  "Host sent game-start"
+  (let ((lar (find-module 'login-and-register ui)))
+    (game-starts lar)))
 
 (defhandler ui:cards (opengl-ui cards)
   "Called by Kernel when the Host has distrubuted the cards.
