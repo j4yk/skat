@@ -126,7 +126,7 @@
    (player1-hbox) (player1-label) (player1-name-label)
    (player2-hbox) (player2-label) (player2-name-label)
    (start-button) (leave-button)
-   (names :accessor names :type (vector string) :initform #(free-name free-name))
+   (names :accessor names :type (vector string) :initform (make-array 2 :initial-element nil))
    (name1-fp) (name1-size) (name2-fp) (name2-size)
    (player2-name :accessor player2-name)
    (player1-name :accessor player1-name)))
@@ -172,10 +172,10 @@
 
 (defmethod add-player (name (w await-game-start-window))
   "Fügt einen Mitspieler zur Liste hinzu"
-  (if (string= (aref (names w) 0) free-name)
+  (if (null (aref (names w) 0))
       (setf (aref (names w) 0) name
 	    (player1-name w) name)
-      (if (string= (aref (names w) 1) free-name)
+      (if (null (aref (names w) 1))
 	  (prog1
 	      (setf (aref (names w) 1) name
 		    (player2-name w) name)
@@ -185,18 +185,18 @@
 
 (defmethod remove-player (name (w await-game-start-window))
   "Streicht einen Mitspieler aus der Liste und lässt ggf. den vorher zweiten Mitspieler aufrutschen"
-  (if (string= (aref (names w) 0) name)
+  (if (equal (aref (names w) 0) name)
       ;; lösche ersten Namen und rücke den zweiten auf
       (progn
 	(setf (aref (names w) 0) (aref (names w) 1)
-	      (aref (names w) 1) free-name
+	      (aref (names w) 1) nil
 	      (player1-name w) (player2-name w)
 	      (player2-name w) free-name)
 	(disable-start-button w))
       (if (string= (aref (names w) 1) name)
 	  ;; lösche zweiten Namen
 	  (progn
-	    (setf (aref (names w) 1) free-name
+	    (setf (aref (names w) 1) nil
 		  (player2-name w) free-name)
 	    (disable-start-button w))
 	  (warn "~s: ~a was not in the list of possible participators and thus has not been deleted"
