@@ -43,6 +43,10 @@
   (standard-main-loop *ui*))
 
 (defun reset-module (module-class &rest initargs)
-  (when (find-module module-class *ui*)
-    (cleanup-and-remove-module (find-module module-class *ui*) *ui*))
-  (apply #'test-module module-class initargs))
+  (let ((m (find-module module-class *ui*)))
+    (when m
+      (cleanup m)
+      (apply #'initialize-instance m initargs))))
+
+(defmacro fmod (module-class)
+  `(find-module ',module-class *ui*))
