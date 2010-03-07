@@ -71,7 +71,8 @@
 (defclass players (module)
   ((left-player-name) (right-player-name)
    (left-player-window)
-   (right-player-window)))
+   (right-player-window)
+   (own-player-window)))
 
 (defun check-slot-unbound (object slotname)
   (when (slot-boundp object slotname)
@@ -92,10 +93,12 @@
   (with-slots (left-player-name right-player-name) module
     (let*-slots module
 	((left-player-window (make-instance 'player-info-window :player-name left-player-name :module module))
-	 (right-player-window (make-instance 'player-info-window :player-name right-player-name :module module)))
+	 (right-player-window (make-instance 'player-info-window :player-name right-player-name :module module))
+	 (own-player-window (make-instance 'player-info-window :player-name "Du" :module module)))
       (ag:window-set-position (window left-player-window) :tl nil)
       (ag:window-set-position (window right-player-window) :tr nil)
-      (mapcar #'show (list left-player-window right-player-window)))))
+      (ag:window-set-position (window own-player-window) :bl nil)
+      (mapcar #'show (list left-player-window right-player-window own-player-window)))))
 
 (defmethod cleanup ((module players))
   (with-slots (left-player-window right-player-window) module
