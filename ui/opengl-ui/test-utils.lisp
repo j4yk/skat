@@ -31,11 +31,14 @@
 
 (defvar *ui* nil)
 
-(defun test-module (module-class &rest initargs)
-  (assert (find-class module-class))
+(defun setup-ui ()
   (unless *ui*
     (setq *ui* (make-instance 'opengl-ui))
-    (push (make-instance 'agar :ui *ui*) (modules *ui*)))
+    (push (make-instance 'agar :ui *ui*) (modules *ui*))))
+
+(defun test-module (module-class &rest initargs)
+  (assert (find-class module-class))
+  (setup-ui)
   (unless (find-module module-class *ui*)
     (let ((module (apply #'make-instance module-class :ui *ui* initargs)))
       (push module (modules *ui*))))
