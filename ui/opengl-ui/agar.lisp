@@ -49,6 +49,14 @@ Meant to be subclassed."))
 	`(callback ,callback-name :void ((event ag:event))
 	   (funcall ,function-name event)))))
 
+(defmacro lambda-event-handler (event-var &body body)
+  "Creates a foreign callback in the current lexical environment
+with return type void and a single ag:event argument with the name event-var
+and body as the function body (declarations are useless)."
+  (let ((callback-name (gensym "CALLBACK")))
+    `(callback ,callback-name :void ((,event-var ag:event))
+       ,@body)))
+
 (defun ensure-detached (object parent)
   "Detaches an object of its parent object is parent"
   (when (pointer-eq (ag:parent-object object) parent)
