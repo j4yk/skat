@@ -126,6 +126,13 @@ Hands the cards over to the cards module."
   (let ((module (find-module 'bidding ui)))
     (pass-received module ui:sender value)))
 
+(defhandler ui:declarer (opengl-ui declarer)
+  (with-modules (players notifications game-declaration)
+    (declarer players declarer)
+    (if (self-p players declarer)
+	(query-hand game-declaration)
+	(show-declarer notifications declarer))))
+
 (defmethod send-skat ((ui opengl-ui) skat)
   "Sends the chosen cards back to Kernel and removes the cards from
   the player's hand"
@@ -194,6 +201,7 @@ Adds two cards and lets the player select two."
 			       (sdl:update-display))))
 		    (continuable-main-loop ()
 		      (restart-case (main-loop)
-			(continue-main-loop () (continuable-main-loop)))))
+			(continue-main-loop () (continuable-main-loop))
+			(terminate-main-loop () (format t "~%main loop has been terminated")))))
 	     (continuable-main-loop))))
     (setf (slot-value ui 'running-p) nil)))

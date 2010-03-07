@@ -71,6 +71,7 @@
 (defclass players (module)
   ((left-player-name) (right-player-name)
    (own-address :documentation "This is the own player's address")
+   (declarer-address :accessor declarer-address)
    (left-player-window)
    (right-player-window)
    (own-player-window)))
@@ -123,6 +124,7 @@
   (with-slots (own-address left-player-name right-player-name
 			   own-player-window left-player-window right-player-window)
       module
+    (setf (declarer-address module) declarer-address)
     (cond ((equal declarer-address own-address)
 	   (setf (role own-player-window) "Alleinspieler"
 		 (role left-player-window) "Gegenspieler"
@@ -135,3 +137,15 @@
 	   (setf (role own-player-window) "Gegenspieler"
 		 (role left-player-window) "Gegenspieler"
 		 (role right-player-window) "Alleinspieler")))))
+
+(defmethod player-name ((module players) player-address)
+  (with-slots (own-address left-player-name right-player-name)
+      module
+    (cond ((equal player-address own-address) own-address)
+	  ((equal player-address left-player-name) left-player-name)
+	  ((equal player-address right-player-name) right-player-name))))
+
+(defmethod self-p ((module players) address)
+  "Returns t if address is the player's own address"
+  (with-slots (own-address) module
+    (equal address own-address)))

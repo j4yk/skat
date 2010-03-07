@@ -57,6 +57,18 @@ and body as the function body (declarations are useless)."
     `(callback ,callback-name :void ((,event-var ag:event))
        ,@body)))
 
+(defmacro std-event-handler (&body body)
+  "Creates a lambda event handler that ignores the event structure"
+  (let ((event (gensym "EVENT")))
+    `(lambda-event-handler ,event
+       (declare (ignore ,event))
+       ,@body)))
+
+(defun get-rid-of-window (win)
+  "Hides and detaches the window"
+  (ag:hide-window win)
+  (ag:detach-object win))
+
 (defun ensure-detached (object parent)
   "Detaches an object of its parent object is parent"
   (when (pointer-eq (ag:parent-object object) parent)
