@@ -131,11 +131,11 @@ If the card is already selected it will be removed from that list."
   (gl:alpha-func :greater 0.1)
 ;;  (gl:enable :blend)
 ;;  (gl:blend-func :src-alpha :one-minus-src-alpha)
+  (gl:color 1 1 1)
   (matrix-mode :modelview
-    (gl:load-identity)
-    (gl:translate 0 0 -10)
-    (gl:color 1 1 1)
     (gl:with-pushed-matrix
+      (gl:load-identity)
+      (gl:translate 0 0 -10)
       (gl:translate 0 -2 0)
       (with-selname 1000
 	(draw-hand module (cards module)))))
