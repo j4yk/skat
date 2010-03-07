@@ -118,3 +118,20 @@
       (ag:window-set-position (window right-player-window) :tr nil)
       (ag:window-set-position (window own-player-window) :bl nil)
       (mapcar #'show (list left-player-window right-player-window own-player-window)))))
+
+(defmethod declarer ((module players) declarer-address)
+  (with-slots (own-address left-player-name right-player-name
+			   own-player-window left-player-window right-player-window)
+      module
+    (cond ((equal declarer-address own-address)
+	   (setf (role own-player-window) "Alleinspieler"
+		 (role left-player-window) "Gegenspieler"
+		 (role right-player-window) "Gegenspieler"))
+	  ((equal declarer-address left-player-name)
+	   (setf (role own-player-window) "Gegenspieler"
+		 (role left-player-window) "Alleinspieler")
+		 (role right-player-window) "Gegenspieler")
+	  ((equal declarer-address right-player-name)
+	   (setf (role own-player-window) "Gegenspieler"
+		 (role left-player-window) "Gegenspieler"
+		 (role right-player-window) "Alleinspieler")))))
