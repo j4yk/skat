@@ -97,11 +97,7 @@ Meant to be used in request handler functions where 'ui is bound to the ui."
   "Called by Kernel when the Host has distrubuted the cards.
 Hands the cards over to the cards module."
   (let ((cards-mod (find-module 'cards ui)))
-    (unless cards-mod
-      (let ((mod (make-instance 'cards :ui ui)))
-	(insert-module mod ui)
-	(setf cards-mod mod)))
-    (setf (cards cards-mod) cards)))
+    (add-cards cards-mod cards)))
 
 (defhandler ui:start-bidding (opengl-ui listener min-value)
   (let ((module (find-module 'bidding ui)))
