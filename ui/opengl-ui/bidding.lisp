@@ -144,6 +144,62 @@
   (setf (selected-bid-value w) min-value)
   (show w))
 
+;; query join window
+
+(defclass query-join-window (bidding-window)
+  ((bidder-fv)
+   (bidder :initarg :bidder)
+   (bid-value-fv)
+   (client-hbox)
+   (text-label)
+   (join-button) (pass-button)))
+
+(defmethod initialize-instance :after ((w query-join-window) &key bidder &allow-other-keys)
+  (assert bidder)
+  (let*-slots w
+      ((bidder-fv (make-foreign-variable :ptr (alloc-finalized-string w bidder)
+					 :size (cffi:with-foreign-string ((p size) bidder)
+						 size)))
+       (bid-value-fv (make-foreign-variable :ptr (alloc-finalized w :int)))
+       (window (ag:window-new :nobuttons))
+       (client-hbox (expanded (ag:hbox-new window)))
+       (text-label (expanded (ag:new-polled-label client-hbox nil "%s reizt %i"
+						  (foreign-variable-ptr bidder-fv)
+						  (foreign-variable-ptr bid-value-fv))))
+       (join-button (ag:button-new-fn client-hbox nil "Mitgehen"
+				      (lambda-event-handler event
+					(declare (ignore event))
+					(join w)) ""))
+       (pass-button (ag:button-new-fn client-hbox nil "Passen"
+				      (lambda-event-handler event
+					(declare (ignore event))
+					(pass w)) "")))
+    (setf (bid-value w) 18)
+    (ag:size-hint-label text-label 1 (format nil "~s reizt 264" bidder))))
+
+(defmethod bid-value ((w query-join-window))
+  (with-slots (bid-value-fv) w
+    (cffi:mem-aref (foreign-variable-ptr bid-value-fv) :int)))
+
+(defmethod (setf bid-value) (value (w query-join-window))
+  (with-slots (bid-value-fv) w
+    (setf (cffi:mem-aref (foreign-variable-ptr bid-value-fv) :int) value)))
+
+(defmethod bidder ((w query-join-window))
+  (with-slots (bidder-fv) w
+    (cffi:foreign-string-to-lisp (foreign-variable-ptr bidder-fv))))
+
+(defmethod query-join ((w query-join-window) value)
+  (show w)
+  (setf (bid-value w) value))
+
+(defmethod join ((w query-join-window))
+  (send-join (module w) (bid-value w)))
+
+(defmethod pass ((w query-join-window))
+  (send-pass (module w) (bid-value w)))
+
+
 ;; bidding module
 
 (defclass bidding (module)
@@ -229,9 +285,15 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
 		     (listener-window module)) sender-address value))
 
 (defmethod listen-to ((module bidding) bidder-address)
-  "Hide listener window"
+  "Hide listener window and initialize own-listener-window"
   (setf (listener-p module) t)
+  (setf (own-listener-window module)
+	(make-instance 'query-join-window :module module :bidder bidder-address))
   (hide (listener-window module)))
+
+(defmethod query-join ((module bidding) value)
+  "Show query-join-window"
+  (query-join (own-listener-window module) value))
 
 (defmethod start-bidding ((module bidding) listener-address min-value)
   "Show own bidding window"
@@ -251,11 +313,17 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
 
 (defmethod send-join ((module bidding) value)
   "Sends a join request to the kernel"
+  (hide (own-listener-window module))
   (call-kernel-handler (ui module) 'join value))
 
 (defmethod send-pass ((module bidding) value)
-  "Sends a pass request to the kernel"
+  "Sends a pass request to the kernel and hides the own bidding windows"
   (hide (own-bidder-window module))
+  (when (slot-boundp module 'own-listener-window)
+    (hide (own-listener-window module))
+    (ag:detach-object (window (own-listener-window module)))
+    (slot-makunbound module 'own-listener-window)
+    (hide (bidder-window module)))
   (hide (listener-window module))
   (setf (bidder-p module) nil
 	(listener-p module) nil)
