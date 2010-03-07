@@ -70,6 +70,10 @@
   (show w)
   (setf (action w) "Denkt nach..."))
 
+(defmethod bid-sent ((w listener-window))
+  "Display \"thinking\" status in the listener-window"
+  (bid-received w nil nil))
+
 (defmethod join-received ((w listener-window) sender-address value)
   (declare (ignore sender-address value))
   (show w)
@@ -148,6 +152,7 @@
    (listener :accessor listener)
    (bidder :accessor bidder)
    (listener-p :accessor listener-p :initform nil)
+   (bidder-p :accessor bidder-p :initform nil)
    (bidder-window :accessor bidder-window)
    (listener-window :accessor listener-window)
    (own-bidder-window :accessor own-bidder-window)
@@ -212,7 +217,11 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
   ;; next bidding value must be higher
   (setf (game-point-levels module) (cdr (game-point-levels module)))
   ;; update the listener-window
-  (join-received (listener-window module) sender-address value))
+  (join-received (listener-window module) sender-address value)
+  ;; if bidder is the player himself, show the bidder window again
+  (when (bidder-p module)
+    (start-bidding (own-bidder-window module) sender-address
+		   (car (game-point-levels module)))))
 
 (defmethod pass-received ((module bidding) sender-address value)
   (pass-received (if (equal sender-address (bidder module))
@@ -226,14 +235,19 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
 
 (defmethod start-bidding ((module bidding) listener-address min-value)
   "Show own bidding window"
-  (setf (game-point-levels module)
+  (setf (bidder-p module) t
+	(game-point-levels module)
 	(kern:cut-away-game-point-levels min-value (game-point-levels module)))
+  (if (equal listener-address (left-player module))
+      (move-left (listener-window module))
+      (move-right (listener-window module)))
   (start-bidding (own-bidder-window module) listener-address min-value))
 
 (defmethod send-bid ((module bidding) value)
   "Sends a bid request to the kernel"
   (hide (own-bidder-window module))
-  (call-kernel-handler (ui module) 'bid value))
+  (call-kernel-handler (ui module) 'bid value)
+  (bid-sent (listener-window module)))
 
 (defmethod send-join ((module bidding) value)
   "Sends a join request to the kernel"
@@ -242,4 +256,7 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
 (defmethod send-pass ((module bidding) value)
   "Sends a pass request to the kernel"
   (hide (own-bidder-window module))
+  (hide (listener-window module))
+  (setf (bidder-p module) nil
+	(listener-p module) nil)
   (call-kernel-handler (ui module) 'pass value))
