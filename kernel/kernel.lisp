@@ -105,4 +105,5 @@ Error Conditions: invalid-kernel-state-error"
 
 ;; Comm teilt die eigene Adresse nach erfolgtem Login mit
 (defhandler own-address (unregistered) comm (kernel address)
-  (setf (own-address kernel) address))
+  (setf (own-address kernel) address)
+  (call-ui 'own-address kernel kernel address))

@@ -70,6 +70,7 @@
 
 (defclass players (module)
   ((left-player-name) (right-player-name)
+   (own-address :documentation "This is the own player's address")
    (left-player-window)
    (right-player-window)
    (own-player-window)))
@@ -77,6 +78,9 @@
 (defun check-slot-unbound (object slotname)
   (when (slot-boundp object slotname)
     (error "~s of ~s already bound!" slotname object)))
+
+(defmethod own-address ((module players) address)
+  (let*-slots module ((own-address address))))
 
 (defmethod introduce-playmates ((module players) name-left name-right)
   "Remember their names"

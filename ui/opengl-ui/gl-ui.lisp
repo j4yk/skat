@@ -52,6 +52,10 @@ Meant to be used in request handler functions where 'ui is bound to the ui."
 
 ;; zu Senden: Login-Data
 
+(defhandler ui:own-address (opengl-ui address)
+  (with-modules (players)
+    (own-address players address)))
+
 (defhandler ui:registration-struct (opengl-ui struct-classname)
   (let ((module (find-module 'login-and-register ui)))
     (query-registration module)))
