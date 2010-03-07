@@ -3,7 +3,8 @@
 (defclass opengl-ui (ui::base-ui)
   ((modules :accessor modules :initform nil :documentation "Liste der aktiven Module")
    (priortized-modules :accessor priortized-modules :initform nil :documentation "Liste der aktiven Module, die Events zuerst verarbeiten dürfen")
-   (running-p :reader running-p :initform nil))
+   (running-p :reader running-p :initform nil)
+   (last-selection :initform nil))
   (:documentation "OpenGL-UI Klasse. Zentrales Objekt für die OpenGL-Schnittstelle"))
 
 (defun find-module (class ui)
@@ -170,6 +171,27 @@ Adds two cards and lets the player select two."
       (dolist (module (remove agar-module (modules ui)))
 	(draw module))))
 
+(defmethod perform-selection ((ui opengl-ui) x y)
+  "Performs a selection at \(x|y\) on everything, saves
+\(list x y hit-records\) to last-selection slot of ui and
+returns sorted hit-records."
+  (with-modules (agar)
+    (let ((hit-records (sort (select-gl-object x y #'render-everything ui agar)
+			     #'< :key #'hit-record-max-z)))
+      (let*-slots ui
+	  ((last-selection (list x y hit-records)))
+	hit-records))))
+
+(defmethod select ((ui opengl-ui) x y)
+  "Queries UI for the hit-records resulting from a selection at (x|y)"
+  (with-slots (last-selection) ui
+    (if last-selection
+	(destructuring-bind (sx sy hit-records) ui
+	  (if (and (= sx x) (= sy y))
+	      hit-records
+	      (perform-selection ui x y)))
+	(perform-selection ui x y))))
+
 (defun standard-main-loop (ui)
   (when (running-p ui) (return-from standard-main-loop))
   (setf (slot-value ui 'running-p) t)
@@ -198,7 +220,10 @@ Adds two cards and lets the player select two."
 			       (handle-swank-requests)
 			       (render-everything ui agar-module)
 			       (gl:flush)
-			       (sdl:update-display))))
+			       (sdl:update-display)
+			       (with-slots (last-selection) ui
+				 ;; invalidate last selection
+				 (setf last-selection nil)))))
 		    (continuable-main-loop ()
 		      (restart-case (main-loop)
 			(continue-main-loop () (continuable-main-loop))
