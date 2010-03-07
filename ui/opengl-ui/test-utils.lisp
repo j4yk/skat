@@ -2,7 +2,7 @@
 
 ;; Hier sollen die Sachen rein, die das Testen von Modulen usw. erleichtern.
 
-(defparameter *sdl-screen* nil)
+(defvar *sdl-screen* nil)
 
 (defun init-window (&rest sdl-flags)
   (sdl:init-sdl :flags sdl-flags :video t)
@@ -29,8 +29,7 @@
   (ag:destroy-video)
   (init-agar))
 
-(defparameter *ui* nil)
-(defparameter *module* nil)
+(defvar *ui* nil)
 
 (defun test-module (module-class &rest initargs)
   (assert (find-class module-class))
