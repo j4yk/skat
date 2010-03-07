@@ -75,6 +75,21 @@
    (right-player-window)
    (own-player-window)))
 
+(defmethod cleanup ((module players))
+  (with-slots (left-player-window right-player-window own-player-window) module
+    (when (slot-boundp module 'left-player-window)
+      (hide left-player-window)
+      (ag:detach-object (window left-player-window))
+      (slot-makunbound module 'left-player-window)
+    (when (slot-boundp module 'right-player-window)
+      (hide right-player-window)
+      (ag:detach-object (window right-player-window))
+      (slot-makunbound module 'right-player-window))
+    (when (slot-boundp module 'own-player-window)
+      (hide own-player-window)
+      (ag:detach-object (window own-player-window))
+      (slot-makunbound module 'own-player-window)))))
+
 (defun check-slot-unbound (object slotname)
   (when (slot-boundp object slotname)
     (error "~s of ~s already bound!" slotname object)))
@@ -94,23 +109,12 @@
   (assert (slot-boundp module 'right-player-name))
   (check-slot-unbound module 'left-player-window)
   (check-slot-unbound module 'right-player-window)
-  (with-slots (left-player-name right-player-name) module
+  (with-slots (left-player-name right-player-name own-address) module
     (let*-slots module
 	((left-player-window (make-instance 'player-info-window :player-name left-player-name :module module))
 	 (right-player-window (make-instance 'player-info-window :player-name right-player-name :module module))
-	 (own-player-window (make-instance 'player-info-window :player-name "Du" :module module)))
+	 (own-player-window (make-instance 'player-info-window :player-name own-address :module module)))
       (ag:window-set-position (window left-player-window) :tl nil)
       (ag:window-set-position (window right-player-window) :tr nil)
       (ag:window-set-position (window own-player-window) :bl nil)
       (mapcar #'show (list left-player-window right-player-window own-player-window)))))
-
-(defmethod cleanup ((module players))
-  (with-slots (left-player-window right-player-window) module
-    (when (slot-boundp module 'left-player-window)
-      (hide left-player-window)
-      (ag:detach-object (window left-player-window))
-      (slot-makunbound module 'left-player-window)
-    (when (slot-boundp module 'right-player-window)
-      (hide right-player-window)
-      (ag:detach-object (window right-player-window))
-      (slot-makunbound module 'right-player-window)))))
