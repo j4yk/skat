@@ -18,7 +18,9 @@
 	   make-card
 	   print-card
 	   suit
-	   rank))
+	   rank
+	   *game-point-levels*
+	   cut-away-game-point-levels))
   
 
 (define-package-which-exports-all-requests skat-ui

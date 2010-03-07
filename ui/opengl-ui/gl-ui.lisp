@@ -39,6 +39,13 @@ STUB"
 		     :flags '(sdl:sdl-opengl sdl:sdl-doublebuf))
     (init-gl 640 480)))
 
+(defmacro with-modules ((&rest modules) &body body)
+  "Binds the modules to symbols that equal the modules' class names for the lexical context of body.
+Meant to be used in request handler functions where 'ui is bound to the ui."
+  `(let (,@(loop for module in modules
+	      collect `(,module (find-module ',module ui))))
+     ,@body))
+
 (defhandler ui:login-struct (opengl-ui struct-classname)
   (let ((module (find-module 'login-and-register ui)))
     (query-login module)))
@@ -76,8 +83,9 @@ STUB"
 
 (defhandler ui:game-start (opengl-ui)
   "Host sent game-start"
-  (let ((lar (find-module 'login-and-register ui)))
-    (game-starts lar)))
+  (with-modules (login-and-register bidding)
+    (reset-game-point-levels bidding)
+    (game-starts login-and-register)))
 
 (defhandler ui:cards (opengl-ui cards)
   "Called by Kernel when the Host has distrubuted the cards.
