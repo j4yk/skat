@@ -106,6 +106,11 @@ and the slots being setf-ed to the supplied let-values"
   `(let ((wid ,widget))
      (prog1 wid (ag:expand-horiz wid))))
 
+(defmacro expanded-v (widget)
+  "Call ag:expand-vert on widget and return widget"
+  `(let ((wid ,widget))
+     (prog1 wid (ag:expand-vert wid))))  
+
 (defmacro expanded (widget)
   "Call ag:expanded on widget and return widget"
   `(let ((wid ,widget))
