@@ -53,13 +53,14 @@ perform the rendering from which objects can be selected when called with fn-arg
     (%gl:init-names)
     (with-standard-rendering		; get rid of the Agar matrices
       (matrix-mode :projection
-	(gl:with-pushed-matrix		; push the projection matrix
-	  ;; get an equivalent projection matrix which only shows the Pixel about (x, y)
-	  (gl:load-identity)
-	  (glu:pick-matrix x (- (aref viewport 3) y) 1.0 1.0 viewport)
-	  (set-perspective (aref viewport 2) (aref viewport 3))
-	  (matrix-mode :modelview
-	    (apply draw-function fn-args)))))
+      	(gl:with-pushed-matrix		; push the projection matrix
+      	  ;; get an equivalent projection matrix which only shows the Pixel about (x, y)
+      	  (gl:load-identity)
+      	  (glu:pick-matrix x (- (aref viewport 3) y) 1.0 1.0 viewport)
+      	  (set-perspective (aref viewport 2) (aref viewport 3))
+      	  (matrix-mode :modelview
+      	     (apply draw-function fn-args))
+	  (matrix-mode :projection))))
     (end-selection :render buffer)))
 
 ;; testing stuff
