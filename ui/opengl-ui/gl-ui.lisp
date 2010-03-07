@@ -130,23 +130,40 @@ Hands the cards over to the cards module."
 	(query-hand game-declaration)
 	(show-declarer notifications declarer))))
 
-(defmethod send-skat ((ui opengl-ui) skat)
-  "Sends the chosen cards back to Kernel and removes the cards from
-  the player's hand"
-  (unless (= 2 (length skat)) (error "Must push two cards into the skat!"))
-  (let ((cards-mod (find-module 'cards ui)))
-    (remove-cards cards-mod skat)
-    (end-choose-skat cards-mod)		; cleanup
-    (ui:call-kernel-handler ui 'skat skat)) ; pass it on
-  (remove-module (find-module 'send-button ui) ui))
+(defmethod take-skat ((ui opengl-ui))
+  "Send hand-decision to kernel, taking the skat."
+  (call-kernel-handler ui 'hand-decision nil))
 
 (defhandler ui:skat (opengl-ui skat)
   "Called by Kernel when the skat is received from the host.
 Adds two cards and lets the player select two."
   (assert (= 2 (length skat)))
-  (with-modules (cards)
+  (with-modules (cards game-declaration)
     (add-cards cards skat)
-    (select-skat cards)))
+    (select-skat cards)
+    (query-skat game-declaration)))
+
+(defmethod query-declaration ((ui opengl-ui) hand-p)
+  "Calls this generic function on the game-declaration module"
+  (with-modules (game-declaration)
+    (query-declaration game-declaration hand-p)))
+
+(defmethod send-skat ((ui opengl-ui))
+  "Sends the chosen cards back to Kernel and removes the cards from
+  the player's hand"
+  (with-modules (cards)
+    (let ((skat (selected-cards cards)))
+      (unless (= 2 (length skat)) (error "Must push two cards into the skat!"))
+      (remove-cards cards skat)
+      (end-choose-skat cards)		; cleanup
+      (call-kernel-handler ui 'skat skat) ; pass it on
+      (query-declaration ui nil))))	  ; processed the Skat, so no hand
+
+(defmethod play-hand ((ui opengl-ui))
+  "Send hand-decision to kernel, playing a hand game
+and presents the player the declaration dialog."
+  (call-kernel-handler ui 'hand-decision t)
+  (query-declaration ui t))
 
 (defun render-non-agar-modules (modules agar-module)
   (dolist (module (remove agar-module modules))

@@ -111,6 +111,7 @@
 				      (lambda-event-handler event
 					(declare (ignore event))
 					(pass w)) "")))
+    (ag:button-text (ag:ucombo-button bid-value-ucombo) "XXXX")
     (ag:window-set-caption window "Reizwert ansagen")
     ;; insert a dummy label to make the window a little bit bigger by default
     (let ((dummy-label (ag:label-new-string client-hbox "XXX")))
