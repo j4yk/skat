@@ -62,8 +62,10 @@
 							   (:file send-button :depends-on (module))
 							   (:file login-and-register :depends-on (module agar))
 							   (:file bidding :depends-on (module agar))
+							   (:file players :depends-on (module agar))
 							   (:file gl-ui :depends-on (module gfx-utils agar gl-ui-utils
-											    send-button login-and-register))
+											    send-button login-and-register
+											    players))
 							   (:file test-module :depends-on (gl-ui))
 							   (:file agar-test :depends-on (gl-ui agar))
 							   (:file test-utils :depends-on (gl-ui))
