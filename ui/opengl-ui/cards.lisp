@@ -145,8 +145,8 @@ If the card is already selected it will be removed from that list."
 
 (defmethod select-card ((module cards) x y)
   "Does a selection at P(x,y) and returns the card that the clicked object represents"
-  (declare (optimize (debug 3)))
-  (let ((hit-records (sort (select-gl-object x y #'draw module) #'< :key #'hit-record-max-z)))
+  (declare (optimize debug))
+  (let ((hit-records (select (ui module) x y)))
     (declare (optimize debug))
     (when hit-records
       (let ((record (dolist (r hit-records) ; look for a card hit

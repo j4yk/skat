@@ -152,14 +152,17 @@ Adds two cards and lets the player select two."
     (add-cards cards skat)
     (select-skat cards)))
 
+(defun render-non-agar-modules (modules agar-module)
+  (dolist (module (remove agar-module modules))
+    (draw module)))
+
 (defmethod render-everything ((ui opengl-ui) agar-module)
   (gl:clear :color-buffer-bit :depth-buffer-bit)
   (if ag:*video-initialized*
       (ag:render
 	(with-standard-rendering
 	  ;; draw all modules with normal GL matrices
-	  (dolist (module (remove agar-module (modules ui)))
-	    (draw module)))
+	  (render-non-agar-modules (modules ui) agar-module))
 	;; draw Agar's world with its own matrices
 	(draw agar-module))
       (dolist (module (remove agar-module (modules ui)))
@@ -169,8 +172,9 @@ Adds two cards and lets the player select two."
   "Performs a selection at \(x|y\) on everything, saves
 \(list x y hit-records\) to last-selection slot of ui and
 returns sorted hit-records."
+  (declare (optimize debug))
   (with-modules (agar)
-    (let ((hit-records (sort (select-gl-object x y #'render-everything ui agar)
+    (let ((hit-records (sort (select-gl-object x y #'render-non-agar-modules (modules ui) agar)
 			     #'< :key #'hit-record-max-z)))
       (let*-slots ui
 	  ((last-selection (list x y hit-records)))
