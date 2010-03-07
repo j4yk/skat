@@ -69,23 +69,33 @@
 ;; Players module
 
 (defclass players (module)
-  ((left-player-window)
+  ((left-player-name) (right-player-name)
+   (left-player-window)
    (right-player-window)))
 
 (defun check-slot-unbound (object slotname)
   (when (slot-boundp object slotname)
     (error "~s of ~s already bound!" slotname object)))
 
-(defmethod show-playmates ((module players) name-left name-right)
+(defmethod introduce-playmates ((module players) name-left name-right)
+  "Remember their names"
+  (let*-slots module
+      ((left-player-name name-left)
+       (right-player-name name-right))))
+
+(defmethod show-playmates ((module players))
   "Initializes and shows the player info windows"
+  (assert (slot-boundp module 'left-player-name))
+  (assert (slot-boundp module 'right-player-name))
   (check-slot-unbound module 'left-player-window)
   (check-slot-unbound module 'right-player-window)
-  (let*-slots module
-      ((left-player-window (make-instance 'player-info-window :player-name name-left :module module))
-       (right-player-window (make-instance 'player-info-window :player-name name-right :module module)))
-    (ag:window-set-position (window left-player-window) :tl nil)
-    (ag:window-set-position (window right-player-window) :tr nil)
-    (mapcar #'show (list left-player-window right-player-window))))
+  (with-slots (left-player-name right-player-name) module
+    (let*-slots module
+	((left-player-window (make-instance 'player-info-window :player-name left-player-name :module module))
+	 (right-player-window (make-instance 'player-info-window :player-name right-player-name :module module)))
+      (ag:window-set-position (window left-player-window) :tl nil)
+      (ag:window-set-position (window right-player-window) :tr nil)
+      (mapcar #'show (list left-player-window right-player-window)))))
 
 (defmethod cleanup ((module players))
   (with-slots (left-player-window right-player-window) module

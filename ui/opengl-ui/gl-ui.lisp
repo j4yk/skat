@@ -79,13 +79,14 @@ Meant to be used in request handler functions where 'ui is bound to the ui."
   (let ((players (find-module 'players ui))
 	(bidding (find-module 'bidding ui)))
     (introduce-playmates bidding left right)
-    (show-playmates players left right)))
+    (introduce-playmates players left right)))
 
 (defhandler ui:game-start (opengl-ui)
   "Host sent game-start"
-  (with-modules (login-and-register bidding)
+  (with-modules (login-and-register bidding players)
     (reset-game-point-levels bidding)
-    (game-starts login-and-register)))
+    (game-starts login-and-register)
+    (show-playmates players)))
 
 (defhandler ui:cards (opengl-ui cards)
   "Called by Kernel when the Host has distrubuted the cards.
