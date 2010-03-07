@@ -17,6 +17,7 @@
 	   slots-of-class		; Slotliste holen
 	   make-card
 	   print-card
+	   sort-cards
 	   suit
 	   rank
 	   *game-point-levels*

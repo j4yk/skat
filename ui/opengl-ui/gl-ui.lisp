@@ -147,16 +147,10 @@ Hands the cards over to the cards module."
 (defhandler ui:skat (opengl-ui skat)
   "Called by Kernel when the skat is received from the host.
 Adds two cards and lets the player select two."
-  (assert (= 2 (length skat)) () "Skat must be two cards")
-  (let ((cards-mod (find-module 'cards ui)))
-    (assert cards-mod)
-    (setf (cards cards-mod) (nconc (cards cards-mod) skat))
-    ;; send button
-    (insert-module (make-instance 'send-button
-				  :ui ui
-				  :handler-fn #'(lambda ()
-						  (send-skat ui (selected-cards cards-mod))))
-		   ui)))
+  (assert (= 2 (length skat)))
+  (with-modules (cards)
+    (add-cards cards skat)
+    (select-skat cards)))
 
 (defmethod render-everything ((ui opengl-ui) agar-module)
   (gl:clear :color-buffer-bit :depth-buffer-bit)

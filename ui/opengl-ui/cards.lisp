@@ -4,6 +4,7 @@
   ((own-cards :accessor cards :type list :initform nil)
    (left-cards :type list :initform nil)
    (right-cards :type list :initform nil)
+   (game :accessor game :initform :grand)
    (textures :accessor textures :type list :initform nil :documentation "Property list of texture names and IDs")
    (select :accessor select-p :initform nil :documentation "Controls whether selection is performed on clicks or not")
    (n-max-select :accessor n-max-select :initform 1 :documentation "How many cards can be selected simultaneously")
@@ -173,7 +174,7 @@ If the card is already selected it will be removed from that list."
 
 ;; convenience functions
 
-(defmethod prepare-choose-skat ((module cards))
+(defmethod select-skat ((module cards))
   "Prepare the cards module to let the player choose two cards for the skat"
   (setf (select-p module) t		; make cards selectable
 	(n-max-select module) 2))
@@ -182,3 +183,6 @@ If the card is already selected it will be removed from that list."
   "Make cards no longer selectable and clear selection"
   (clear-selected-cards module)
   (setf (select-p module) nil))
+
+(defmethod add-cards ((module cards) cards)
+  (setf (cards module) (kern:sort-cards (nconc (cards module) cards) (game module))))
