@@ -1,5 +1,7 @@
 (in-package gl-ui)
 
+;; these enums are matched with integers selected in an AG_Radio
+
 (cffi:defcenum suit
   :diamonds :hearts :spades :clubs :grand :null)
 
@@ -17,9 +19,11 @@
    (declare-btn)))
 
 (defmethod selected-suit ((w select-declaration-window))
+  "Current selection in the trump suit selection radio"
   (mem-aref (foreign-variable-ptr (slot-value w 'suit-fv)) 'suit))
 
 (defmethod suit-changed ((w select-declaration-window))
+  "Ensures the correct widgets are shown on the right of the window"
   (with-slots (right-vbox none-possible-label
 			  null-add-radio suit-add-radio
 			  hand-p)
@@ -45,6 +49,7 @@
   (suit-changed w))
 
 (defmethod selected-declarations ((w select-declaration-window))
+  "Returns which item is selected on the right of the window"
   (case (selected-suit w)
     (:null (mem-aref (foreign-variable-ptr (slot-value w 'null-add-fv)) 'null-add))
     (otherwise (mem-aref (foreign-variable-ptr (slot-value w 'suit-add-fv)) 'suit-add))))
@@ -67,11 +72,14 @@
 		       (otherwise nil))))))) ; don't append :hand a second time
 
 (defmethod send-it ((w select-declaration-window))
+  "Hides the window and sends the declaration to the kernel"
   (hide w)
   (call-kernel-handler
    (ui (module w)) 'declaration (declaration-list w)))
 
 (defmethod initialize-instance :after ((w select-declaration-window) &key)
+  "Instanciates all possible widgets for the window, including the
+ones that aren't initially shown"
   (let ((none-possible-text (format nil "Da der Skat~%aufgenommen~%wurde, sind~%keine zusätz-~%lichen~%Ansagen~%möglich.")))
     (let*-slots w
 	((suit-fv (make-foreign-variable :ptr (alloc-finalized w 'suit)))
@@ -101,13 +109,19 @@
 	    client-vbox nil "Ansagen"
 	    (std-event-handler (send-it w)) ""))))
       (ag:window-set-caption window "Ansage")
+      ;; default selected radio buttons
       (setf (mem-aref (foreign-variable-ptr suit-add-fv) 'suit-add) :hand)
       (setf (mem-aref (foreign-variable-ptr null-add-fv) 'null-add) :standard)
       (setf (selected-suit w) :diamonds)
+      ;; have suit-changed called on selection change
       (ag:set-radio-changed-event suit-radio (std-event-handler (suit-changed w)))
+      ;; size hint for the fat label
       (ag:size-hint-label none-possible-label 7 none-possible-text))))
 
 (defmethod show ((w select-declaration-window))
+  "Show the window, but intially show it (to Agar) with the
+none-possible-label because this is supposed to take up the most
+space"
   (let ((suit (selected-suit w))
 	(hand-p (hand-p w)))
     (setf (hand-p w) nil)
@@ -117,23 +131,29 @@
     (setf (selected-suit w) suit)))
 
 
+;; Module
 
 (defclass game-declaration (module)
   ())
 
 (defmethod query-hand ((module game-declaration))
+  "Prompts the user whether he wants to take the skat"
   (ag:prompt-options "Skat aufnehmen?"
-		     (list "Aufnehmen" (lambda-event-handler event
-					 (take-skat (ui module))
-					 (get-rid-of-window (ag:event-ptr event 1))))
-		     (list "Hand spielen" (lambda-event-handler event
-					    (play-hand (ui module))
-					    (get-rid-of-window (ag:event-ptr event 1)))))
+		     (list "Aufnehmen"
+			   (lambda-event-handler event
+			     (take-skat (ui module))
+			     (get-rid-of-window (ag:event-ptr event 1))))
+		     (list "Hand spielen"
+			   (lambda-event-handler event
+			     (play-hand (ui module))
+			     (get-rid-of-window (ag:event-ptr event 1)))))
   (values))
 
 (defmethod query-skat ((module game-declaration))
+  "Displays the button to eventually send the two skat cards"
   (let* ((window (ag:window-new :notitle :noborders :modal :keepabove))
-	 (btn (ag:button-new-fn window nil "Wähle zwei Karten aus und klicke dann hier zum absenden"
+	 (btn (ag:button-new-fn window nil
+				"Wähle zwei Karten aus und klicke dann hier zum absenden"
 				(std-event-handler
 				  (send-skat (ui module))
 				  (get-rid-of-window window)) "")))
@@ -141,5 +161,7 @@
     (ag:window-show window)))
 
 (defmethod query-declaration ((module game-declaration) hand-p)
-  (let ((w (make-instance 'select-declaration-window :hand hand-p :module module)))
+  "Presents the player the declaration selection window"
+  (let ((w (make-instance 'select-declaration-window
+			  :hand hand-p :module module)))
     (show w)))
