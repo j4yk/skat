@@ -77,6 +77,7 @@ If the card is already selected it will be removed from that list."
 (defmethod initialize-instance :after ((module cards) &key)
   "Loads the card textures"
   (load-textures module)
+  ;; create display lists for the two types of cards (front and back)
   (let ((offset (gl:gen-lists 2)))
     (with-slots (card-display-list card-reversed-display-list) module
       (setf card-display-list (+ offset 0)
@@ -129,8 +130,7 @@ If the card is already selected it will be removed from that list."
       (with-slots (card-display-list card-reversed-display-list) module
 	(if back-p
 	    (gl:call-list card-reversed-display-list)
-	    (gl:call-list card-display-list))))
-    )
+	    (gl:call-list card-display-list)))))
   (when selected-p
     (gl:disable :color-logic-op)))
 
@@ -162,8 +162,7 @@ If the card is already selected it will be removed from that list."
 				    (card-to-texture-name (ui-card-card card)))
 			      (funcall selname-generator-fn n)
 			      :back-p (ui-card-covered-p card)
-			      :selected-p (or (card-selected-p module card)
-					      (candidate-card-p module (card-at-last-mouse-pos module)))))))))
+			      :selected-p (or (card-selected-p module card) nil)))))))
 
 ;; convenience functions
 
@@ -178,9 +177,12 @@ If the card is already selected it will be removed from that list."
   (setf (select-p module) nil))
 
 (defmethod add-cards ((module cards) cards)
-  (setf (cards module) (kern:sort-cards (nconc (cards module) cards) (game module))))
+  (setf (cards module)
+	(mapcar #'(lambda (card)
+		    (make-ui-card :card card :covered-p nil))
+		(kern:sort-cards (nconc (mapcar #'ui-card-card (cards module)) cards) (game module)))))
 
-(defmethod choose-card ((module cards) cards)
+(defmethod choose-card ((module cards))
   "Enables the handling of clicks on the cards"
   (setf (choose-card-p module) t))
 
@@ -261,7 +263,7 @@ prohibit further reaction on clicks on the cards"
 			   (setf (aref last-mouse-pos 0) x
 				 (aref last-mouse-pos 1) y)))
     (:mouse-button-up-event (:x x :y y)
-			    (cond ((select-p module)
+			    (cond ((choose-card-p module)
 				   ;; if a clicked card is still the same
 				   ;; as the one where the click began then send it
 				   ;; else discard that card
