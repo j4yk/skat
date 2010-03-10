@@ -216,26 +216,52 @@ prohibit further reaction on clicks on the cards"
   "Pushes the card onto the middle stack."
   (middle-stack-push module card))
 
+(defun draw-table ()
+  (with-pushed-matrix
+    :modelview
+    (gl:translate 0 -3 -15)
+    (gl:with-pushed-attrib (:texture-2d :depth-test)
+      (gl:disable :texture-2d)
+      (gl:disable :depth-test)
+      (gl:color 0 0.6 0)
+      (gl:with-primitives :triangle-fan
+	(gl:vertex 0 0 0)
+	(let ((r 15))
+	  (loop for alpha from (* 2 pi) downto 0 by (/ pi 36)
+	     do (let ((x (* r (cos alpha)))
+		      (z (* r (sin alpha))))
+		  (gl:vertex (- x) 0 (- z)))))))
+    (gl:color 1 1 1)
+    (gl:with-primitives :points
+      (gl:vertex 0 0 0))))
+
 ;; Module methods
 
 (defmethod draw ((module cards))
   "Zeichnet die Karten"
   (declare (optimize debug))
+  (draw-table)
   (gl:enable :texture-2d)
   (gl:enable :alpha-test)
   (gl:tex-env :texture-env :texture-env-mode :modulate)
   (gl:alpha-func :greater 0.1)
-;;  (gl:enable :blend)
-;;  (gl:blend-func :src-alpha :one-minus-src-alpha)
   (gl:color 1 1 1)
-  (matrix-mode :modelview
-    (gl:with-pushed-matrix
-      (gl:load-identity)
-      (gl:translate 0 0 -10)
-      (gl:translate 0 -2 0)
-      (with-selname 1000
-	(draw-hand module (cards module) #'own-card-selname))))
-;;  (gl:disable :blend)
+  (with-pushed-matrix
+    :modelview
+    (gl:translate 0 0 -8)
+    (gl:translate 0 -3 0)
+    (gl:rotate -20 1 0 0)
+    (gl:rotate 10 0 1 0)
+    (with-selname 1000
+      (draw-hand module (cards module) #'own-card-selname)))
+  (with-pushed-matrix
+    :modelview
+    (gl:translate 3 3 -15)
+    (with-pushed-matrix
+      (gl:translate -5 0 0)
+      (draw-card-here module (getf (textures module) (card-to-texture-name #!d7)) 99998 :back-p nil))
+    (gl:rotate 180 0 1 0) 		; volle Wende
+    (draw-card-here module nil 99999 :back-p t))
   (gl:disable :alpha-test)
   (gl:disable :texture-2d))
 
