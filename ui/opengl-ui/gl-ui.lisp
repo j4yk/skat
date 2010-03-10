@@ -7,6 +7,8 @@
    (last-selection :initform nil))
   (:documentation "OpenGL-UI Klasse. Zentrales Objekt für die OpenGL-Schnittstelle"))
 
+;; Strukturspezifisch
+
 (defun find-module (class ui)
   "Returns the first module of given class from (modules ui)"
   (find (find-class class) (modules ui) :key #'class-of))
@@ -21,6 +23,15 @@
   (cleanup module)
   (remove-module module ui))
 
+(defmacro with-modules ((&rest modules) &body body)
+  "Binds the modules to symbols that equal the modules' class names for the lexical context of body.
+Meant to be used in request handler functions where 'ui is bound to the ui."
+  `(let (,@(loop for module in modules
+	      collect `(,module (find-module ',module ui))))
+     ,@body))
+
+;; UI specific
+
 (defmethod ui:start ((ui opengl-ui) &optional no-new-thread-p)
   "Startet die OpenGL-Benutzerschnittstelle.
 STUB"
@@ -33,23 +44,17 @@ STUB"
   (declare (ignore ui))
   (error "Not implemented yet!"))
 
-(defun skat-window ()
-  "Erstellt das Skat-SDL-Fenster inklusive OpenGL-Kontext."
-  (prog1 (sdl:window 640 480 :title-caption "Skat"
-		     :fps (make-instance 'sdl:fps-timestep)
-		     :flags '(sdl:sdl-opengl sdl:sdl-doublebuf))
-    (init-gl 640 480)))
-
-(defmacro with-modules ((&rest modules) &body body)
-  "Binds the modules to symbols that equal the modules' class names for the lexical context of body.
-Meant to be used in request handler functions where 'ui is bound to the ui."
-  `(let (,@(loop for module in modules
-	      collect `(,module (find-module ',module ui))))
-     ,@body))
+;; request handlers
 
 (defhandler ui:login-struct (opengl-ui struct-classname)
   (let ((module (find-module 'login-and-register ui)))
     (query-login module)))
+
+;; function and control flow
+
+(defmethod player-name ((ui opengl-ui) player-address)
+  (with-modules (players)
+    (player-name players player-address)))
 
 ;; zu Senden: Login-Data
 
@@ -165,6 +170,40 @@ and presents the player the declaration dialog."
   (call-kernel-handler ui 'hand-decision t)
   (query-declaration ui t))
 
+(defhandler choose-card (opengl-ui)
+  "Host hat mitgeteilt, dass man am Stich ist."
+  (with-modules (cards)
+    (choose-card cards)))
+
+(defmethod play-card ((ui opengl-ui) card)
+  "Sendet eine Karte zum Spielen an den Kernel zurück"
+  (error "stub"))
+
+(defhandler card (opengl-ui card)
+  "Eine Karte wurde von jemandem anders gespielt"
+  (with-module (cards)
+    (card-played cards card)))
+
+(defhandler trick (opengl-ui cards winner)
+  "Ein Stich wurde zugeteilt"
+  (error "not implemented yet"))
+
+(defhandler game-over (opengl-ui prompt)
+  "Spiel ist/wurde beendet.
+prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
+  (if prompt
+      (prompt-for-new-game (error "don't know module"))
+      (end-game (error "don't know module"))))
+
+;; rendering
+
+(defun skat-window ()
+  "Erstellt das Skat-SDL-Fenster inklusive OpenGL-Kontext."
+  (prog1 (sdl:window 640 480 :title-caption "Skat"
+		     :fps (make-instance 'sdl:fps-timestep)
+		     :flags '(sdl:sdl-opengl sdl:sdl-doublebuf))
+    (init-gl 640 480)))
+
 (defun render-non-agar-modules (modules agar-module)
   (dolist (module (remove agar-module modules))
     (draw module)))
@@ -180,6 +219,8 @@ and presents the player the declaration dialog."
 	(draw agar-module))
       (dolist (module (remove agar-module (modules ui)))
 	(draw module))))
+
+;; selection
 
 (defmethod perform-selection ((ui opengl-ui) x y)
   "Performs a selection at \(x|y\) on everything, saves
@@ -202,6 +243,8 @@ returns sorted hit-records."
 	      hit-records
 	      (perform-selection ui x y)))
 	(perform-selection ui x y))))
+
+;; main loop
 
 (defun standard-main-loop (ui)
   (when (running-p ui) (return-from standard-main-loop))
@@ -234,7 +277,8 @@ returns sorted hit-records."
 			       (sdl:update-display)
 			       (with-slots (last-selection) ui
 				 ;; invalidate last selection
-				 (setf last-selection nil)))))
+				 (setf last-selection nil))
+			       (sleep 0.1))))
 		    (continuable-main-loop ()
 		      (restart-case (main-loop)
 			(continue-main-loop () (continuable-main-loop))

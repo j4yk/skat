@@ -165,3 +165,7 @@ space"
   (let ((w (make-instance 'select-declaration-window
 			  :hand hand-p :module module)))
     (show w)))
+
+(defmethod show-declarer ((module notifications) declarer-address)
+  (ag:text-msg :info "~a ist der Alleinspieler dieses Spiels"
+	       (player-name (ui module) declarer-address)))
