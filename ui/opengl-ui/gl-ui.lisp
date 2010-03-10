@@ -177,11 +177,11 @@ and presents the player the declaration dialog."
 
 (defmethod play-card ((ui opengl-ui) card)
   "Sendet eine Karte zum Spielen an den Kernel zurück"
-  (error "stub"))
+  (call-kernel-handler ui 'card card))
 
 (defhandler card (opengl-ui card)
   "Eine Karte wurde von jemandem anders gespielt"
-  (with-module (cards)
+  (with-modules (cards)
     (card-played cards card)))
 
 (defhandler trick (opengl-ui cards winner)

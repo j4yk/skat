@@ -8,7 +8,10 @@
    (textures :accessor textures :type list :initform nil :documentation "Property list of texture names and IDs")
    (select :accessor select-p :initform nil :documentation "Controls whether selection is performed on clicks or not")
    (n-max-select :accessor n-max-select :initform 1 :documentation "How many cards can be selected simultaneously")
-   (selected-cards :reader selected-cards :initform nil :documentation "The currently selected cards"))
+   (selected-cards :reader selected-cards :initform nil :documentation "The currently selected cards")
+   (choose-card-p :accessor choose-card-p :initform nil :documentation "Indicates whether a card is to be chosen")
+   (candidate-card :initform nil :documentation "The card on which a click was started")
+   (last-mouse-pos :accessor last-mouse-pos :initform #(0 0) :documentation "Saves the last known mouse position"))
   (:documentation "Module zum Zeichnen der Karten und zum Verarbeiten kartenspezifischer Aktionen"))
 
 (defmethod remove-cards ((module cards) cards)
@@ -102,8 +105,17 @@ If the card is already selected it will be removed from that list."
   (when selected-p
     (gl:disable :color-logic-op)))
 
+(defun candidate-card-p (module card)
+  (equalp card (slot-value module 'candidate-card)))
 
-(defun draw-hand (module cards)
+(defun card-at-last-mouse-pos (module)
+  (with-slots (last-mouse-pos) module
+    (select-card module (aref last-mouse-pos 0) (aref last-mouse-pos 1))))
+
+(defun card-selected-p (module card)
+  (member card (selected-cards module) :test #'equalp))
+
+(defun draw-hand (module cards selname-generator-fn)
   "Zeichnet eine aufgefaltete Hand von Karten"
   (gl:with-pushed-matrix
    (gl:translate 0 -5 0)
@@ -118,9 +130,62 @@ If the card is already selected it will be removed from that list."
 	      (gl:translate 0 5 (* n dz))
 	      (draw-card-here module
 			      (getf (textures module)
-					   (card-to-texture-name card))
-			      (own-card-selname n)
-			      :selected-p (member card (selected-cards module) :test #'equalp)))))))
+				    (card-to-texture-name (ui-card-card card)))
+			      (funcall selname-generator-fn n)
+			      :back-p (ui-card-covered-p card)
+			      :selected-p (or (card-selected-p module card)
+					      (candidate-card-p module (card-at-last-mouse-pos module)))))))))
+
+;; convenience functions
+
+(defmethod select-skat ((module cards))
+  "Prepare the cards module to let the player choose two cards for the skat"
+  (setf (select-p module) t		; make cards selectable
+	(n-max-select module) 2))
+
+(defmethod end-choose-skat ((module cards))
+  "Make cards no longer selectable and clear selection"
+  (clear-selected-cards module)
+  (setf (select-p module) nil))
+
+(defmethod add-cards ((module cards) cards)
+  (setf (cards module) (kern:sort-cards (nconc (cards module) cards) (game module))))
+
+(defmethod choose-card ((module cards) cards)
+  "Enables the handling of clicks on the cards"
+  (setf (choose-card-p module) t))
+
+(defmethod select-card ((module cards) x y)
+  "Does a selection at P(x,y) and returns the card that the clicked object represents"
+  (declare (optimize debug))
+  (let ((hit-records (select (ui module) x y)))
+    (declare (optimize debug))
+    (when hit-records
+      (let ((record (dolist (r hit-records) ; look for a card hit
+		      (declare (optimize debug))
+		      (when (= +own-cards+ (car (hit-record-names-on-stack r))) ; card hit
+			(return r)))))
+	(declare (optimize debug))
+	(when record
+	  (let ((nth-card (1- (- (second (hit-record-names-on-stack record)) +own-cards+)))) ; offset
+	    (nth nth-card (cards module))))))))
+
+(defmethod send-card ((module cards) card)
+  "Sends the card to the kernel to play it, so also remove it from the hand and
+prohibit further reaction on clicks on the cards"
+  (play-card (ui module) card)
+  (setf (choose-card-p module) nil)
+  (remove-cards module (list card)))
+
+(defmethod middle-stack-push ((module cards) card)
+  "Pushes another card onto the the stack in the middle of the table"
+  (error "not implemented"))
+
+(defmethod card-played ((module cards) card)
+  "Pushes the card onto the middle stack."
+  (middle-stack-push module card))
+
+;; Module methods
 
 (defmethod draw ((module cards))
   "Zeichnet die Karten"
@@ -138,51 +203,44 @@ If the card is already selected it will be removed from that list."
       (gl:translate 0 0 -10)
       (gl:translate 0 -2 0)
       (with-selname 1000
-	(draw-hand module (cards module)))))
+	(draw-hand module (cards module) #'own-card-selname))))
 ;;  (gl:disable :blend)
   (gl:disable :alpha-test)
   (gl:disable :texture-2d))
 
-(defmethod select-card ((module cards) x y)
-  "Does a selection at P(x,y) and returns the card that the clicked object represents"
-  (declare (optimize debug))
-  (let ((hit-records (select (ui module) x y)))
-    (declare (optimize debug))
-    (when hit-records
-      (let ((record (dolist (r hit-records) ; look for a card hit
-		      (declare (optimize debug))
-		      (when (= +own-cards+ (car (hit-record-names-on-stack r))) ; card hit
-			(return r)))))
-	(declare (optimize debug))
-	(when record
-	  (let ((nth-card (1- (- (second (hit-record-names-on-stack record)) +own-cards+)))) ; offset
-	    (nth nth-card (cards module))))))))
-
 (defmethod handle-event ((module cards) event)
   (case-event event
     (:mouse-button-down-event (:x x :y y)
-			      (when (select-p module)
-				(let ((card (select-card module x y)))
-				  (when card
-				    (unless (and (= (length (selected-cards module)) (n-max-select module))
-						 (not (member card (selected-cards module) :test #'equalp)))
-				      (toggle-selected-card module card))))))
+			      (cond ((select-p module)
+				     ;; select a card if the maximum number of selectable cards
+				     ;; has not yet been reached, if the card is already selected
+				     ;; unselect it
+				     (let ((card (select-card module x y)))
+				       (when card
+					 (unless (and (= (length (selected-cards module)) (n-max-select module))
+						      (not (member card (selected-cards module) :test #'equalp)))
+					   (toggle-selected-card module card)))))
+				    ((choose-card-p module)
+				     ;; remember a card that was clicked on
+				     (let ((card (select-card module x y)))
+				       (when card
+					 (with-slots (candidate-card) module
+					   (setf candidate-card card)))))))
+    (:mouse-motion-event (:x x :y y)
+			 ;; save mouse pos
+			 (with-slots (last-mouse-pos) module
+			   (setf (aref last-mouse-pos 0) x
+				 (aref last-mouse-pos 1) y)))
     (:mouse-button-up-event (:x x :y y)
-			    (declare (ignore x y))
-			    ;; selection --> welche Karte?
-			    )))
-
-;; convenience functions
-
-(defmethod select-skat ((module cards))
-  "Prepare the cards module to let the player choose two cards for the skat"
-  (setf (select-p module) t		; make cards selectable
-	(n-max-select module) 2))
-
-(defmethod end-choose-skat ((module cards))
-  "Make cards no longer selectable and clear selection"
-  (clear-selected-cards module)
-  (setf (select-p module) nil))
-
-(defmethod add-cards ((module cards) cards)
-  (setf (cards module) (kern:sort-cards (nconc (cards module) cards) (game module))))
+			    (cond ((select-p module)
+				   ;; if a clicked card is still the same
+				   ;; as the one where the click began then send it
+				   ;; else discard that card
+				   (let ((card (select-card module x y)))
+				     (if card
+					 (with-slots (candidate-card) module
+					   (if (equalp card candidate-card)
+					       (send-card module card)
+					       (slot-makunbound module 'candidate-card)))
+					 (slot-makunbound module 'candidate-card))))))))
+  
