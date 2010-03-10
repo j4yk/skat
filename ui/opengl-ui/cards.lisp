@@ -4,8 +4,10 @@
   ((own-cards :accessor cards :type list :initform nil)
    (left-cards :type list :initform nil)
    (right-cards :type list :initform nil)
+   (middle-stack :type list :initform nil)
    (game :accessor game :initform :grand)
    (textures :accessor textures :type list :initform nil :documentation "Property list of texture names and IDs")
+   (card-display-list) (card-reversed-display-list)
    (select :accessor select-p :initform nil :documentation "Controls whether selection is performed on clicks or not")
    (n-max-select :accessor n-max-select :initform 1 :documentation "How many cards can be selected simultaneously")
    (selected-cards :reader selected-cards :initform nil :documentation "The currently selected cards")
@@ -74,9 +76,36 @@ If the card is already selected it will be removed from that list."
 
 (defmethod initialize-instance :after ((module cards) &key)
   "Loads the card textures"
-  (load-textures module))
+  (load-textures module)
+  (let ((offset (gl:gen-lists 2)))
+    (with-slots (card-display-list card-reversed-display-list) module
+      (setf card-display-list (+ offset 0)
+	    card-reversed-display-list (+ offset 1))
+      (gl:with-new-list (card-display-list :compile)
+	(gl:with-primitives :quads
+	  ;; cards drawn from the front side are drawn counterclockwise
+	  (gl:tex-coord 0 1) (gl:vertex (/ -6 2) (/ -9 2)) ; unten links
+	  (gl:tex-coord 1 1) (gl:vertex (/  6 2) (/ -9 2)) ; unten rechts
+	  (gl:tex-coord 1 0) (gl:vertex (/  6 2) (/  9 2)) ; oben rechts
+	  (gl:tex-coord 0 0) (gl:vertex (/ -6 2) (/  9 2)) ; oben links
+	  ))
+      (gl:with-new-list (card-reversed-display-list :compile)	
+	(gl:with-primitives :quads
+	  ;; draw backside cards clockwise
+	  ;; because else the texture directs away from the viewer
+	  ;; and the card would be invisible
+	  (gl:tex-coord 0 1) (gl:vertex (/ -6 2) (/ -9 2)) ; unten links
+	  (gl:tex-coord 0 0) (gl:vertex (/ -6 2) (/  9 2)) ; oben links
+	  (gl:tex-coord 1 0) (gl:vertex (/  6 2) (/  9 2)) ; oben rechts
+	  (gl:tex-coord 1 1) (gl:vertex (/  6 2) (/ -9 2)) ; unten rechts
+	  )))))
 
-(defstruct card (card #!D7 :type kern:card) selection-name)
+(defstruct ui-card
+  "A card object that is to be drawn"
+  (card #!D7 :type kern:card)
+  selection-name
+  from
+  covered-p)
 
 (defun card-to-texture-name (card)
   "Returns the texture name for this specific card"
@@ -97,11 +126,11 @@ If the card is already selected it will be removed from that list."
       (gl:scale f f f))
     (with-selname selection-name
       ;; Fläche
-      (gl:with-primitives :polygon
-	(gl:tex-coord 0 1) (gl:vertex (/ -6 2) (/ -9 2)) ; unten links
-	(gl:tex-coord 1 1) (gl:vertex (/  6 2) (/ -9 2)) ; unten rechts
-	(gl:tex-coord 1 0) (gl:vertex (/  6 2) (/  9 2)) ; oben rechts
-	(gl:tex-coord 0 0) (gl:vertex (/ -6 2) (/  9 2))))) ; oben links
+      (with-slots (card-display-list card-reversed-display-list) module
+	(if back-p
+	    (gl:call-list card-reversed-display-list)
+	    (gl:call-list card-display-list))))
+    )
   (when selected-p
     (gl:disable :color-logic-op)))
 
@@ -117,7 +146,7 @@ If the card is already selected it will be removed from that list."
 
 (defun draw-hand (module cards selname-generator-fn)
   "Zeichnet eine aufgefaltete Hand von Karten"
-  (gl:with-pushed-matrix
+  (with-pushed-matrix :modelview
    (gl:translate 0 -5 0)
     (let ((ncards (length cards))
 	  (dzrot 7)
@@ -125,7 +154,7 @@ If the card is already selected it will be removed from that list."
       (loop
 	 for n from 1 to ncards
 	 and card in cards
-	 do (gl:with-pushed-matrix
+	 do (with-pushed-matrix :modelview
 	      (gl:rotate (* (- (+ (/ ncards 2)) n) dzrot) 0 0 1)
 	      (gl:translate 0 5 (* n dz))
 	      (draw-card-here module
