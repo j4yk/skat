@@ -48,3 +48,19 @@ Gibt die Textur-ID zurück."
   `(progn
      (gl:matrix-mode ,mode)
      ,@body))
+
+(defmacro with-pushed-matrix (&body body)
+  "You can specify a matrix mode as the first element of body to have
+  the matrix automatically popped in that specific matrix-mode. You
+  can also use it to switch to that matrix mode before pushing the matrix"
+  (let ((matrix-mode (car body)))
+    (if (member matrix-mode (list :modelview :texture :projection))
+	`(matrix-mode ,matrix-mode
+	   (gl:push-matrix)
+	   (unwind-protect
+		(progn
+		  ,@(cdr body))
+	     (matrix-mode ,matrix-mode
+	       (gl:pop-matrix))))
+	`(gl:with-pushed-matrix
+	   ,@body))))
