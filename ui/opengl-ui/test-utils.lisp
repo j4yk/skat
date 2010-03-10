@@ -4,8 +4,8 @@
 
 (defvar *sdl-screen* nil)
 
-(defun get-some-cards ()
-  (loop for n from 1 to 10
+(defun get-some-cards (&optional (n 10))
+  (loop for n from 1 to n
      collect (kern::make-card :suit (nth (random 4) (mapcar #'car kern::*card-suits*))
 			      :rank (nth (random 8) (mapcar #'car kern::*card-ranks*)))))
 
