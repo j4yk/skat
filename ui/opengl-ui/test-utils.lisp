@@ -4,6 +4,11 @@
 
 (defvar *sdl-screen* nil)
 
+(defun get-some-cards ()
+  (loop for n from 1 to 10
+     collect (kern::make-card :suit (nth (random 4) (mapcar #'car kern::*card-suits*))
+			      :rank (nth (random 8) (mapcar #'car kern::*card-ranks*)))))
+
 (defun init-window (&rest sdl-flags)
   (sdl:init-sdl :flags sdl-flags :video t)
   #+windows (sdl:init-image :png)
