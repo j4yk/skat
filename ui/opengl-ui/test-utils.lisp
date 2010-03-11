@@ -5,9 +5,13 @@
 (defvar *sdl-screen* nil)
 
 (defun get-some-cards (&optional (n 10))
-  (loop for n from 1 to n
-     collect (kern::make-card :suit (nth (random 4) (mapcar #'car kern::*card-suits*))
-			      :rank (nth (random 8) (mapcar #'car kern::*card-ranks*)))))
+  (flet ((new-card ()
+	   (kern::make-card :suit (nth (random 4) (mapcar #'car kern::*card-suits*))
+			    :rank (nth (random 8) (mapcar #'car kern::*card-ranks*)))))
+    (loop with cards = nil
+       do (setf cards (delete-duplicates (cons (new-card) cards) :test #'equalp))
+       until (= n (length cards))
+       finally (return cards))))
 
 (defun init-window (&rest sdl-flags)
   (sdl:init-sdl :flags sdl-flags :video t)
