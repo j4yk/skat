@@ -217,8 +217,9 @@ If the card is already selected it will be removed from that list."
     (when hit-records
       (let ((record (dolist (r hit-records) ; look for a card hit
 		      (declare (optimize debug))
-		      (when (= +own-cards+ (car (hit-record-names-on-stack r))) ; card hit
-			(return r)))))
+		      (when (> (length (hit-record-names-on-stack r)) 0)
+			(when (= +own-cards+ (car (hit-record-names-on-stack r))) ; card hit
+			  (return r))))))
 	(declare (optimize debug))
 	(when record
 	  (let ((nth-card (1- (- (second (hit-record-names-on-stack record)) +own-cards+)))) ; offset
