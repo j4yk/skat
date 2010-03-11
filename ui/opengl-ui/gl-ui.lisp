@@ -214,7 +214,13 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
       (ag:render
 	(with-standard-rendering
 	  ;; view perspective
+	  ;; Normal:
 	  (glu:look-at 0 3 0 0 -3 -15 0 1 0)
+	  ;; Draufsicht:
+	  ;; (glu:look-at 0 15 -10
+	  ;; 	       0 -3 -15
+	  ;; 	       0 0 -1)
+	  (gl:translate 0 -3 -15)	; go to table center
 	  ;; draw all modules with normal GL matrices
 	  (render-non-agar-modules (modules ui) agar-module))
 	;; draw Agar's world with its own matrices

@@ -74,9 +74,22 @@ If the card is already selected it will be removed from that list."
     ;; backside of the cards
     (add-texture module :backside (sdl-surface-to-gl-texture (sdl-image:load-image (merge-pathnames "back.png"))))))
 
-(defmethod initialize-instance :after ((module cards) &key)
-  "Loads the card textures"
-  (load-textures module)
+(defstruct ui-card
+  "A card object that is to be drawn"
+  (card #!D7 :type kern:card)
+  selection-name
+  from
+  covered-p)
+
+(defun card-to-texture-name (card)
+  "Returns the texture name for this specific card"
+  (check-type card kern:card)
+  (intern (subseq (with-output-to-string (s) (kern:print-card card s)) 2) 'keyword))
+
+(defvar card-height 9)
+(defvar card-width 6)
+
+(defmethod create-display-lists ((module cards))
   ;; create display lists for the two types of cards (front and back)
   (let ((offset (gl:gen-lists 2)))
     (with-slots (card-display-list card-reversed-display-list) module
@@ -101,23 +114,17 @@ If the card is already selected it will be removed from that list."
 	  (gl:tex-coord 1 1) (gl:vertex (/  6 2) (/ -9 2)) ; unten rechts
 	  )))))
 
-(defstruct ui-card
-  "A card object that is to be drawn"
-  (card #!D7 :type kern:card)
-  selection-name
-  from
-  covered-p)
-
-(defun card-to-texture-name (card)
-  "Returns the texture name for this specific card"
-  (check-type card kern:card)
-  (intern (subseq (with-output-to-string (s) (kern:print-card card s)) 2) 'keyword))
+(defmethod initialize-instance :after ((module cards) &key)
+  "Loads the card textures"
+  (load-textures module)
+  (create-display-lists module))
 
 (defun draw-card-here (module texture selection-name &key back-p selected-p)
-  (when (and back-p (getf (textures module) :backside))
-    (gl:bind-texture :texture-2d (getf (textures module) :backside)))
-  (when texture
-    (gl:bind-texture :texture-2d texture))
+  (declare (optimize debug))
+  (gl:bind-texture :texture-2d
+		   (cond ((and back-p (getf (textures module) :backside))
+			  (getf (textures module) :backside))
+			 (texture texture)))
   (when selected-p
     (gl:enable :color-logic-op)
     (gl:logic-op :copy-inverted))
@@ -146,17 +153,33 @@ If the card is already selected it will be removed from that list."
 
 (defun draw-hand (module cards selname-generator-fn)
   "Zeichnet eine aufgefaltete Hand von Karten"
+  (declare (optimize debug))
   (with-pushed-matrix :modelview
-   (gl:translate 0 -5 0)
     (let ((ncards (length cards))
-	  (dzrot 7)
+	  (dzrot 9)
 	  (dz 0.1))
       (loop
 	 for n from 1 to ncards
 	 and card in cards
-	 do (with-pushed-matrix :modelview
-	      (gl:rotate (* (- (+ (/ ncards 2)) n) dzrot) 0 0 1)
-	      (gl:translate 0 5 (* n dz))
+	 do (with-pushed-matrix
+	      :modelview
+	      (let* (;; rotation between fingers:
+		     (zrot-angle (* (- (+ (/ ncards 2)) n) dzrot))
+		     (zrot-angle-rad (- (/ (* zrot-angle pi) 180)))
+		     (rot-radius 3)
+		     ;; bending with the hand:
+		     (bend-radius 10)
+		     ;; translations
+		     (delta-x (* rot-radius (sin zrot-angle-rad)))
+		     (delta-y (- (* rot-radius (- 1 (cos zrot-angle-rad)))))
+		     (delta-z (+ (* n dz) (- bend-radius (sqrt (- (* bend-radius bend-radius) (* delta-x delta-x))))))
+		     ;; rotation angle for bending
+		     (bend-rot-angle (- (* (/ (acos (/ delta-x bend-radius)) pi) 180) 90)))
+		(declare (optimize debug))
+		(when (not (ui-card-covered-p card)))
+		(gl:translate delta-x delta-y delta-z)
+		(gl:rotate bend-rot-angle 0 1 0) ; bend rotate in-place
+		(gl:rotate zrot-angle 0 0 1)) ; fan rotate in-place 
 	      (draw-card-here module
 			      (getf (textures module)
 				    (card-to-texture-name (ui-card-card card)))
@@ -217,23 +240,20 @@ prohibit further reaction on clicks on the cards"
   (middle-stack-push module card))
 
 (defun draw-table ()
-  (with-pushed-matrix
-    :modelview
-    (gl:translate 0 -3 -15)
-    (gl:with-pushed-attrib (:texture-2d :depth-test)
-      (gl:disable :texture-2d)
-      (gl:disable :depth-test)
-      (gl:color 0 0.6 0)
-      (gl:with-primitives :triangle-fan
-	(gl:vertex 0 0 0)
-	(let ((r 15))
-	  (loop for alpha from (* 2 pi) downto 0 by (/ pi 36)
-	     do (let ((x (* r (cos alpha)))
-		      (z (* r (sin alpha))))
-		  (gl:vertex (- x) 0 (- z)))))))
-    (gl:color 1 1 1)
-    (gl:with-primitives :points
-      (gl:vertex 0 0 0))))
+  (gl:with-pushed-attrib (:texture-2d :depth-test)
+    (gl:disable :texture-2d)
+    (gl:disable :depth-test)
+    (gl:color 0 0.6 0)
+    (gl:with-primitives :triangle-fan
+      (gl:vertex 0 0 0)
+      (let ((r 15))
+	(loop for alpha from (* 2 pi) downto 0 by (/ pi 36)
+	   do (let ((x (* r (cos alpha)))
+		    (z (* r (sin alpha))))
+		(gl:vertex (- x) 0 (- z)))))))
+  (gl:color 1 1 1)
+  (gl:with-primitives :points
+    (gl:vertex 0 0 0)))
 
 ;; Module methods
 
@@ -248,15 +268,26 @@ prohibit further reaction on clicks on the cards"
   (gl:color 1 1 1)
   (with-pushed-matrix
     :modelview
-    (gl:translate 0 0 -8)
-    (gl:translate 0 -3 0)
+    (gl:rotate (/ 360 3) 0 1 0)
+    (gl:translate 0 0 7)
     (gl:rotate -20 1 0 0)
-    (gl:rotate 10 0 1 0)
+    (draw-hand module (slot-value module 'left-cards) (constantly 9000)))
+  (with-pushed-matrix
+    :modelview
+    (gl:rotate (- (/ 360 3)) 0 1 0)
+    (gl:translate 0 0 7)
+    (gl:rotate -20 1 0 0)
+    (draw-hand module (slot-value module 'right-cards) (constantly 9000)))
+  (with-pushed-matrix
+    :modelview
+    (gl:translate 0 0 7)
+    (gl:rotate -20 1 0 0)		; tilt
+    (gl:rotate 10 0 1 0)		; and turn a little
     (with-selname 1000
       (draw-hand module (cards module) #'own-card-selname)))
   (with-pushed-matrix
     :modelview
-    (gl:translate 3 3 -15)
+    (gl:translate 3 6 0)
     (with-pushed-matrix
       (gl:translate -5 0 0)
       (draw-card-here module (getf (textures module) (card-to-texture-name #!d7)) 99998 :back-p nil))
