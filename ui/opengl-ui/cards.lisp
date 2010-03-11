@@ -272,13 +272,13 @@ prohibit further reaction on clicks on the cards"
     (gl:rotate (/ 360 3) 0 1 0)
     (gl:translate 0 0 7)
     (gl:rotate -20 1 0 0)
-    (draw-hand module (slot-value module 'left-cards) (constantly 9000)))
+    (draw-hand module (slot-value module 'right-cards) (constantly 9000)))
   (with-pushed-matrix
     :modelview
     (gl:rotate (- (/ 360 3)) 0 1 0)
     (gl:translate 0 0 7)
     (gl:rotate -20 1 0 0)
-    (draw-hand module (slot-value module 'right-cards) (constantly 9000)))
+    (draw-hand module (slot-value module 'left-cards) (constantly 9000)))
   (with-pushed-matrix
     :modelview
     (gl:translate 0 0 7)
