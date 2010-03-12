@@ -195,7 +195,7 @@ and presents the player the declaration dialog."
 (defhandler card (opengl-ui card)
   "Eine Karte wurde von jemandem anders gespielt"
   (with-modules (cards)
-    (card-played cards card)))
+    (card-played cards (player-direction ui:sender) card)))
 
 (defhandler trick (opengl-ui cards winner)
   "Ein Stich wurde zugeteilt"
