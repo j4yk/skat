@@ -102,7 +102,10 @@ STUB"
   "Called by Kernel when the Host has distrubuted the cards.
 Hands the cards over to the cards module."
   (let ((cards-mod (find-module 'cards ui)))
-    (add-cards cards-mod cards)))
+    (add-cards cards-mod cards)
+    ;; the other players did also get cards
+    (add-other-players-cards cards-mod :left 10)
+    (add-other-players-cards cards-mod :right 10)))
 
 (defhandler ui:start-bidding (opengl-ui listener min-value)
   (let ((module (find-module 'bidding ui)))
@@ -207,7 +210,7 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
 (defun render-non-agar-modules (modules agar-module)
   ;; view perspective
   ;; Normal:
-  (glu:look-at 0 3 0 0 -3 -15 0 1 0)
+  (glu:look-at 0 4 -6 0 -3 -15 0 1 0)
   ;; Draufsicht:
   ;; (glu:look-at 0 15 -10
   ;; 	       0 -3 -15
