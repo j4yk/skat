@@ -101,6 +101,10 @@ and the slots being setf-ed to the supplied let-values"
   `(let ((ptr (cffi:foreign-string-alloc ,string)))
      (prog1 ptr (trivial-garbage:finalize ,object #'(lambda () (foreign-free ptr))))))
 
+(defun foreign-string-size (string)
+  (with-foreign-string ((ptr size) string)
+    size))
+
 (defmacro expanded-h (widget)
   "Call ag:expand-horiz on widget and return widget"
   `(let ((wid ,widget))

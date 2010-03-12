@@ -58,23 +58,23 @@
 							   (:file module :depends-on (package))
 							   (:file gfx-utils :depends-on (package))
 							   (:file gl-ui-utils :depends-on (gfx-utils))
+							   (:file selection :depends-on (gfx-utils gl-ui-utils))
+							   (:file selection-test :depends-on (selection module))
 							   (:file agar :depends-on (module))
-							   (:file send-button :depends-on (module))
 							   (:file login-and-register :depends-on (module agar))
 							   (:file bidding :depends-on (module agar))
 							   (:file players :depends-on (module agar))
-							   (:file notifications :depends-on (module agar players))
 							   (:file declaration :depends-on (module agar))
+							   (:file after-game :depends-on (module agar))
+							   (:file cards :depends-on (gfx-utils selection gl-ui-utils))
 							   (:file gl-ui :depends-on (module
 										     gfx-utils agar gl-ui-utils
 										     send-button login-and-register
-										     players notifications declaration))
-							   (:file test-module :depends-on (gl-ui))
-							   (:file agar-test :depends-on (gl-ui agar))
+										     players notifications declaration
+										     after-game))
 							   (:file test-utils :depends-on (gl-ui))
-							   (:file selection :depends-on (gfx-utils gl-ui))
-							   (:file selection-test :depends-on (selection module gl-ui))
-							   (:file cards :depends-on (selection gl-ui))))))))
+							   (:file agar-test :depends-on (gl-ui agar))
+							   (:file test-module :depends-on (gl-ui))))))))
 
 (defsystem skat
   :description "Skat with an OpenGL UI via XMPP"
