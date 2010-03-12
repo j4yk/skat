@@ -105,7 +105,8 @@ Hands the cards over to the cards module."
     (add-cards cards-mod cards)
     ;; the other players did also get cards
     (add-other-players-cards cards-mod :left 10)
-    (add-other-players-cards cards-mod :right 10)))
+    (add-other-players-cards cards-mod :right 10)
+    (skat-in-the-middle cards-mod)))
 
 (defhandler ui:start-bidding (opengl-ui listener min-value)
   (let ((module (find-module 'bidding ui)))
@@ -138,6 +139,14 @@ Hands the cards over to the cards module."
 	(query-hand game-declaration)
 	(show-declarer notifications declarer))))
 
+(defhandler hand-decision (opengl-ui hand)
+  (with-modules (cards players)
+    (unless hand
+      ;; add skat to his/her cards
+      (add-other-players-cards cards (player-direction players ui:sender) 2))
+    ;; skat no longer in the middle
+    (clear-middle cards)))
+
 (defmethod take-skat ((ui opengl-ui))
   "Send hand-decision to kernel, taking the skat."
   (call-kernel-handler ui 'hand-decision nil))
@@ -147,6 +156,7 @@ Hands the cards over to the cards module."
 Adds two cards and lets the player select two."
   (assert (= 2 (length skat)))
   (with-modules (cards game-declaration)
+    (clear-middle cards)		; remove skat from the table
     (add-cards cards skat)
     (select-skat cards)
     (query-skat game-declaration)))
