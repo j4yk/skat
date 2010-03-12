@@ -2,8 +2,11 @@
 
 (defclass cards (module)
   ((own-cards :accessor cards :type list :initform nil)
+   (own-tricks :initform nil)
    (left-cards :type list :initform nil)
+   (left-tricks :initform nil)
    (right-cards :type list :initform nil)
+   (right-tricks :initform nil)
    (middle-stack :type list :initform nil)
    (game :accessor game :initform :grand)
    (textures :accessor textures :type list :initform nil :documentation "Property list of texture names and IDs")
@@ -86,8 +89,25 @@ If the card is already selected it will be removed from that list."
   (check-type card kern:card)
   (intern (subseq (with-output-to-string (s) (kern:print-card card s)) 2) 'keyword))
 
-(defvar card-height 9)
-(defvar card-width 6)
+(defmethod initialize-instance :after ((module cards) &key)
+  "Loads the card textures"
+  (load-textures module)
+  (create-display-lists module))
+
+(defun candidate-card-p (module card)
+  (equalp card (slot-value module 'candidate-card)))
+
+(defun card-at-last-mouse-pos (module)
+  (with-slots (last-mouse-pos) module
+    (select-card module (aref last-mouse-pos 0) (aref last-mouse-pos 1))))
+
+(defun card-selected-p (module card)
+  (member card (selected-cards module) :test #'equalp))
+
+;; graphics
+
+(defvar card-height 3)
+(defvar card-width 2)
 
 (defmethod create-display-lists ((module cards))
   ;; create display lists for the two types of cards (front and back)
@@ -98,26 +118,21 @@ If the card is already selected it will be removed from that list."
       (gl:with-new-list (card-display-list :compile)
 	(gl:with-primitives :quads
 	  ;; cards drawn from the front side are drawn counterclockwise
-	  (gl:tex-coord 0 1) (gl:vertex (/ -6 2) (/ -9 2)) ; unten links
-	  (gl:tex-coord 1 1) (gl:vertex (/  6 2) (/ -9 2)) ; unten rechts
-	  (gl:tex-coord 1 0) (gl:vertex (/  6 2) (/  9 2)) ; oben rechts
-	  (gl:tex-coord 0 0) (gl:vertex (/ -6 2) (/  9 2)) ; oben links
+	  (gl:tex-coord 0 1) (gl:vertex (/ (- card-width) 2) (/ (- card-height) 2)) ; unten links
+	  (gl:tex-coord 1 1) (gl:vertex (/ card-width 2) (/ (- card-height) 2)) ; unten rechts
+	  (gl:tex-coord 1 0) (gl:vertex (/ card-width 2) (/ card-height 2)) ; oben rechts
+	  (gl:tex-coord 0 0) (gl:vertex (/ (- card-width) 2) (/ card-height 2)) ; oben links
 	  ))
       (gl:with-new-list (card-reversed-display-list :compile)	
 	(gl:with-primitives :quads
 	  ;; draw backside cards clockwise
 	  ;; because else the texture directs away from the viewer
 	  ;; and the card would be invisible
-	  (gl:tex-coord 0 1) (gl:vertex (/ -6 2) (/ -9 2)) ; unten links
-	  (gl:tex-coord 0 0) (gl:vertex (/ -6 2) (/  9 2)) ; oben links
-	  (gl:tex-coord 1 0) (gl:vertex (/  6 2) (/  9 2)) ; oben rechts
-	  (gl:tex-coord 1 1) (gl:vertex (/  6 2) (/ -9 2)) ; unten rechts
+	  (gl:tex-coord 0 1) (gl:vertex (/ (- card-width) 2) (/ (- card-height) 2)) ; unten links
+	  (gl:tex-coord 0 0) (gl:vertex (/ (- card-width) 2) (/ card-height 2)) ; oben links
+	  (gl:tex-coord 1 0) (gl:vertex (/ card-width 2) (/ card-height 2)) ; oben rechts
+	  (gl:tex-coord 1 1) (gl:vertex (/ card-width 2) (/ (- card-height) 2)) ; unten rechts
 	  )))))
-
-(defmethod initialize-instance :after ((module cards) &key)
-  "Loads the card textures"
-  (load-textures module)
-  (create-display-lists module))
 
 (defun draw-card-here (module texture selection-name &key back-p selected-p)
   (declare (optimize debug))
@@ -130,8 +145,6 @@ If the card is already selected it will be removed from that list."
     (gl:logic-op :copy-inverted))
   (gl:color 1 1 1)			; Textur unverändert
   (gl:with-pushed-matrix
-    (let ((f (/ 1 3)))
-      (gl:scale f f f))
     (with-selname selection-name
       ;; Fläche
       (with-slots (card-display-list card-reversed-display-list) module
@@ -140,16 +153,6 @@ If the card is already selected it will be removed from that list."
 	    (gl:call-list card-display-list)))))
   (when selected-p
     (gl:disable :color-logic-op)))
-
-(defun candidate-card-p (module card)
-  (equalp card (slot-value module 'candidate-card)))
-
-(defun card-at-last-mouse-pos (module)
-  (with-slots (last-mouse-pos) module
-    (select-card module (aref last-mouse-pos 0) (aref last-mouse-pos 1))))
-
-(defun card-selected-p (module card)
-  (member card (selected-cards module) :test #'equalp))
 
 (defmethod draw-ui-card-here ((module cards) ui-card selname selected-p)
   (draw-card-here module
@@ -164,19 +167,19 @@ If the card is already selected it will be removed from that list."
   (declare (optimize debug))
   (with-pushed-matrix :modelview
     (let ((ncards (length cards))
-	  (dzrot 9)
-	  (dz 0.1))
+	  (dzrot (/ 90 8))		; 8 cards make up 90°
+	  (dz 0.05))
       (loop
 	 for n from 1 to ncards
 	 and card in cards
 	 do (with-pushed-matrix
 	      :modelview
-	      (let* (;; rotation between fingers:
+	      (let* (;; create a fan with the hand:
+		     (rot-radius (* 0.7 card-height)) ; turn a little below the lower edge of the cards
 		     (zrot-angle (* (- (+ (/ ncards 2)) n) dzrot))
 		     (zrot-angle-rad (- (/ (* zrot-angle pi) 180)))
-		     (rot-radius 3)
 		     ;; bending with the hand:
-		     (bend-radius 10)
+		     (bend-radius (* 1.2 card-height))
 		     ;; translations
 		     (delta-x (* rot-radius (sin zrot-angle-rad)))
 		     (delta-y (- (* rot-radius (- 1 (cos zrot-angle-rad)))))
@@ -195,7 +198,7 @@ If the card is already selected it will be removed from that list."
   (gl:color 0 0.6 0)
     (gl:with-primitives :triangle-fan
       (gl:vertex 0 0 0)
-      (let ((r 8))
+      (let ((r (* 3.5 card-height)))
 	(loop for alpha from (* 2 pi) downto 0 by (/ pi 36)
 	   do (let ((x (* r (cos alpha)))
 		    (z (* r (sin alpha))))
@@ -214,6 +217,15 @@ If the card is already selected it will be removed from that list."
      (:skat1 0))
    0 1 0))
 
+(defun lay-down ()
+  "Rotates so the cards will be drawn lying on the table"
+  (gl:rotate 270 1 0 0))
+
+(defun flip-cards ()
+  "Rotates so the cards will be drawn in a way that the player
+would see the other face than before"
+  (gl:rotate 180 1 0 0))
+
 (defmethod draw-middle-stack ((module cards))
   "Draws the cards in the middle of the table"
   (declare (optimize debug))
@@ -224,15 +236,68 @@ If the card is already selected it will be removed from that list."
 	(with-pushed-matrix
 	  (rotate-to-player-view (ui-card-from card))
 	  (gl:rotate 10 0 1 0)		; turn a little further
-	  (gl:rotate 270 1 0 0)		; liegend
-	  (gl:translate 0 -0.7 0)	; shift a little
-;	  (gl:translate 0 (- (/ card-height 2)) 0)
+	  (lay-down)
+	  (gl:translate 0 (- (* 1/4 card-height)) 0)	; shift a little
 	  (when (ui-card-covered-p card)
 	    ;; flip covered cards
-	    (gl:rotate 180 1 0 0))
+	    (flip-cards))
 	  (draw-ui-card-here module card
 			     9001 nil))
 	(gl:translate 0 dy 0)))))
+
+(defmethod draw-tricks ((module cards) cards)
+  (with-pushed-matrix
+    :modelview
+    (lay-down)
+    (flip-cards)
+    (let ((dy 0.01))
+      (dolist (card cards)
+	(draw-ui-card-here module card 9002 nil)
+	(gl:rotate 10 0 0 1)		; rotate cards
+	(gl:translate 0 dy 0)))))
+
+(defmethod draw ((module cards))
+  "Zeichnet die Karten"
+  (declare (optimize debug))
+  (draw-table)
+  (gl:enable :texture-2d)
+  (gl:enable :alpha-test)
+  (gl:tex-env :texture-env :texture-env-mode :modulate)
+  (gl:alpha-func :greater 0.1)
+  (gl:color 1 1 1)
+  (flet ((draw-tricks-here (direction cards)
+	   (with-pushed-matrix
+	     :modelview
+	     (rotate-to-player-view direction)
+	     (gl:rotate 40 0 1 0)	; tricks next to cards
+	     (gl:translate 0 0 (* 2.5 card-height))
+	     (draw-tricks module cards)))
+	 (draw-hand-here (direction cards selection-name-fn)
+	   (with-pushed-matrix
+	     :modelview
+	     (rotate-to-player-view direction)
+	     (gl:translate 0 (* 1/3 3.3 card-height) (* 1/3 3 card-height))
+	     (gl:rotate -49 1 0 0)
+	     (gl:translate 0 (* -1 card-height) 0)
+	     (gl:rotate 10 0 1 0)
+	     (draw-hand module cards selection-name-fn))))
+  ;; tricks
+  (map nil #'draw-tricks-here
+       (list :left :right :self)
+       (with-slots (own-tricks left-tricks right-tricks) module
+	 (list left-tricks right-tricks own-tricks)))
+  ;; other players' cards
+  (map nil (rcurry #'draw-hand-here (constantly 9000))
+       (list :left :right)
+       (with-slots (left-cards right-cards) module
+	 (list left-cards right-cards)))
+  ;; middle stack
+  (draw-middle-stack module)
+  ;; own cards
+  (with-selname 1000
+    (draw-hand-here :self (cards module) #'own-card-selname))
+  (gl:disable :alpha-test)
+  (gl:disable :texture-2d)))
 
 ;; convenience functions
 
@@ -306,50 +371,22 @@ prohibit further reaction on clicks on the cards"
 			       (:left 'left-cards)
 			       (:right 'right-cards))))))
 
-;; Module methods
+(defmethod trick-to ((module cards) direction)
+  "Pushes the cards from the middle stack to the tricks of the player"
+  (with-slots (own-tricks left-tricks right-tricks middle-stack)
+      module
+    ;; flip the cards in the middle
+    (dolist (ui-card middle-stack)
+      (setf (ui-card-covered-p ui-card) t))
+    ;; push the trick cards to trick stack
+    (ecase direction
+      (:self (setf own-tricks (nconc own-tricks middle-stack)))
+      (:left (setf left-tricks (nconc left-tricks middle-stack)))
+      (:right (setf right-tricks (nconc right-tricks middle-stack))))
+    ;; and clear the table
+    (clear-middle module)))
 
-(defmethod draw ((module cards))
-  "Zeichnet die Karten"
-  (declare (optimize debug))
-  (draw-table)
-  (gl:enable :texture-2d)
-  (gl:enable :alpha-test)
-  (gl:tex-env :texture-env :texture-env-mode :modulate)
-  (gl:alpha-func :greater 0.1)
-  (gl:color 1 1 1)
-  ;; other players' cards
-  (with-pushed-matrix
-    :modelview
-    (rotate-to-player-view :right)
-    (gl:translate 0 0 4)
-    (gl:rotate -20 1 0 0)
-    (draw-hand module (slot-value module 'right-cards) (constantly 9000)))
-  (with-pushed-matrix
-    :modelview
-    (rotate-to-player-view :left)
-    (gl:translate 0 0 4)
-    (gl:rotate -20 1 0 0)
-    (draw-hand module (slot-value module 'left-cards) (constantly 9000)))
-  ;; middle stack
-  (draw-middle-stack module)
-  ;; own cards 
-  (with-pushed-matrix
-    :modelview
-    (gl:translate 0 0 3.7)
-    (gl:rotate -20 1 0 0)		; tilt
-    (gl:rotate 10 0 1 0)		; and turn a little
-    (with-selname 1000
-      (draw-hand module (cards module) #'own-card-selname)))
-  (with-pushed-matrix
-    :modelview
-    (gl:translate 3 6 0)
-    (with-pushed-matrix
-      (gl:translate -5 0 0)
-      (draw-card-here module (getf (textures module) (card-to-texture-name #!d7)) 99998 :back-p nil))
-    (gl:rotate 180 0 1 0) 		; volle Wende
-    (draw-card-here module nil 99999 :back-p t))
-  (gl:disable :alpha-test)
-  (gl:disable :texture-2d))
+;; Module methods
 
 (defmethod handle-event ((module cards) event)
   (case-event event

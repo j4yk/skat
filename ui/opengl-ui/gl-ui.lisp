@@ -199,7 +199,8 @@ and presents the player the declaration dialog."
 
 (defhandler trick (opengl-ui cards winner)
   "Ein Stich wurde zugeteilt"
-  (error "not implemented yet"))
+  (with-modules (cards)
+    (trick-to cards (player-direction winner))))
 
 (defhandler game-over (opengl-ui prompt)
   "Spiel ist/wurde beendet.
@@ -207,6 +208,24 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
   (if prompt
       (prompt-for-new-game (error "don't know module"))
       (end-game (error "don't know module"))))
+
+(defhandler cards-score (opengl-ui declarer-score defenders-score)
+  "Punkteauszählung vom Host"
+  (error "not implemented yet"))
+
+(defhandler game-result (opengl-ui declaration won score)
+  "Spielergebnis vom Host"
+  (error "not implemented yet"))
+
+(defhandler score-table (opengl-ui player1-address player1-score
+				   player2-address player2-score
+				   player3-address player3-score)
+  "Punktetabelle vom Host"
+  (error "not implemented yet"))
+
+(defhandler message (opengl-ui text)
+  "Eine Nachricht von einem anderen Spieler"
+  (error "not implemented yet"))
 
 ;; rendering
 
@@ -217,15 +236,29 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
 		     :flags '(sdl:sdl-opengl sdl:sdl-doublebuf))
     (init-gl 640 480)))
 
+(defvar *look-at* (list 0 4 -6 0 -3 -15 0 1 0))
+
+(defun standard-perspective ()
+  (setq *look-at* (list 0 (* 5.5 card-height) (+ -15 (* 5 card-height))
+			0 -3 -15 0 1 0)))
+
+(defun table-perspective ()
+  (setq *look-at* (list 0 0.01 3 0 -3 -15 0 1 0)))
+
+(defun bird-perspective ()
+  (setq *look-at* (list 0 30 -15 0 -3 -15 0 0 -1)))
+
 (defun render-non-agar-modules (modules agar-module)
+  "Call #'draw on all modules except the agar module"
+  (matrix-mode :modelview
+    (gl:load-identity))
   ;; view perspective
-  ;; Normal:
-  (glu:look-at 0 4 -6 0 -3 -15 0 1 0)
+  (apply #'glu:look-at *look-at*)
   ;; Draufsicht:
   ;; (glu:look-at 0 15 -10
   ;; 	       0 -3 -15
   ;; 	       0 0 -1)
-  (gl:translate 0 -3 -15)	; go to table center
+  (gl:translate 0 0 -15)	; go to table center
   (dolist (module (remove agar-module modules))
     (draw module)))
 

@@ -16,6 +16,7 @@
 	   separate-lambda-list
 	   deftests
 	   always-true
+	   curry rcurry
 	   define-package-which-exports-all-requests)) ; das steckt in requests.lisp
 
 (in-package :skat-utils)
@@ -68,3 +69,9 @@ test-definition ::= (name (test-function input-form*) output-form)"
 (defun always-true (&rest args)
   (declare (ignore args))
   t)
+
+(defun curry (fn &rest args-to-curry)
+  #'(lambda (&rest args) (apply fn (append args-to-curry args))))
+
+(defun rcurry (fn &rest last-args-to-curry)
+  #'(lambda (&rest args) (apply fn (append args last-args-to-curry))))
