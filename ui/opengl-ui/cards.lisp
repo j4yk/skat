@@ -151,6 +151,14 @@ If the card is already selected it will be removed from that list."
 (defun card-selected-p (module card)
   (member card (selected-cards module) :test #'equalp))
 
+(defmethod draw-ui-card-here ((module cards) ui-card selname selected-p)
+  (draw-card-here module
+		  (getf (textures module)
+			(card-to-texture-name (ui-card-card ui-card)))
+		  (or selname 9000)
+		  :back-p (ui-card-covered-p ui-card)
+		  :selected-p selected-p))
+
 (defun draw-hand (module cards selname-generator-fn)
   "Zeichnet eine aufgefaltete Hand von Karten"
   (declare (optimize debug))
@@ -175,17 +183,56 @@ If the card is already selected it will be removed from that list."
 		     (delta-z (+ (* n dz) (- bend-radius (sqrt (- (* bend-radius bend-radius) (* delta-x delta-x))))))
 		     ;; rotation angle for bending
 		     (bend-rot-angle (- (* (/ (acos (/ delta-x bend-radius)) pi) 180) 90)))
-		(declare (optimize debug))
-		(when (not (ui-card-covered-p card)))
 		(gl:translate delta-x delta-y delta-z)
 		(gl:rotate bend-rot-angle 0 1 0) ; bend rotate in-place
-		(gl:rotate zrot-angle 0 0 1)) ; fan rotate in-place 
-	      (draw-card-here module
-			      (getf (textures module)
-				    (card-to-texture-name (ui-card-card card)))
-			      (funcall selname-generator-fn n)
-			      :back-p (ui-card-covered-p card)
-			      :selected-p (or (card-selected-p module card) nil)))))))
+		(gl:rotate zrot-angle 0 0 1)) ; fan rotate in-place
+	      (draw-ui-card-here module card (funcall selname-generator-fn n)
+				 (card-selected-p module card)))))))
+
+(defun draw-table ()
+  (gl:disable :texture-2d)
+  (gl:disable :depth-test)
+  (gl:color 0 0.6 0)
+    (gl:with-primitives :triangle-fan
+      (gl:vertex 0 0 0)
+      (let ((r 8))
+	(loop for alpha from (* 2 pi) downto 0 by (/ pi 36)
+	   do (let ((x (* r (cos alpha)))
+		    (z (* r (sin alpha))))
+		(gl:vertex (- x) 0 (- z))))))
+    (gl:color 1 1 1)
+    (gl:with-primitives :points
+      (gl:vertex 0 0 0)))
+
+(defun rotate-to-player-view (direction)
+  (gl:rotate 
+   (ecase direction
+     (:self 0)
+     (:left (- (/ 360 3)))
+     (:right (/ 360 3))
+     (:skat0 10)
+     (:skat1 0))
+   0 1 0))
+
+(defmethod draw-middle-stack ((module cards))
+  "Draws the cards in the middle of the table"
+  (declare (optimize debug))
+  (with-pushed-matrix
+    :modelview
+    (let ((dy 0.01))
+      (dolist (card (slot-value module 'middle-stack))
+	(with-pushed-matrix
+	  (rotate-to-player-view (ui-card-from card))
+	  (gl:rotate 10 0 1 0)		; turn a little further
+	  (gl:rotate 270 1 0 0)		; liegend
+	  (gl:translate 0 -0.7 0)	; shift a little
+;	  (gl:translate 0 (- (/ card-height 2)) 0)
+	  (when (ui-card-covered-p card)
+	    ;; flip covered cards
+	    (gl:rotate 180 1 0 0))
+	  (draw-ui-card-here module card
+			     9001 nil))
+	(gl:translate 0 dy 0)))))
 
 ;; convenience functions
 
@@ -232,29 +279,32 @@ prohibit further reaction on clicks on the cards"
   (setf (choose-card-p module) nil)
   (remove-cards module (list card)))
 
-(defmethod middle-stack-push ((module cards) card)
+(defmethod middle-stack-push ((module cards) card direction)
   "Pushes another card onto the the stack in the middle of the table"
-  (error "not implemented"))
+  (with-slots (middle-stack) module
+    (setf middle-stack (nconc middle-stack (list (make-ui-card :from direction :card card))))))
+
+(defmethod skat-in-the-middle ((module cards))
+  "Places the two skat cards in the middle"
+  (dotimes (n 2)
+    (push (make-ui-card :covered-p t :from (intern (format nil "SKAT~a" n) :keyword))
+	  (slot-value module 'middle-stack))))
+
+(defmethod clear-middle ((module cards))
+  "Removes the cards lying in the middle of the table"
+  (setf (slot-value module 'middle-stack) nil))
 
 (defmethod card-played ((module cards) card)
   "Pushes the card onto the middle stack."
   (middle-stack-push module card))
 
-(defun draw-table ()
-  (gl:with-pushed-attrib (:texture-2d :depth-test)
-    (gl:disable :texture-2d)
-    (gl:disable :depth-test)
-    (gl:color 0 0.6 0)
-    (gl:with-primitives :triangle-fan
-      (gl:vertex 0 0 0)
-      (let ((r 15))
-	(loop for alpha from (* 2 pi) downto 0 by (/ pi 36)
-	   do (let ((x (* r (cos alpha)))
-		    (z (* r (sin alpha))))
-		(gl:vertex (- x) 0 (- z)))))))
-  (gl:color 1 1 1)
-  (gl:with-primitives :points
-    (gl:vertex 0 0 0)))
+(defmethod add-other-players-cards ((module cards) left-or-right n)
+  "Pushes n covered cards to an other player's hand"
+  (dotimes (n n)
+    (push (make-ui-card :covered-p t)
+	  (slot-value module (ecase left-or-right
+			       (:left 'left-cards)
+			       (:right 'right-cards))))))
 
 ;; Module methods
 
@@ -267,21 +317,25 @@ prohibit further reaction on clicks on the cards"
   (gl:tex-env :texture-env :texture-env-mode :modulate)
   (gl:alpha-func :greater 0.1)
   (gl:color 1 1 1)
+  ;; other players' cards
   (with-pushed-matrix
     :modelview
-    (gl:rotate (/ 360 3) 0 1 0)
-    (gl:translate 0 0 7)
+    (rotate-to-player-view :right)
+    (gl:translate 0 0 4)
     (gl:rotate -20 1 0 0)
     (draw-hand module (slot-value module 'right-cards) (constantly 9000)))
   (with-pushed-matrix
     :modelview
-    (gl:rotate (- (/ 360 3)) 0 1 0)
-    (gl:translate 0 0 7)
+    (rotate-to-player-view :left)
+    (gl:translate 0 0 4)
     (gl:rotate -20 1 0 0)
     (draw-hand module (slot-value module 'left-cards) (constantly 9000)))
+  ;; middle stack
+  (draw-middle-stack module)
+  ;; own cards 
   (with-pushed-matrix
     :modelview
-    (gl:translate 0 0 7)
+    (gl:translate 0 0 3.7)
     (gl:rotate -20 1 0 0)		; tilt
     (gl:rotate 10 0 1 0)		; and turn a little
     (with-selname 1000
