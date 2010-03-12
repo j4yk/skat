@@ -359,8 +359,13 @@ prohibit further reaction on clicks on the cards"
   "Removes the cards lying in the middle of the table"
   (setf (slot-value module 'middle-stack) nil))
 
-(defmethod card-played ((module cards) card)
+(defmethod card-played ((module cards) from-direction card)
   "Pushes the card onto the middle stack."
+  ;; remove a card from the other player's hand
+  (pop (slot-value module (ecase from-direction
+			    (:left 'left-cards)
+			    (:right 'right-cards))))
+  ;; and put the card in the middle
   (middle-stack-push module card))
 
 (defmethod add-other-players-cards ((module cards) left-or-right n)
