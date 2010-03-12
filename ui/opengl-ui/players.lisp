@@ -149,3 +149,12 @@
   "Returns t if address is the player's own address"
   (with-slots (own-address) module
     (equal address own-address)))
+
+(defmethod player-direction ((module players) player-address)
+  "Returns :self, :left or :right depending on the address"
+  (with-slots (own-address left-player-name right-player-name)
+      module
+    (cond ((equal player-address own-address) :self)
+	  ((equal player-address left-player-name) :left)
+	  ((equal player-address right-player-name) :right)
+	  (t (error "Don't know address ~s" player-address)))))
