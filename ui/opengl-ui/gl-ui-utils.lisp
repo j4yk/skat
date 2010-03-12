@@ -32,7 +32,7 @@ Lispbuilders Funktionen."
 
 (defun set-perspective (w h)
   (with-matrix-mode :projection
-    (glu:perspective 60.0 (/ w h) 0.1 1024.0)))
+    (glu:perspective 58.0 (/ w h) 0.1 1024.0)))
 
 (defun init-gl (w h)
   (gl:clear-color 0 0 0 0)
