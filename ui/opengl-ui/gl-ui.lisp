@@ -233,6 +233,10 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
   "Eine Nachricht von einem anderen Spieler"
   (error "not implemented yet"))
 
+(defmethod leave ((ui opengl-ui))
+  "Leave the table and your playmates"
+  (error "not implemented yet"))
+
 ;; rendering
 
 (defun skat-window ()

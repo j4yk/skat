@@ -51,9 +51,11 @@
    (PLAYER1-DIFF-LABEL) (PLAYER2-DIFF-LABEL) (PLAYER3-DIFF-LABEL) (BUTTONS-HBOX)
    (NEXT-GAME-BTN) (LEAVE-BTN)))
 
-(defmethod next-game ((w game-report-window)))
+(defmethod next-game ((w game-report-window))
+  (next-game (module w)))
 
-(defmethod leave ((w game-report-window)))
+(defmethod leave ((w game-report-window))
+  (leave (module w)))
 
 (defmethod initialize-instance :after ((w game-report-window)
 				       &key declarer defenders prompt-p
@@ -150,3 +152,16 @@
 (pass-through-to-game-report-window show-declaration declaration won-p)
 (pass-through-to-game-report-window show-score-difference score)
 (pass-through-to-game-report-window show-score-table score1 score2 score3)
+
+(defmethod next-game ((module after-game))
+  (call-kernel-handler (ui module) 'game-start)
+  (with-slots (game-report-window) module
+    (get-rid-of-window (window game-report-window)))
+  (slot-makunbound module 'game-report-window))
+
+(defmethod leave ((module after-game))
+  (with-slots (game-report-window) module
+    (get-rid-of-window (window game-report-window)))
+  (slot-makunbound module 'game-report-window)
+  (leave (ui module)))
+
