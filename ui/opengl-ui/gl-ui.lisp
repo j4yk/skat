@@ -44,6 +44,12 @@ STUB"
   (declare (ignore ui))
   (error "Not implemented yet!"))
 
+(defmethod initialize-instance :after ((ui opengl-ui) &key)
+  "Inserts the following modules: agar, error-handling"
+  (mapcar (rcurry #'insert-module ui)
+	  (mapcar (rcurry #'make-instance :ui ui)
+		  (list 'agar 'error-handling))))
+
 ;; request handlers
 
 (defhandler ui:login-struct (opengl-ui struct-classname)
@@ -325,10 +331,13 @@ returns sorted hit-records."
 			(:sys-wm-event () (process-event))
 			(:user-event () (process-event))
 			(:idle ()
-			       (handle-swank-requests)
+			       (handler-bind ((error (curry #'handle-error (find-module 'error-handling ui))))
+				 (handle-swank-requests)
+				 (when (slot-boundp ui 'kernel)
+				   ;; let the kernel work
+				   (kernel:receive-requests (kernel ui))))
+			       ;; draw
 			       (render-everything ui agar-module)
-			       (gl:flush)
-			       (sdl:update-display)
 			       (with-slots (last-selection) ui
 				 ;; invalidate last selection
 				 (setf last-selection nil))

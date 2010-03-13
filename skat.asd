@@ -61,16 +61,22 @@
 							   (:file selection :depends-on (gfx-utils gl-ui-utils))
 							   (:file selection-test :depends-on (selection module))
 							   (:file agar :depends-on (module))
+							   (:file error-handling :depends-on (module agar))
 							   (:file login-and-register :depends-on (module agar))
 							   (:file bidding :depends-on (module agar))
 							   (:file players :depends-on (module agar))
 							   (:file declaration :depends-on (module agar))
 							   (:file after-game :depends-on (module agar))
 							   (:file cards :depends-on (gfx-utils selection gl-ui-utils))
-							   (:file gl-ui :depends-on (module
-										     gfx-utils agar gl-ui-utils
+							   (:file gl-ui
+								  :depends-on (module
+										     gfx-utils
+										     agar
+										     error-handling
+										     gl-ui-utils
 										     login-and-register
-										     players declaration
+										     players
+										     declaration
 										     after-game))
 							   (:file test-utils :depends-on (gl-ui))
 							   (:file agar-test :depends-on (gl-ui agar))

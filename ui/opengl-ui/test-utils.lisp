@@ -43,7 +43,8 @@
 (defun setup-ui ()
   (unless *ui*
     (setq *ui* (make-instance 'opengl-ui))
-    (push (make-instance 'agar :ui *ui*) (modules *ui*))))
+    (unless (find-module 'agar *ui*)
+      (insert-module (make-instance 'agar :ui *ui*) *ui*))))
 
 (defun test-module (module-class &rest initargs)
   (assert (find-class module-class))
