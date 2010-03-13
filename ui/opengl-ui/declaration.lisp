@@ -166,6 +166,6 @@ space"
 			  :hand hand-p :module module)))
     (show w)))
 
-(defmethod show-declarer ((module notifications) declarer-address)
+(defmethod show-declarer ((module game-declaration) declarer-address)
   (ag:text-msg :info "~a ist der Alleinspieler dieses Spiels"
 	       (player-name (ui module) declarer-address)))
