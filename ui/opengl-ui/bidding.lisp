@@ -95,7 +95,7 @@
 (defmethod initialize-instance :after ((w own-bidder-window) &key)
   (let*-slots w
       ((selected-bid-value-fv (make-foreign-variable :ptr (alloc-finalized w :pointer)))
-       (window (ag:window-new :nobuttons))
+       (window (ag:window-new :noborders :notitle))
        (client-hbox (ag:hbox-new window))
        (bid-value-ucombo
        	(expanded (ag:new-polled-ucombo client-hbox nil
@@ -317,15 +317,25 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
   (hide (own-listener-window module))
   (call-kernel-handler (ui module) 'join value))
 
+(defmethod detach-own-listener-window ((module bidding))
+  (when (slot-boundp module 'own-listener-window)
+    (get-rid-of-window (window (own-listener-window module)))
+    (slot-makunbound module 'own-listener-window)
+    (hide (bidder-window module))))	; gehört in der Prozedur dazu
+
 (defmethod send-pass ((module bidding) value)
   "Sends a pass request to the kernel and hides the own bidding windows"
   (hide (own-bidder-window module))
-  (when (slot-boundp module 'own-listener-window)
-    (hide (own-listener-window module))
-    (ag:detach-object (window (own-listener-window module)))
-    (slot-makunbound module 'own-listener-window)
-    (hide (bidder-window module)))
+  (detach-own-listener-window module)
   (hide (listener-window module))
   (setf (bidder-p module) nil
 	(listener-p module) nil)
   (call-kernel-handler (ui module) 'pass value))
+
+(defmethod declarer ((module bidding) declarer)
+  "Hides all bidding windows"
+  (declare (ignore declarer))		; haha :-P
+  (mapcar #'hide
+	  (mapcar (curry #'slot-value module)
+		  (list 'bidder-window 'listener-window 'own-bidder-window)))
+  (detach-own-listener-window module))
