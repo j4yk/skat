@@ -141,11 +141,11 @@ Hands the cards over to the cards module."
     (pass-received module ui:sender value)))
 
 (defhandler ui:declarer (opengl-ui declarer)
-  (with-modules (players notifications game-declaration)
+  (with-modules (players game-declaration)
     (declarer players declarer)
     (if (self-p players declarer)
 	(query-hand game-declaration)
-	(show-declarer notifications declarer))))
+	(show-declarer game-declaration declarer))))
 
 (defhandler hand-decision (opengl-ui hand)
   (with-modules (cards players)
@@ -202,13 +202,13 @@ and presents the player the declaration dialog."
 
 (defhandler card (opengl-ui card)
   "Eine Karte wurde von jemandem anders gespielt"
-  (with-modules (cards)
-    (card-played cards (player-direction ui:sender) card)))
+  (with-modules (cards players)
+    (card-played cards (player-direction players ui:sender) card)))
 
 (defhandler trick (opengl-ui cards winner)
   "Ein Stich wurde zugeteilt"
-  (with-modules (cards)
-    (trick-to cards (player-direction winner))))
+  (with-modules (cards players)
+    (trick-to cards (player-direction players winner))))
 
 (defhandler game-over (opengl-ui prompt)
   "Spiel ist/wurde beendet.
