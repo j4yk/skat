@@ -1,5 +1,15 @@
 (in-package gl-ui)
 
+(defvar *windows-to-be-autosized* nil)
+
+(defun autosize-windows ()
+  (loop until (null *windows-to-be-autosized*)
+     do (ag:set-window-geometry (pop *windows-to-be-autosized*) -1 -1 -1 -1)))
+
+(defun enqueue-window-autosize (window)
+  (check-type window foreign-pointer)
+  (push window *windows-to-be-autosized*))
+
 (defclass agar (module)
   ()
   (:documentation "Module that cares for Agar's affairs, i. e. handles events"))
@@ -14,7 +24,8 @@
   (let ((winlist (ag:tailqueue-to-list (ag:windows ag:*view*) #'ag:next-window)))
     (dolist (win winlist)
       (unless (cffi:null-pointer-p win)
-	(ag:window-draw win)))))
+	(ag:window-draw win))))
+  (autosize-windows))
 
 
 ;; some utility functions for handling agar
