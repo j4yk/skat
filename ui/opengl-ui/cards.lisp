@@ -276,8 +276,8 @@ would see the other face than before"
 	   (with-pushed-matrix
 	     :modelview
 	     (rotate-to-player-view direction)
-	     (gl:translate 0 (* 1/3 3.3 card-height) (* 1/3 3 card-height))
-	     (gl:rotate -49 1 0 0)
+	     (gl:translate 0 (* 1/3 1.2 3.3 card-height) (* 1/3 1.2 3 card-height))
+	     (gl:rotate -39 1 0 0) ; -49 1 0 0 would be perpendicular to viewer
 	     (gl:translate 0 (* -1 card-height) 0)
 	     (gl:rotate 10 0 1 0)
 	     (draw-hand module cards selection-name-fn))))
