@@ -362,12 +362,12 @@ prohibit further reaction on clicks on the cards"
 
 (defmethod card-played ((module cards) from-direction card)
   "Pushes the card onto the middle stack."
+  ;; and put the card in the middle
+  (middle-stack-push module card from-direction)
   ;; remove a card from the other player's hand
   (pop (slot-value module (ecase from-direction
 			    (:left 'left-cards)
-			    (:right 'right-cards))))
-  ;; and put the card in the middle
-  (middle-stack-push module card))
+			    (:right 'right-cards)))))
 
 (defmethod add-other-players-cards ((module cards) left-or-right n)
   "Pushes n covered cards to an other player's hand"
