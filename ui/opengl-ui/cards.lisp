@@ -342,13 +342,13 @@ would see the other face than before"
   (with-slots (middle-stack) module
     (setf middle-stack (nconc middle-stack (list (make-ui-card :from direction :card card))))))
 
-(defmethod send-card ((module cards) card)
+(defmethod send-card ((module cards) ui-card)
   "Sends the card to the kernel to play it, so also remove it from the hand and
 prohibit further reaction on clicks on the cards"
-  (play-card (ui module) card)
+  (play-card (ui module) (ui-card-card ui-card))
   (setf (choose-card-p module) nil)
-  (remove-cards module (list card))
-  (middle-stack-push module card :self))
+  (remove-cards module (list ui-card))
+  (middle-stack-push module (ui-card-card ui-card) :self))
 
 (defmethod skat-in-the-middle ((module cards))
   "Places the two skat cards in the middle"
