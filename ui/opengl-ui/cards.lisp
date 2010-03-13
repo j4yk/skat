@@ -301,6 +301,14 @@ would see the other face than before"
 
 ;; convenience functions
 
+(defmethod game-starts ((module cards))
+  "Clears the middle stack and the trick stacks"
+  (clear-middle module)
+  (with-slots (left-tricks right-tricks own-tricks) module
+    (setf left-tricks nil
+	  right-tricks nil
+	  own-tricks nil)))
+
 (defmethod select-skat ((module cards))
   "Prepare the cards module to let the player choose two cards for the skat"
   (setf (select-p module) t		; make cards selectable

@@ -101,9 +101,10 @@ STUB"
 
 (defhandler ui:game-start (opengl-ui)
   "Host sent game-start"
-  (with-modules (login-and-register bidding players)
+  (with-modules (login-and-register bidding players cards)
     (reset-game-point-levels bidding)
     (game-starts login-and-register)
+    (game-starts cards)
     (show-playmates players)))
 
 (defhandler ui:cards (opengl-ui cards)
