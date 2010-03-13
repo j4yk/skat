@@ -115,9 +115,9 @@
 	((left-player-window (make-instance 'player-info-window :player-name left-player-name :module module))
 	 (right-player-window (make-instance 'player-info-window :player-name right-player-name :module module))
 	 (own-player-window (make-instance 'player-info-window :player-name own-address :module module)))
-      (ag:window-set-position (window left-player-window) :tl nil)
-      (ag:window-set-position (window right-player-window) :tr nil)
-      (ag:window-set-position (window own-player-window) :bl nil)
+      (ag:set-window-position (window left-player-window) :tl nil)
+      (ag:set-window-position (window right-player-window) :tr nil)
+      (ag:set-window-position (window own-player-window) :bl nil)
       (mapcar #'show (list left-player-window right-player-window own-player-window)))))
 
 (defmethod declarer ((module players) declarer-address)

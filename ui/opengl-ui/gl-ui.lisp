@@ -261,10 +261,11 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
 		     :flags '(sdl:sdl-opengl sdl:sdl-doublebuf))
     (init-gl 640 480)))
 
-(defvar *look-at* (list 0 4 -6 0 -3 -15 0 1 0))
+(defvar *look-at* (list 0 (* 3.3 card-height) (+ -15 (* 3 card-height))
+			0 -3 -15 0 1 0))
 
 (defun standard-perspective ()
-  (setq *look-at* (list 0 (* 5.5 card-height) (+ -15 (* 5 card-height))
+  (setq *look-at* (list 0 (* 3.3 card-height) (+ -15 (* 3 card-height))
 			0 -3 -15 0 1 0)))
 
 (defun table-perspective ()

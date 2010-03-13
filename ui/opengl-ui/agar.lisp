@@ -45,6 +45,9 @@ Meant to be subclassed."))
 (defmethod hide ((agar-window agar-window))
   (ag:hide-window (window agar-window)))
 
+(defmethod autosize ((agar-window agar-window))
+  (enqueue-window-autosize (window agar-window)))
+
 (defmacro callback (name return-type args &body body)
   "Defines and returns the pointer to a callback function"
   `(progn
