@@ -211,27 +211,42 @@ and presents the player the declaration dialog."
 (defhandler game-over (opengl-ui prompt)
   "Spiel ist/wurde beendet.
 prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
-  (if prompt
-      (prompt-for-new-game (error "don't know module"))
-      (end-game (error "don't know module"))))
+  (with-modules (after-game players)
+    (show-game-report after-game prompt
+		      (get-declarer-name players)
+		      (get-defenders-names players))))
 
 (defhandler cards-score (opengl-ui declarer-score defenders-score)
   "Punkteauszählung vom Host"
-  (error "not implemented yet"))
+  (with-modules (after-game)
+    (cards-score after-game declarer-score defenders-score)))
 
 (defhandler game-result (opengl-ui declaration won score)
   "Spielergebnis vom Host"
-  (error "not implemented yet"))
+  (with-modules (after-game)
+    (show-declaration after-game declaration won)
+    (show-score-difference after-game score)))
 
 (defhandler score-table (opengl-ui player1-address player1-score
 				   player2-address player2-score
 				   player3-address player3-score)
   "Punktetabelle vom Host"
-  (error "not implemented yet"))
+  (with-modules (after-game players)
+    ;; dispatch the addresses into roles and pass the scores
+    ;; in correct order to after-game module
+    (let ((decl-addr (declarer-address players))
+	  (defenders-addrs (get-defenders-addresses players))
+	  (addrs (list player1-address player2-address player3-address))
+	  (scores (list player1-score player2-score player3-score)))
+      (show-score-table after-game
+			(nth (position decl-addr addrs) scores)
+			(nth (position (first defenders-addrs) addrs) scores)
+			(nth (position (second defenders-addrs) addrs) scores)))))
 
 (defhandler message (opengl-ui text)
   "Eine Nachricht von einem anderen Spieler"
-  (error "not implemented yet"))
+  ;; just pop up the message
+  (ag:text-msg :info text))
 
 (defmethod leave ((ui opengl-ui))
   "Leave the table and your playmates"

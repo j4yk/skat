@@ -158,3 +158,23 @@
 	  ((equal player-address left-player-name) :left)
 	  ((equal player-address right-player-name) :right)
 	  (t (error "Don't know address ~s" player-address)))))
+
+(defmethod get-declarer-name ((module players))
+  (with-slots (declarer-address) module
+    (player-name module declarer-address)))
+
+;; the following two methods must return their values with the same order of players
+
+(defmethod get-defenders-names ((module players))
+  (with-slots (declarer-address own-address left-player-name right-player-name)
+      module
+    (mapcar (curry #'player-name module)
+	    (remove declarer-address
+		    (list own-address left-player-name right-player-name)
+		    :test #'equal))))
+
+(defmethod get-defenders-addresses ((module players))
+  (with-slots (declarer-address own-address left-player-name right-player-name)
+      module
+    (remove declarer-address (list own-address left-player-name right-player-name)
+	    :test #'equal)))
