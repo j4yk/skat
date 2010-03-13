@@ -48,7 +48,9 @@ STUB"
   "Inserts the following modules: agar, error-handling"
   (mapcar (rcurry #'insert-module ui)
 	  (mapcar (rcurry #'make-instance :ui ui)
-		  (list 'agar 'error-handling))))
+		  (list 'agar 'error-handling 'login-and-register
+			'bidding 'cards 'game-declaration 'players
+			'after-game))))
 
 ;; request handlers
 
