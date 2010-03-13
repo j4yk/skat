@@ -106,19 +106,27 @@
 
 (defmethod show-playmates ((module players))
   "Initializes and shows the player info windows"
-  (assert (slot-boundp module 'left-player-name))
-  (assert (slot-boundp module 'right-player-name))
-  (check-slot-unbound module 'left-player-window)
-  (check-slot-unbound module 'right-player-window)
-  (with-slots (left-player-name right-player-name own-address) module
-    (let*-slots module
-	((left-player-window (make-instance 'player-info-window :player-name left-player-name :module module))
-	 (right-player-window (make-instance 'player-info-window :player-name right-player-name :module module))
-	 (own-player-window (make-instance 'player-info-window :player-name own-address :module module)))
-      (ag:set-window-position (window left-player-window) :tl nil)
-      (ag:set-window-position (window right-player-window) :tr nil)
-      (ag:set-window-position (window own-player-window) :bl nil)
-      (mapcar #'show (list left-player-window right-player-window own-player-window)))))
+  ;; execute this only if one of the windows was not already created
+  (when (find nil (mapcar (curry #'slot-boundp module) (list 'left-player-window 'right-player-window 'own-player-window)))
+    (with-slots (left-player-name right-player-name own-address) module
+      (let*-slots module
+	  ((left-player-window (make-instance 'player-info-window :player-name left-player-name :module module))
+	   (right-player-window (make-instance 'player-info-window :player-name right-player-name :module module))
+	   (own-player-window (make-instance 'player-info-window :player-name own-address :module module)))
+	(ag:set-window-position (window left-player-window) :tl nil)
+	(ag:set-window-position (window right-player-window) :tr nil)
+	(ag:set-window-position (window own-player-window) :bl nil)
+	(mapcar #'show (list left-player-window right-player-window own-player-window))))))
+
+(defmethod game-starts ((module players))
+  "Shows the player info windows and resets the players' roles"
+  (show-playmates module)
+  (slot-makunbound module 'declarer-address)
+  (mapcar #'(lambda (slot)
+	      (setf (role (slot-value module slot)) ""))
+	  (list 'left-player-window 'right-player-window
+		'own-player-window))
+  (values))
 
 (defmethod declarer ((module players) declarer-address)
   (with-slots (own-address left-player-name right-player-name
@@ -178,3 +186,13 @@
       module
     (remove declarer-address (list own-address left-player-name right-player-name)
 	    :test #'equal)))
+
+(defmethod update-scores ((module players) &rest address-score-pairs)
+  (dotimes (n 3)
+    (let ((addr (pop address-score-pairs))
+	  (score (pop address-score-pairs)))
+      (setf (score (slot-value module (ecase (player-direction module addr)
+					(:self 'own-player-window)
+					(:left 'left-player-window)
+					(:right 'right-player-window))))
+	    score))))

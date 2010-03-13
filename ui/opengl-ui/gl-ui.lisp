@@ -105,7 +105,7 @@ STUB"
     (reset-game-point-levels bidding)
     (game-starts login-and-register)
     (game-starts cards)
-    (show-playmates players)))
+    (game-starts players)))
 
 (defhandler ui:cards (opengl-ui cards)
   "Called by Kernel when the Host has distrubuted the cards.
@@ -236,6 +236,9 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
 				   player3-address player3-score)
   "Punktetabelle vom Host"
   (with-modules (after-game players)
+    (update-scores players player1-address player1-score
+		   player2-address player2-score
+		   player3-address player3-score)
     ;; dispatch the addresses into roles and pass the scores
     ;; in correct order to after-game module
     (let ((decl-addr (declarer-address players))
