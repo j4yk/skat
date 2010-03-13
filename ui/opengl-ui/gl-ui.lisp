@@ -141,8 +141,9 @@ Hands the cards over to the cards module."
     (pass-received module ui:sender value)))
 
 (defhandler ui:declarer (opengl-ui declarer)
-  (with-modules (players game-declaration)
+  (with-modules (players game-declaration bidding)
     (declarer players declarer)
+    (declarer bidding declarer)
     (if (self-p players declarer)
 	(query-hand game-declaration)
 	(show-declarer game-declaration declarer))))
