@@ -241,9 +241,9 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
 	  (addrs (list player1-address player2-address player3-address))
 	  (scores (list player1-score player2-score player3-score)))
       (show-score-table after-game
-			(nth (position decl-addr addrs) scores)
-			(nth (position (first defenders-addrs) addrs) scores)
-			(nth (position (second defenders-addrs) addrs) scores)))))
+			(nth (position decl-addr addrs :test #'equal) scores)
+			(nth (position (first defenders-addrs) addrs :test #'equal) scores)
+			(nth (position (second defenders-addrs) addrs :test #'equal) scores)))))
 
 (defhandler message (opengl-ui text)
   "Eine Nachricht von einem anderen Spieler"
@@ -320,7 +320,7 @@ returns sorted hit-records."
   "Queries UI for the hit-records resulting from a selection at (x|y)"
   (with-slots (last-selection) ui
     (if last-selection
-	(destructuring-bind (sx sy hit-records) ui
+	(destructuring-bind (sx sy hit-records) last-selection
 	  (if (and (= sx x) (= sy y))
 	      hit-records
 	      (perform-selection ui x y)))
