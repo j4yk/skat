@@ -168,7 +168,7 @@ If the card is already selected it will be removed from that list."
   (with-pushed-matrix :modelview
     (let ((ncards (length cards))
 	  (dzrot (/ 90 8))		; 8 cards make up 90°
-	  (dz 0.05))
+	  (dz 0.1))
       (loop
 	 for n from 1 to ncards
 	 and card in cards
