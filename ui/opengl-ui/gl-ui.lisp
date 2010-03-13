@@ -351,7 +351,11 @@ returns sorted hit-records."
 			(:sys-wm-event () (process-event))
 			(:user-event () (process-event))
 			(:idle ()
-			       (handler-bind ((error (curry #'handle-error (find-module 'error-handling ui))))
+			       (handler-bind ((kern::error-in-handler
+					       #'(lambda (condition)
+						   (handle-error (find-module 'error-handling ui)
+								 ;; get the real error
+								 (kern::inner-condition condition)))))
 				 (handle-swank-requests)
 				 (when (slot-boundp ui 'kernel)
 				   ;; let the kernel work

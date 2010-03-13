@@ -3,12 +3,11 @@
 (defclass error-handling (module)
   ())
 
-(defmethod handle-error ((module error-handling) condition)
+(defmethod handle-error-in-ui-handler ((module error-handling) condition)
   "Pops up a text-msg error dialog that displays the condition text
 and subsequently calls the last available continue restart"
-  (ag:text-msg :error "Das Spiel wird nach folgendem Fehler fortgesetzt:~%~a"
+  (ag:text-msg :error "In ~a trat folgender Fehler auf:~%~a"
+	       (kern::handler-function-name condition)
 	       (let ((*print-escape* nil))
-		 (with-output-to-string (s) (print-object condition s))))
-  (if (find-restart 'continue)
-      (continue condition)
-      (error condition)))
+		 (with-output-to-string (s) (print-object (kern::inner-condition condition) s))))
+  (continue))
