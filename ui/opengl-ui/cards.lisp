@@ -337,17 +337,18 @@ would see the other face than before"
 	  (let ((nth-card (1- (- (second (hit-record-names-on-stack record)) +own-cards+)))) ; offset
 	    (nth nth-card (cards module))))))))
 
+(defmethod middle-stack-push ((module cards) card direction)
+  "Pushes another card onto the the stack in the middle of the table"
+  (with-slots (middle-stack) module
+    (setf middle-stack (nconc middle-stack (list (make-ui-card :from direction :card card))))))
+
 (defmethod send-card ((module cards) card)
   "Sends the card to the kernel to play it, so also remove it from the hand and
 prohibit further reaction on clicks on the cards"
   (play-card (ui module) card)
   (setf (choose-card-p module) nil)
-  (remove-cards module (list card)))
-
-(defmethod middle-stack-push ((module cards) card direction)
-  "Pushes another card onto the the stack in the middle of the table"
-  (with-slots (middle-stack) module
-    (setf middle-stack (nconc middle-stack (list (make-ui-card :from direction :card card))))))
+  (remove-cards module (list card))
+  (middle-stack-push module card :self))
 
 (defmethod skat-in-the-middle ((module cards))
   "Places the two skat cards in the middle"
