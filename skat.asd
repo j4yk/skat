@@ -69,8 +69,8 @@
 							   (:file cards :depends-on (gfx-utils selection gl-ui-utils))
 							   (:file gl-ui :depends-on (module
 										     gfx-utils agar gl-ui-utils
-										     send-button login-and-register
-										     players notifications declaration
+										     login-and-register
+										     players declaration
 										     after-game))
 							   (:file test-utils :depends-on (gl-ui))
 							   (:file agar-test :depends-on (gl-ui agar))
