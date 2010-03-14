@@ -74,6 +74,7 @@
 										     agar
 										     error-handling
 										     gl-ui-utils
+										     cards
 										     login-and-register
 										     players
 										     declaration
