@@ -107,7 +107,7 @@
 (defmethod show-playmates ((module players))
   "Initializes and shows the player info windows"
   ;; execute this only if one of the windows was not already created
-  (when (find nil (mapcar (curry #'slot-boundp module) (list 'left-player-window 'right-player-window 'own-player-window)))
+  (when (find t (mapcar #'not (mapcar (curry #'slot-boundp module) (list 'left-player-window 'right-player-window 'own-player-window))))
     (with-slots (left-player-name right-player-name own-address) module
       (let*-slots module
 	  ((left-player-window (make-instance 'player-info-window :player-name left-player-name :module module))
