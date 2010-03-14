@@ -9,39 +9,56 @@
    (resource-textbox)
    (password-textbox)
    (login-button)
-   (wait-label)))
+   (wait-label)
+   (wait-timeout)
+   (timeout-label)
+   (cancel-button)))
 
 (defmethod initialize-instance :after ((login-window login-window) &key)
   "Creates the Agar Window"
-  (let ((win (agar:window-new :modal :noclose)))
-    (ag:window-set-caption win "Beim XMPP-Server einlogen")
-    (ag:with-widgets (win
-		      (ag:textbox username-tb :label-text "Benutzername: ")
-		      (ag:textbox hostname-tb :label-text "Serveradresse: ")
-		      (ag:textbox domain-tb :label-text "Serverdomäne (optional): ")
-		      (ag:textbox password-tb :label-text "Passwort: " :flags '(:password))
-		      (ag:textbox resource-tb :label-text "Standard (optional): " :init-text "skat")
-		      (ag:button login-btn "Login"))
-      (ag:set-event login-btn "button-pushed" (event-handler #'(lambda (event)
-								 (declare (ignore event))
-								 (send-login-data login-window))) "")
-      (with-slots (window username-textbox server-hostname-textbox server-domain-textbox
-			  resource-textbox password-textbox login-button) login-window
-	(setf window win
-	      username-textbox username-tb
-	      server-hostname-textbox hostname-tb
-	      server-domain-textbox domain-tb
-	      resource-textbox resource-tb
-	      password-textbox password-tb
-	      login-button login-btn)))))
+  (let*-slots login-window
+      ((window (agar:window-new :modal :noclose))
+       (username-textbox (ag:textbox-new window :label-text "Benutzername: "))
+       (server-hostname-textbox (ag:textbox-new window :label-text "Serveraddresse: "))
+       (server-domain-textbox (ag:textbox-new window :label-text "Serverdomäne (optional): "))
+       (password-textbox (ag:textbox-new window :label-text "Passwort: " :flags '(:password)))
+       (resource-textbox (ag:textbox-new window :label-text "Ressource (optional): " :init-text "skat"))
+       (login-button (expanded-h (ag:new-button window nil "Einloggen"
+						(std-event-handler (send-login-data
+						login-window)))))
+       (wait-timeout (alloc-finalized login-window 'ag:timeout))
+       (wait-label (ag:new-label (null-pointer) nil "Bitte warten, verbinde..."))
+       (timeout-label (expanded-h (ag:new-label (null-pointer) nil
+						(format nil "Anscheinend braucht der Server~%lange für eine Antwort"))))
+       (cancel-button (expanded-h (ag:new-button (null-pointer) nil "Abbrechen"
+						 (std-event-handler (cancel-login
+						 login-window))))))
+    (ag:window-set-caption window "Beim XMPP-Server einlogen")
+    ;; initialize the timeout for login
+    (ag:set-timeout wait-timeout (lambda-timeout-callback (obj ival arg)
+				   (declare (ignore obj ival arg))
+				   (login-timed-out login-window)
+				   0) ; don't reschedule
+		    (null-pointer) nil)))
 
-(defun init-login-window (module)
-  "Erstelle das Login-Daten-Fenster und zeige es an."
-  (setf (login-window module) (make-instance 'login-window :module module)))
+(defmethod cancel-login ((login-window login-window))
+  "Hide the wait- and timeout-label and the cancel-button,
+enable the login-button and autosize the window"
+  (with-slots (wait-label timeout-label cancel-button login-button window) login-window
+    (mapcar (rcurry #'ensure-detached window)
+	    (list wait-label timeout-label cancel-button))
+    (ag:enable-widget login-button)
+    (autosize login-window)))
+
+(defmethod show :before ((login-window login-window))
+  "Make sure the wait- and timeout-labels are detached"
+  ;; this is just like cancelling the login
+  (cancel-login login-window))
 
 (defmethod send-login-data ((login-window login-window))
   (with-slots (window username-textbox server-hostname-textbox server-domain-textbox
-		      resource-textbox password-textbox wait-label login-button)
+		      resource-textbox password-textbox wait-label login-button
+		      wait-timeout)
       login-window
     (call-kernel-handler (ui (module login-window)) 'login-data
 			 (comm::make-xmpp-login-data
@@ -51,8 +68,22 @@
 			  :resource (ag:text resource-textbox)
 			  :password (ag:text password-textbox)
 			  :mechanism :sasl-plain))
-    (setf wait-label (ag:label-new-string window "Bitte warten..."))
+    (ensure-attached wait-label window)
+    ;; start the timer
+    (ag:schedule-timeout (null-pointer) wait-timeout (* 10 1000)) ; 10 Sekunden
+    (autosize login-window)
     (ag:disable-widget login-button)))
+
+(defmethod login-timed-out ((login-window login-window))
+  (with-slots (timeout-label cancel-button window) login-window
+    (ensure-attached timeout-label window)
+    (ensure-attached cancel-button window)
+    (autosize login-window)))
+
+(defmethod hide :before ((login-window login-window))
+  "Deletes the wait timeout before the windows is hidden."
+  (with-slots (wait-timeout) login-window
+    (ag:delete-timeout (null-pointer) wait-timeout)))
 
 
 ;; Register window
@@ -63,58 +94,90 @@
    (host-jid-textbox)
    (register-button)
    (lower-hbox)
-   (wait-label)))
+   (wait-label)
+   (wait-timeout)
+   (timeout-label)
+   (cancel-button)))
 
 (defmethod initialize-instance :after ((register-window register-window) &key)
   "Initilializes the register window by creating the widgets etc."
-    (with-slots (window upper-hbox failure-notice-label
-			host-jid-textbox register-button lower-hbox
-			wait-label)
-	register-window
-      (setf window (ag:window-new :modal :noclose :nominimize))
-      (setf upper-hbox (ag:hbox-new window)
-	    failure-notice-label
-	    (ag:label-new-string (cffi:null-pointer)
-				 "Host akzeptierte die Registrierungsanfrage nicht! Wählen Sie einen anderen Host.")
-	    host-jid-textbox (ag:textbox-new window :label-text "Jabber-ID des Hostes: ")
-	    lower-hbox (ag:hbox-new window)
-	    wait-label (ag:label-new-string (null-pointer) "Warte auf Antwort des Hostes..."))
-      (setf register-button (ag:button-new lower-hbox nil "Registrierung anfragen"))
-      (ag:set-event register-button "button-pushed"
-		    (event-handler #'(lambda (event)
-				       (declare (ignore event))
-				       (send-registration-data register-window)))
-		    "")))
+  (let*-slots register-window
+      ((window (ag:window-new :modal :noclose :nominimize))
+       (upper-hbox (expanded-h (ag:hbox-new window)))
+       (failure-notice-label
+	(expanded-h (ag:new-label (cffi:null-pointer) nil
+				  (format nil "Host akzeptierte ~
+die Registrierungsanfrage nicht!~% Wählen Sie einen anderen Host."))))
+       (host-jid-textbox (ag:textbox-new window :label-text "Jabber-ID des Hostes: "))
+       (lower-hbox (expanded-h (ag:hbox-new window)))
+       (wait-label (ag:new-label (null-pointer) nil "Warte auf Antwort des Hostes..."))
+       (register-button (ag:new-button lower-hbox nil "Registrierung anfragen"
+				       (std-event-handler
+					 (send-registration-data register-window))))
+       (wait-timeout (alloc-finalized register-window 'ag:timeout))
+       (timeout-label (ag:new-label (null-pointer) nil "Der Host braucht lange für eine Antwort"))
+       (cancel-button (ag:new-button (null-pointer) nil "Abbrechen"
+				     (std-event-handler
+				       (cancel-registration register-window)))))
+    (ag:window-set-caption window "Registrierung mit einem Host")
+    (ag:set-timeout wait-timeout (lambda-timeout-callback (obj ival arg)
+				   (declare (ignore obj ival arg))
+				   (registration-timeout register-window)
+				   0)
+		    (null-pointer) nil)))
 
-(defun init-register-window (module)
-  (setf (register-window module) (make-instance 'register-window :module module)))
+(defmethod cancel-registration ((register-window register-window))
+  "Detach wait-, and timeout-label and cancel-button,
+enable register-button and autosize the window"
+  (with-slots (window register-button lower-hbox wait-label timeout-label cancel-button)
+      register-window
+    (mapcar (rcurry #'ensure-detached window)
+	    (list timeout-label cancel-button))
+    (ensure-detached wait-label lower-hbox)
+    (ag:enable-widget register-button)
+    (autosize register-window)))
 
-(defmethod query-registration ((register-window register-window))
+(defmethod show :before ((register-window register-window))
   (with-slots (upper-hbox lower-hbox failure-notice-label wait-label register-button)
       register-window
-    (ensure-detached failure-notice-label upper-hbox)
-    (ensure-detached wait-label lower-hbox)
-    (ag:enable-widget register-button)))
+    ;; equal to cancelling registration
+    (cancel-registration register-window)
+    ;; plus detaching the failure notice
+    (ensure-detached failure-notice-label upper-hbox)))
 
 (defmethod send-registration-data ((register-window register-window))
   "Sends the registration data back to kernel and gets the data from register-window"
-  (with-slots (window upper-hbox failure-notice-label host-jid-textbox wait-label lower-hbox register-button)
+  (with-slots (window upper-hbox failure-notice-label host-jid-textbox wait-label lower-hbox register-button
+		      wait-timeout)
       register-window
     (ensure-detached failure-notice-label upper-hbox)
     (call-kernel-handler (ui (module register-window)) 'registration-data
 			 (comm::make-xmpp-registration-data
 			  :host-jid (ag:text host-jid-textbox)))
+    ;; start timer
+    (ag:schedule-timeout (null-pointer) wait-timeout (* 10 1000))
+    ;; show wait label
     (ensure-attached wait-label lower-hbox)
     (ag:disable-widget register-button)
-    (ag:window-update window)))
+    (autosize register-window)))
+
+(defmethod registration-timeout ((register-window register-window))
+  (with-slots (window timeout-label cancel-button) register-window
+    (ensure-attached timeout-label window)
+    (ensure-attached cancel-button window)
+    (autosize register-window)))
 
 (defmethod registration-denied ((register-window register-window))
-  (with-slots (window upper-hbox failure-notice-label wait-label register-button)
+  "Show failure notice and cancel registration"
+  (with-slots (window upper-hbox failure-notice-label)
       register-window
-    (ag:enable-widget register-button)
-    (ag:attach-object upper-hbox failure-notice-label)
-    (ag:detach-object wait-label)
-    (ag:window-update window)))
+    (ensure-attached failure-notice-label upper-hbox)
+    (cancel-registration register-window)))
+
+(defmethod hide :after ((register-window register-window))
+  "Deletes the wait timeout before hiding the window"
+  (with-slots (wait-timeout) register-window
+    (ag:delete-timeout (null-pointer) wait-timeout)))
 
 
 ;; Await game start
@@ -129,7 +192,8 @@
    (names :accessor names :type (vector string) :initform (make-array 2 :initial-element nil))
    (name1-fp) (name1-size) (name2-fp) (name2-size)
    (player2-name :accessor player2-name)
-   (player1-name :accessor player1-name)))
+   (player1-name :accessor player1-name)
+   (wait-label)))
 
 (defmethod initialize-instance :after ((w await-game-start-window) &key)
   (let*-slots w
@@ -144,13 +208,23 @@
        (player2-label (expanded-h (ag:new-polled-label window-vbox nil "2. Mitspieler: %s" name2-fp)))
        (start-button (expanded-h (let ((btn (ag:button-new window-vbox nil "Starte die Runde")))
 				   (prog1 btn (ag:disable-widget btn)))))
-       (leave-button (expanded-h (ag:button-new window-vbox nil "Die Runde verlassen"))))
+       (leave-button (expanded-h (ag:button-new window-vbox nil "Die Runde verlassen")))
+       (wait-label (expanded-h (ag:new-label (null-pointer) nil
+					     (format nil "Warte darauf, dass~%die Mitspieler auch starten")))))
     (ag:window-set-caption window "Mitspieler")
     (ag:set-event start-button "button-pushed" (event-handler #'(lambda (event)
 								  (declare (ignore event))
 								  (request-game-start w))) "")
     (setf (player1-name w) free-name)
     (setf (player2-name w) free-name)))
+
+(defmethod show :before ((w await-game-start-window))
+  "Remove any players that are there from a previous lobby
+and makes sure the wait-label is detached"
+  (loop until (null (aref (names w) 0))
+       do (remove-player (aref (names w) 0) w))
+  (with-slots (window-vbox wait-label) w
+    (ensure-detached wait-label window-vbox)))
 
 (defmethod (setf player1-name) :after ((name string) (w await-game-start-window))
   "Updates the foreign string that is polled by player1-label"
@@ -204,7 +278,9 @@
 
 (defmethod request-game-start ((w await-game-start-window))
   "Sends kernel a game-start request"
-  (call-kernel-handler (ui (module w)) 'game-start))
+  (call-kernel-handler (ui (module w)) 'game-start)
+  (with-slots (window-vbox wait-label) w
+    (ensure-attached wait-label window-vbox)))
 
 
 ;; Module
@@ -221,9 +297,9 @@
 (defmethod initialize-instance :after ((module login-and-register)
 				       &key)
   "Initializes the Login window and the Registration window"
-  (init-login-window module)
-  (init-register-window module)
-  (setf (await-game-start-window module) (make-instance 'await-game-start-window :module module)))
+  (setf (login-window module) (make-instance 'login-window :module module)
+	(register-window module) (make-instance 'register-window :module module)
+	(await-game-start-window module) (make-instance 'await-game-start-window :module module)))
 
 (defmethod cleanup ((module login-and-register))
   "Hides and detaches the login-window"
@@ -241,7 +317,6 @@
 (defmethod query-registration ((module login-and-register))
   "Hides the login-window and shows the register-window"
   (hide (login-window module))
-  (query-registration (register-window module))
   (show (register-window module)))
 
 (defmethod registration-accepted ((module login-and-register))

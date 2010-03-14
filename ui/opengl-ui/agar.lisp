@@ -78,6 +78,17 @@ and body as the function body (declarations are useless)."
        (declare (ignore ,event))
        ,@body)))
 
+(defmacro lambda-timeout-callback ((object ival arg) &body body)
+  "Creates a foreign callback in the current lexucal environment with
+  return type Uint32 and the arguments for an Agar timeout callback as
+  defined in AG_Timeout(3).  The names of these arguments are given by
+  object, ival and arg."
+  (let ((callback-name (gensym "CALLBACK")))
+    `(progn
+       (ag:define-timeout-callback ,callback-name (,object ,ival ,arg)
+	 ,@body)
+       (cffi:callback ,callback-name))))
+
 (defun get-rid-of-window (win)
   "Hides and detaches the window"
   (ag:hide-window win)
