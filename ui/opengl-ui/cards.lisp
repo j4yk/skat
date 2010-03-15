@@ -20,12 +20,9 @@
   (:documentation "Module zum Zeichnen der Karten und zum Verarbeiten kartenspezifischer Aktionen"))
 
 (defmethod remove-cards ((module cards) cards)
-  "Recursively removes the supplied cards from the player's hand"
-  (if (null cards)
-      (values)
-      (progn
-	(setf (cards module) (delete (first cards) (cards module) :test #'equalp))
-	(remove-cards module (rest cards)))))
+  "Deletes cards from the player's hand."
+  (dolist (card cards)
+    (setf (cards module) (delete card (cards module) :test #'equalp))))
 
 (defmethod toggle-selected-card ((module cards) card)
   "If the card is not yet selected it will be added to the list of selected cards.
