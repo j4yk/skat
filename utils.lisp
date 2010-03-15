@@ -48,6 +48,11 @@ seperate-lambda-list (argument*) ==> normale-Parameter, key-Parameter, rest-Para
 	    (when pkey (subseq lambda-list (1+ pkey) prest))
 	    (when prest (subseq lambda-list (1+ prest))))))
 
+(defun get-args-from-specialized-lambda-list (lambda-list)
+  "Returns the names of the parameters in lambda-list"
+  (mapcar (lambda (arg) (if (listp arg) (car arg) arg))
+	  lambda-list))
+
 (defmacro deftests (category &body test-definitions)
   "Ermöglicht das Definieren mehrerer Unit-Tests auf einmal
 und etwas bequemer.

@@ -16,8 +16,62 @@
    (selected-cards :reader selected-cards :initform nil :documentation "The currently selected cards")
    (choose-card-p :accessor choose-card-p :initform nil :documentation "Indicates whether a card is to be chosen")
    (candidate-card :initform nil :documentation "The card on which a click was started")
+   (queued-actions :accessor queued-actions :initform nil
+		   :documentation "Function calls to be done if some
+		   timeouts have passed.")
+   (timeouts :accessor timeouts)
    (last-mouse-pos :accessor last-mouse-pos :initform #(0 0) :documentation "Saves the last known mouse position"))
   (:documentation "Module zum Zeichnen der Karten und zum Verarbeiten kartenspezifischer Aktionen"))
+
+(defmacro queued-args (module timeout-ident)
+  "Shorthand for the cdr of the timeout assoc in (queued-actions module)"
+  `(cdr (assoc ,timeout-ident (queued-actions ,module))))
+
+(defun timeout-scheduled-p (module timeout-ident)
+  "Returns t if the timeout referenced with timeout-ident is currenly due."
+  (ag:with-locked-timeouts (null-pointer)
+    (ag:timeout-is-scheduled (null-pointer) (getf (timeouts module) timeout-ident))))
+
+(defmethod schedule-timeout ((module cards) timeout-ident ival &rest args)
+  "Pushes the args onto the stack of queued-actions in the timeout-ident assoc
+and schedules the timeout with Agar"
+  (setf (queued-args module timeout-ident)
+	(nconc (queued-args module timeout-ident) (list (cons (+ (ag:get-ticks) ival) args))))
+  (let ((timeout (getf (timeouts module) timeout-ident)))
+    (unless (timeout-scheduled-p module timeout-ident)
+      (ag:schedule-timeout (null-pointer) timeout ival))))
+
+(defvar *delayed-methods* nil "The names of methods that use the delaying mechanism")
+
+(defmacro define-delayed (name lambda-list delay &body body)
+  "Defines a method that should only be executed after a specific delay"
+  (let ((do-name (conc-symbols 'do- name))
+	(delay-name (conc-symbols 'delay- name))
+	(timeout-ident (to-keyword name))
+	(module-param (caar lambda-list))
+	(ival-arg (gensym "IVAL"))
+	(args (get-args-from-specialized-lambda-list lambda-list)))
+    (pushnew name *delayed-methods*)
+    (if (find-if (rcurry #'member '(&optional &key &rest)) args)
+	(error "Define-delayed cannot handle optional, key and rest arguments")
+	`(progn
+	   (defmethod ,delay-name ,(append (list ival-arg) lambda-list)
+	     ,(format nil "Schedules a call to ~a" do-name)
+	     (schedule-timeout ,module-param ,timeout-ident ,ival-arg ,@args))
+	   (defmethod ,name ,lambda-list
+	     ,(format nil "Schedules a call to ~a in ~a ticks" do-name delay)
+	     (,delay-name ,delay ,@args))
+	   (defmethod ,do-name ,lambda-list ,@body)))))
+
+(let ((counter 1))
+  (define-delayed delayed-test ((module cards)) 2000
+    "A test delay function, shows up a window when body is executed"
+    (let ((win (ag:window-new)))
+      (ag:window-set-caption win "~a" counter)
+      (ag:set-window-position win :tl nil)
+      (ag:new-label win nil (format nil "~a" counter))
+      (incf counter)
+      (ag:window-show win))))
 
 (defmethod remove-cards ((module cards) cards)
   "Recursively removes the supplied cards from the player's hand"
@@ -89,11 +143,6 @@ If the card is already selected it will be removed from that list."
   (check-type card kern:card)
   (intern (subseq (with-output-to-string (s) (kern:print-card card s)) 2) 'keyword))
 
-(defmethod initialize-instance :after ((module cards) &key)
-  "Loads the card textures"
-  (load-textures module)
-  (create-display-lists module))
-
 (defun candidate-card-p (module card)
   (equalp card (slot-value module 'candidate-card)))
 
@@ -103,6 +152,122 @@ If the card is already selected it will be removed from that list."
 
 (defun card-selected-p (module card)
   (member card (selected-cards module) :test #'equalp))
+
+;; convenience functions
+
+(defmethod game-starts ((module cards))
+  "Clears the middle stack and the trick stacks"
+  (clear-middle module)
+  (with-slots (left-tricks right-tricks own-tricks) module
+    (setf left-tricks nil
+	  right-tricks nil
+	  own-tricks nil)))
+
+(defmethod select-skat ((module cards))
+  "Prepare the cards module to let the player choose two cards for the skat"
+  (setf (select-p module) t		; make cards selectable
+	(n-max-select module) 2))
+
+(defmethod end-choose-skat ((module cards))
+  "Make cards no longer selectable and clear selection"
+  (clear-selected-cards module)
+  (setf (select-p module) nil))
+
+(defmethod add-cards ((module cards) cards)
+  (setf (cards module)
+	(mapcar #'(lambda (card)
+		    (make-ui-card :card card :covered-p nil))
+		(kern:sort-cards (nconc (mapcar #'ui-card-card (cards module)) cards) (game module)))))
+
+(define-delayed choose-card ((module cards)) 100
+  "Enables the handling of clicks on the cards"
+  (if (timeout-scheduled-p module :trick-push)
+      ;; wait until trick is gone
+      (choose-card module)
+      ;; now do it
+      (setf (choose-card-p module) t)))
+
+(defmethod select-card ((module cards) x y)
+  "Does a selection at P(x,y) and returns the card that the clicked object represents"
+  (declare (optimize debug))
+  (let ((hit-records (select (ui module) x y)))
+    (declare (optimize debug))
+    (when hit-records
+      (let ((record (dolist (r hit-records) ; look for a card hit
+		      (declare (optimize debug))
+		      (when (> (length (hit-record-names-on-stack r)) 0)
+			(when (= +own-cards+ (car (hit-record-names-on-stack r))) ; card hit
+			  (return r))))))
+	(declare (optimize debug))
+	(when record
+	  (let ((nth-card (1- (- (second (hit-record-names-on-stack record)) +own-cards+)))) ; offset
+	    (nth nth-card (cards module))))))))
+
+(define-delayed middle-stack-push ((module cards) card direction) 1 ; immediately if possible
+  "Pushes another card onto the the stack in the middle of the table"
+  (if (timeout-scheduled-p module :trick-push)
+      ;; trick is still shown, try again later
+      (delay-middle-stack-push 1000 module card direction)
+      ;; trick-push timeout timed out, execute now
+      (with-slots (middle-stack) module
+	(setf middle-stack (nconc middle-stack (list (make-ui-card :from direction :card card)))))))
+
+(defmethod send-card ((module cards) ui-card)
+  "Sends the card to the kernel to play it, so also remove it from the hand and
+prohibit further reaction on clicks on the cards"
+  (setf (choose-card-p module) nil)
+  (remove-cards module (list ui-card))
+  (middle-stack-push module (ui-card-card ui-card) :self)
+  (play-card (ui module) (ui-card-card ui-card)))
+
+(defmethod skat-in-the-middle ((module cards))
+  "Places the two skat cards in the middle"
+  (dotimes (n 2)
+    (push (make-ui-card :covered-p t :from (intern (format nil "SKAT~a" n) :keyword))
+	  (slot-value module 'middle-stack))))
+
+(defmethod clear-middle ((module cards))
+  "Removes the cards lying in the middle of the table"
+  (setf (slot-value module 'middle-stack) nil))
+
+(defmethod card-played ((module cards) from-direction card)
+  "Pushes the card onto the middle stack."
+  ;; and put the card in the middle
+  (middle-stack-push module card from-direction)
+  ;; remove a card from the other player's hand
+  (pop (slot-value module (ecase from-direction
+			    (:left 'left-cards)
+			    (:right 'right-cards)))))
+
+(defmethod add-other-players-cards ((module cards) left-or-right n)
+  "Pushes n covered cards to an other player's hand"
+  (dotimes (n n)
+    (push (make-ui-card :covered-p t)
+	  (slot-value module (ecase left-or-right
+			       (:left 'left-cards)
+			       (:right 'right-cards))))))
+
+(define-delayed trick-push ((module cards) direction) 2000
+  "Pushes the cards from the middle stack to the tricks of the player"
+  (with-slots (own-tricks left-tricks right-tricks middle-stack)
+      module
+    ;; flip the cards in the middle
+    (dolist (ui-card middle-stack)
+      (setf (ui-card-covered-p ui-card) t))
+    ;; push the trick cards to trick stack
+    (ecase direction
+      (:self (setf own-tricks (nconc own-tricks middle-stack)))
+      (:left (setf left-tricks (nconc left-tricks middle-stack)))
+      (:right (setf right-tricks (nconc right-tricks middle-stack))))
+    ;; and clear the table
+    (clear-middle module)))
+
+(define-delayed trick-to ((module cards) direction) 1
+  "Waits until all cards are on the table (middle-stack-push) and
+pushes the trick away (trick-push) afterwards"
+  (if (timeout-scheduled-p module :middle-stack-push)
+      (delay-trick-to 100 module direction)
+      (trick-push module direction)))
 
 ;; graphics
 
@@ -299,107 +464,6 @@ would see the other face than before"
   (gl:disable :alpha-test)
   (gl:disable :texture-2d)))
 
-;; convenience functions
-
-(defmethod game-starts ((module cards))
-  "Clears the middle stack and the trick stacks"
-  (clear-middle module)
-  (with-slots (left-tricks right-tricks own-tricks) module
-    (setf left-tricks nil
-	  right-tricks nil
-	  own-tricks nil)))
-
-(defmethod select-skat ((module cards))
-  "Prepare the cards module to let the player choose two cards for the skat"
-  (setf (select-p module) t		; make cards selectable
-	(n-max-select module) 2))
-
-(defmethod end-choose-skat ((module cards))
-  "Make cards no longer selectable and clear selection"
-  (clear-selected-cards module)
-  (setf (select-p module) nil))
-
-(defmethod add-cards ((module cards) cards)
-  (setf (cards module)
-	(mapcar #'(lambda (card)
-		    (make-ui-card :card card :covered-p nil))
-		(kern:sort-cards (nconc (mapcar #'ui-card-card (cards module)) cards) (game module)))))
-
-(defmethod choose-card ((module cards))
-  "Enables the handling of clicks on the cards"
-  (setf (choose-card-p module) t))
-
-(defmethod select-card ((module cards) x y)
-  "Does a selection at P(x,y) and returns the card that the clicked object represents"
-  (declare (optimize debug))
-  (let ((hit-records (select (ui module) x y)))
-    (declare (optimize debug))
-    (when hit-records
-      (let ((record (dolist (r hit-records) ; look for a card hit
-		      (declare (optimize debug))
-		      (when (> (length (hit-record-names-on-stack r)) 0)
-			(when (= +own-cards+ (car (hit-record-names-on-stack r))) ; card hit
-			  (return r))))))
-	(declare (optimize debug))
-	(when record
-	  (let ((nth-card (1- (- (second (hit-record-names-on-stack record)) +own-cards+)))) ; offset
-	    (nth nth-card (cards module))))))))
-
-(defmethod middle-stack-push ((module cards) card direction)
-  "Pushes another card onto the the stack in the middle of the table"
-  (with-slots (middle-stack) module
-    (setf middle-stack (nconc middle-stack (list (make-ui-card :from direction :card card))))))
-
-(defmethod send-card ((module cards) ui-card)
-  "Sends the card to the kernel to play it, so also remove it from the hand and
-prohibit further reaction on clicks on the cards"
-  (play-card (ui module) (ui-card-card ui-card))
-  (setf (choose-card-p module) nil)
-  (remove-cards module (list ui-card))
-  (middle-stack-push module (ui-card-card ui-card) :self))
-
-(defmethod skat-in-the-middle ((module cards))
-  "Places the two skat cards in the middle"
-  (dotimes (n 2)
-    (push (make-ui-card :covered-p t :from (intern (format nil "SKAT~a" n) :keyword))
-	  (slot-value module 'middle-stack))))
-
-(defmethod clear-middle ((module cards))
-  "Removes the cards lying in the middle of the table"
-  (setf (slot-value module 'middle-stack) nil))
-
-(defmethod card-played ((module cards) from-direction card)
-  "Pushes the card onto the middle stack."
-  ;; and put the card in the middle
-  (middle-stack-push module card from-direction)
-  ;; remove a card from the other player's hand
-  (pop (slot-value module (ecase from-direction
-			    (:left 'left-cards)
-			    (:right 'right-cards)))))
-
-(defmethod add-other-players-cards ((module cards) left-or-right n)
-  "Pushes n covered cards to an other player's hand"
-  (dotimes (n n)
-    (push (make-ui-card :covered-p t)
-	  (slot-value module (ecase left-or-right
-			       (:left 'left-cards)
-			       (:right 'right-cards))))))
-
-(defmethod trick-to ((module cards) direction)
-  "Pushes the cards from the middle stack to the tricks of the player"
-  (with-slots (own-tricks left-tricks right-tricks middle-stack)
-      module
-    ;; flip the cards in the middle
-    (dolist (ui-card middle-stack)
-      (setf (ui-card-covered-p ui-card) t))
-    ;; push the trick cards to trick stack
-    (ecase direction
-      (:self (setf own-tricks (nconc own-tricks middle-stack)))
-      (:left (setf left-tricks (nconc left-tricks middle-stack)))
-      (:right (setf right-tricks (nconc right-tricks middle-stack))))
-    ;; and clear the table
-    (clear-middle module)))
-
 ;; Module methods
 
 (defmethod handle-event ((module cards) event)
@@ -437,4 +501,47 @@ prohibit further reaction on clicks on the cards"
 					       (send-card module card)
 					       (slot-makunbound module 'candidate-card)))
 					 (slot-makunbound module 'candidate-card))))))))
-  
+
+(defmacro delayed-timeouts (module)
+  `(list
+    ,@(loop for methodname in *delayed-methods*
+	 appending (let ((do-method (conc-symbols 'do- methodname))
+			 (timeout-ident (to-keyword methodname)))
+		     `(,timeout-ident
+		       (let ((timeout (alloc-finalized ,module 'ag:timeout)))
+			 (ag:set-timeout timeout
+					 (lambda-timeout-callback (obj ival arg)
+					   (declare (ignore obj ival arg) (optimize debug))
+					   (restart-case
+					       (let* ((queued-top (pop (queued-args ,module ,timeout-ident)))
+						      (elapsed (car queued-top))
+						      (args (cdr queued-top)) ; args for funcall
+						      (rest (queued-args ,module ,timeout-ident)))
+						 (apply #',do-method args)
+						 (when (and rest (> (- (caar rest) elapsed) 3000))
+						   (warn "~a deferred more than 3 sec (~s ticks)!"
+							 ,timeout-ident
+							 (- (caar rest) elapsed))
+						   (break))
+						 (if rest
+						     ;; there are more of these timeouts to come
+						     (max (- (caar rest) ; this is the next ival
+							     elapsed)
+							  1) ; but at least 1 tick!
+						     ;; else don't reschedule
+						     0))
+					     (continue () :report "Return from timeout callback without rescheduling"
+						       0)))
+					 (null-pointer) nil)
+			 timeout))))))
+
+(defmacro make-queued-actions-list ()
+  `(list ,@(loop for methodname in *delayed-methods*
+	      collect `(cons ,(to-keyword methodname) nil))))
+
+(defmethod initialize-instance :after ((module cards) &key)
+  "Loads the card textures and defines callbacks for this module"
+  (load-textures module)
+  (create-display-lists module)
+  (setf (timeouts module) (delayed-timeouts module)
+	(queued-actions module) (make-queued-actions-list)))

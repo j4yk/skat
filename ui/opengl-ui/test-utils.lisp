@@ -63,3 +63,29 @@
 
 (defmacro fmod (module-class)
   `(find-module ',module-class *ui*))
+
+(defun tstat ()
+  "timeout status"
+  (loop for to in (list :trick-to :trick-push :choose-card :middle-stack-push)
+     appending (list to (timeout-scheduled-p (fmod cards) to))))
+
+(defun msp ()
+  "push some cards"
+  (mapcar (curry 'middle-stack-push (fmod cards)) (get-some-cards 3) (list :left :right :self))
+  (tstat))
+
+(defun trick-away ()
+  "push trick away"
+  (trick-to (fmod cards) :self)
+  (tstat))
+
+(defun cs ()
+  "choose-card"
+  (choose-card (fmod cards))
+  (tstat))
+
+(defun delto (to)
+  "delete timeout by keyword"
+  (ag:delete-timeout (null-pointer) (getf (timeouts (fmod cards)) to))
+  (setf (queued-args (fmod cards) to) nil)
+  (tstat))
