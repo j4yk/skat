@@ -24,6 +24,8 @@
   (apply #'ag::init-video-sdl (sdl:fp *sdl-screen*) flags))
 
 (defun kill-video ()
+  (sdl:push-quit-event)
+  (sleep 1) ; give it time to finish
   (ag:destroy-video)
   (sdl:close-audio)
   (sdl:quit-sdl)
