@@ -73,10 +73,14 @@ test-definition ::= (name (test-function input-form*) output-form)"
 
 (defun always-true (&rest args)
   (declare (ignore args))
-  t)
+  (error "use #'constantly instead"))
 
 (defun curry (fn &rest args-to-curry)
+  "Returns a function that applies args-to-curry and the arguments supplied
+to the returned function to fn."
   #'(lambda (&rest args) (apply fn (append args-to-curry args))))
 
 (defun rcurry (fn &rest last-args-to-curry)
+  "Returns a function that applies the arguments supplied to the returned
+function and last-args-to-curry to fn."
   #'(lambda (&rest args) (apply fn (append args last-args-to-curry))))

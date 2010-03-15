@@ -52,17 +52,51 @@ STUB"
 			'bidding 'cards 'game-declaration 'players
 			'after-game))))
 
-;; request handlers
-
-(defhandler ui:login-struct (opengl-ui struct-classname)
-  (let ((module (find-module 'login-and-register ui)))
-    (query-login module)))
-
 ;; function and control flow
 
 (defmethod player-name ((ui opengl-ui) player-address)
   (with-modules (players)
     (player-name players player-address)))
+
+(defmethod take-skat ((ui opengl-ui))
+  "Send hand-decision to kernel, taking the skat."
+  (call-kernel-handler ui 'hand-decision nil))
+
+(defmethod query-declaration ((ui opengl-ui) hand-p)
+  "Calls this generic function on the game-declaration module"
+  (with-modules (game-declaration)
+    (query-declaration game-declaration hand-p)))
+
+(defmethod send-skat ((ui opengl-ui))
+  "Sends the chosen cards back to Kernel and removes the cards from
+  the player's hand"
+  (with-modules (cards)
+    (let ((skat (selected-cards cards)))
+      (unless (= 2 (length skat)) (error "Must push two cards into the skat!"))
+      (remove-cards cards skat)
+      (end-choose-skat cards)		; cleanup
+      (call-kernel-handler ui 'skat skat) ; pass it on
+      (query-declaration ui nil))))	  ; processed the Skat, so no hand
+
+(defmethod play-hand ((ui opengl-ui))
+  "Send hand-decision to kernel, playing a hand game
+and presents the player the declaration dialog."
+  (call-kernel-handler ui 'hand-decision t)
+  (query-declaration ui t))
+
+(defmethod play-card ((ui opengl-ui) card)
+  "Sendet eine Karte zum Spielen an den Kernel zurück"
+  (call-kernel-handler ui 'card card))
+
+(defmethod leave ((ui opengl-ui))
+  "Leave the table and your playmates"
+  (error "not implemented yet"))
+
+;; request handlers
+
+(defhandler ui:login-struct (opengl-ui struct-classname)
+  (let ((module (find-module 'login-and-register ui)))
+    (query-login module)))
 
 ;; zu Senden: Login-Data
 
@@ -157,10 +191,6 @@ Hands the cards over to the cards module."
     ;; skat no longer in the middle
     (clear-middle cards)))
 
-(defmethod take-skat ((ui opengl-ui))
-  "Send hand-decision to kernel, taking the skat."
-  (call-kernel-handler ui 'hand-decision nil))
-
 (defhandler ui:skat (opengl-ui skat)
   "Called by Kernel when the skat is received from the host.
 Adds two cards and lets the player select two."
@@ -171,36 +201,10 @@ Adds two cards and lets the player select two."
     (select-skat cards)
     (query-skat game-declaration)))
 
-(defmethod query-declaration ((ui opengl-ui) hand-p)
-  "Calls this generic function on the game-declaration module"
-  (with-modules (game-declaration)
-    (query-declaration game-declaration hand-p)))
-
-(defmethod send-skat ((ui opengl-ui))
-  "Sends the chosen cards back to Kernel and removes the cards from
-  the player's hand"
-  (with-modules (cards)
-    (let ((skat (selected-cards cards)))
-      (unless (= 2 (length skat)) (error "Must push two cards into the skat!"))
-      (remove-cards cards skat)
-      (end-choose-skat cards)		; cleanup
-      (call-kernel-handler ui 'skat skat) ; pass it on
-      (query-declaration ui nil))))	  ; processed the Skat, so no hand
-
-(defmethod play-hand ((ui opengl-ui))
-  "Send hand-decision to kernel, playing a hand game
-and presents the player the declaration dialog."
-  (call-kernel-handler ui 'hand-decision t)
-  (query-declaration ui t))
-
 (defhandler choose-card (opengl-ui)
   "Host hat mitgeteilt, dass man am Stich ist."
   (with-modules (cards)
     (choose-card cards)))
-
-(defmethod play-card ((ui opengl-ui) card)
-  "Sendet eine Karte zum Spielen an den Kernel zurück"
-  (call-kernel-handler ui 'card card))
 
 (defhandler card (opengl-ui card)
   "Eine Karte wurde von jemandem anders gespielt"
@@ -254,10 +258,6 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
   "Eine Nachricht von einem anderen Spieler"
   ;; just pop up the message
   (ag:text-msg :info text))
-
-(defmethod leave ((ui opengl-ui))
-  "Leave the table and your playmates"
-  (error "not implemented yet"))
 
 ;; rendering
 
