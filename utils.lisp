@@ -15,7 +15,6 @@
 	   parse-function-body
 	   separate-lambda-list
 	   deftests
-	   always-true
 	   curry rcurry
 	   define-package-which-exports-all-requests)) ; das steckt in requests.lisp
 
