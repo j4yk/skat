@@ -16,7 +16,6 @@
 	   separate-lambda-list
 	   get-args-from-specialized-lambda-list
 	   deftests
-	   always-true
 	   curry rcurry
 	   define-package-which-exports-all-requests)) ; das steckt in requests.lisp
 
