@@ -8,9 +8,11 @@
    (right-cards :type list :initform nil)
    (right-tricks :initform nil)
    (middle-stack :type list :initform nil)
+   (last-trick :accessor last-trick :type list :initform nil)
    (game :accessor game :initform :grand)
    (textures :accessor textures :type list :initform nil :documentation "Property list of texture names and IDs")
    (card-display-list) (card-reversed-display-list)
+   (show-last-trick-p :accessor show-last-trick-p :initform nil)
    (select :accessor select-p :initform nil :documentation "Controls whether selection is performed on clicks or not")
    (n-max-select :accessor n-max-select :initform 1 :documentation "How many cards can be selected simultaneously")
    (selected-cards :reader selected-cards :initform nil :documentation "The currently selected cards")
@@ -253,6 +255,17 @@ would see the other face than before"
 	(gl:rotate 10 0 0 1)		; rotate cards
 	(gl:translate 0 dy 0)))))
 
+(defmethod draw-last-trick ((module cards))
+  "Draws the last trick next to the sending player"
+  (destructuring-bind (direction &rest cards) (last-trick module)
+    (with-pushed-matrix
+      :modelview
+      (rotate-to-player-view direction)
+      (when (eq direction :right)
+	;; draw the trick on the left side of the player if it
+	;; is the one to the right
+	))))
+
 (defmethod draw ((module cards))
   "Zeichnet die Karten"
   (declare (optimize debug))
@@ -290,6 +303,9 @@ would see the other face than before"
 	 (list left-cards right-cards)))
   ;; middle stack
   (draw-middle-stack module)
+  ;; last trick
+  (when (show-last-trick-p module)
+    (draw-last-trick module))
   ;; own cards
   (with-selname 1000
     (draw-hand-here :self (cards module) #'own-card-selname))
@@ -400,6 +416,14 @@ prohibit further reaction on clicks on the cards"
       (:right (setf right-tricks (nconc right-tricks middle-stack))))
     ;; and clear the table
     (clear-middle module)))
+
+(defmethod hide-last-trick ((module cards))
+  "Hides the last trick"
+  (setf (show-last-trick-p module) nil))
+
+(defmethod show-last-trick ((module cards))
+  "Display the last trick"
+  (setf (show-last-trick-p module) t))
 
 ;; Module methods
 
