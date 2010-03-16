@@ -14,6 +14,7 @@
 	   conc-symbols
 	   parse-function-body
 	   separate-lambda-list
+	   get-args-from-specialized-lambda-list
 	   deftests
 	   always-true
 	   curry rcurry
