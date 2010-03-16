@@ -8,9 +8,11 @@
    (right-cards :type list :initform nil)
    (right-tricks :initform nil)
    (middle-stack :type list :initform nil)
+   (last-trick :accessor last-trick :type list :initform nil)
    (game :accessor game :initform :grand)
    (textures :accessor textures :type list :initform nil :documentation "Property list of texture names and IDs")
    (card-display-list) (card-reversed-display-list)
+   (show-last-trick-p :accessor show-last-trick-p :initform nil)
    (select :accessor select-p :initform nil :documentation "Controls whether selection is performed on clicks or not")
    (n-max-select :accessor n-max-select :initform 1 :documentation "How many cards can be selected simultaneously")
    (selected-cards :reader selected-cards :initform nil :documentation "The currently selected cards")
@@ -149,122 +151,6 @@ If the card is already selected it will be removed from that list."
 
 (defun card-selected-p (module card)
   (member card (selected-cards module) :test #'equalp))
-
-;; convenience functions
-
-(defmethod game-starts ((module cards))
-  "Clears the middle stack and the trick stacks"
-  (clear-middle module)
-  (with-slots (left-tricks right-tricks own-tricks) module
-    (setf left-tricks nil
-	  right-tricks nil
-	  own-tricks nil)))
-
-(defmethod select-skat ((module cards))
-  "Prepare the cards module to let the player choose two cards for the skat"
-  (setf (select-p module) t		; make cards selectable
-	(n-max-select module) 2))
-
-(defmethod end-choose-skat ((module cards))
-  "Make cards no longer selectable and clear selection"
-  (clear-selected-cards module)
-  (setf (select-p module) nil))
-
-(defmethod add-cards ((module cards) cards)
-  (setf (cards module)
-	(mapcar #'(lambda (card)
-		    (make-ui-card :card card :covered-p nil))
-		(kern:sort-cards (nconc (mapcar #'ui-card-card (cards module)) cards) (game module)))))
-
-(define-delayed choose-card ((module cards)) 100
-  "Enables the handling of clicks on the cards"
-  (if (timeout-scheduled-p module :trick-push)
-      ;; wait until trick is gone
-      (choose-card module)
-      ;; now do it
-      (setf (choose-card-p module) t)))
-
-(defmethod select-card ((module cards) x y)
-  "Does a selection at P(x,y) and returns the card that the clicked object represents"
-  (declare (optimize debug))
-  (let ((hit-records (select (ui module) x y)))
-    (declare (optimize debug))
-    (when hit-records
-      (let ((record (dolist (r hit-records) ; look for a card hit
-		      (declare (optimize debug))
-		      (when (> (length (hit-record-names-on-stack r)) 0)
-			(when (= +own-cards+ (car (hit-record-names-on-stack r))) ; card hit
-			  (return r))))))
-	(declare (optimize debug))
-	(when record
-	  (let ((nth-card (1- (- (second (hit-record-names-on-stack record)) +own-cards+)))) ; offset
-	    (nth nth-card (cards module))))))))
-
-(define-delayed middle-stack-push ((module cards) card direction) 1 ; immediately if possible
-  "Pushes another card onto the the stack in the middle of the table"
-  (if (timeout-scheduled-p module :trick-push)
-      ;; trick is still shown, try again later
-      (delay-middle-stack-push 1000 module card direction)
-      ;; trick-push timeout timed out, execute now
-      (with-slots (middle-stack) module
-	(setf middle-stack (nconc middle-stack (list (make-ui-card :from direction :card card)))))))
-
-(defmethod send-card ((module cards) ui-card)
-  "Sends the card to the kernel to play it, so also remove it from the hand and
-prohibit further reaction on clicks on the cards"
-  (setf (choose-card-p module) nil)
-  (remove-cards module (list ui-card))
-  (middle-stack-push module (ui-card-card ui-card) :self)
-  (play-card (ui module) (ui-card-card ui-card)))
-
-(defmethod skat-in-the-middle ((module cards))
-  "Places the two skat cards in the middle"
-  (dotimes (n 2)
-    (push (make-ui-card :covered-p t :from (intern (format nil "SKAT~a" n) :keyword))
-	  (slot-value module 'middle-stack))))
-
-(defmethod clear-middle ((module cards))
-  "Removes the cards lying in the middle of the table"
-  (setf (slot-value module 'middle-stack) nil))
-
-(defmethod card-played ((module cards) from-direction card)
-  "Pushes the card onto the middle stack."
-  ;; and put the card in the middle
-  (middle-stack-push module card from-direction)
-  ;; remove a card from the other player's hand
-  (pop (slot-value module (ecase from-direction
-			    (:left 'left-cards)
-			    (:right 'right-cards)))))
-
-(defmethod add-other-players-cards ((module cards) left-or-right n)
-  "Pushes n covered cards to an other player's hand"
-  (dotimes (n n)
-    (push (make-ui-card :covered-p t)
-	  (slot-value module (ecase left-or-right
-			       (:left 'left-cards)
-			       (:right 'right-cards))))))
-
-(define-delayed trick-push ((module cards) direction) 2000
-  "Pushes the cards from the middle stack to the tricks of the player"
-  (with-slots (own-tricks left-tricks right-tricks middle-stack)
-      module
-    ;; flip the cards in the middle
-    (dolist (ui-card middle-stack)
-      (setf (ui-card-covered-p ui-card) t))
-    ;; push the trick cards to trick stack
-    (ecase direction
-      (:self (setf own-tricks (nconc own-tricks middle-stack)))
-      (:left (setf left-tricks (nconc left-tricks middle-stack)))
-      (:right (setf right-tricks (nconc right-tricks middle-stack))))
-    ;; and clear the table
-    (clear-middle module)))
-
-(define-delayed trick-to ((module cards) direction) 1
-  "Waits until all cards are on the table (middle-stack-push) and
-pushes the trick away (trick-push) afterwards"
-  (if (timeout-scheduled-p module :middle-stack-push)
-      (delay-trick-to 100 module direction)
-      (trick-push module direction)))
 
 ;; graphics
 
@@ -418,6 +304,32 @@ would see the other face than before"
 	(gl:rotate 10 0 0 1)		; rotate cards
 	(gl:translate 0 dy 0)))))
 
+(defmethod draw-last-trick ((module cards))
+  "Draws the last trick next to the sending player"
+  (destructuring-bind (direction &rest cards) (last-trick module)
+    (with-pushed-matrix
+      :modelview
+      (rotate-to-player-view direction)
+      ;; rotation offset: this trick to the left of the right player
+      ;; else to the left and not hidden by our own cards
+      (gl:rotate (ecase direction
+		   (:self 45)
+		   (:right -40)
+		   (:left 40)) 0 1 0)
+      (gl:translate 0 0 (* 2.4 card-height))
+      (when (eq direction :self)
+	;; rotate in-place when these are our own cards
+	(gl:rotate -20 0 1 0))
+      (lay-down)
+      (let ((dy 0.01))
+	(dolist (card cards)
+	  (with-pushed-matrix
+	    :modelview
+	    (gl:translate 0 (* 1/2 card-height) 0)
+	    (draw-ui-card-here module card 9003 nil))
+	  (gl:rotate -30 0 0 1)
+	  (gl:translate 0 dy 0))))))
+
 (defmethod draw ((module cards))
   "Zeichnet die Karten"
   (declare (optimize debug))
@@ -455,17 +367,160 @@ would see the other face than before"
 	 (list left-cards right-cards)))
   ;; middle stack
   (draw-middle-stack module)
+  ;; last trick
+  (when (show-last-trick-p module)
+    (draw-last-trick module))
   ;; own cards
   (with-selname 1000
     (draw-hand-here :self (cards module) #'own-card-selname))
   (gl:disable :alpha-test)
   (gl:disable :texture-2d)))
 
+;; convenience functions
+
+(defmethod game-starts ((module cards))
+  "Removes any cards, clears the middle stack and the trick stacks"
+  (setf (cards module) nil)
+  (clear-middle module)
+  (hide-last-trick module)
+  (setf (last-trick module) nil)
+  (with-slots (left-tricks right-tricks own-tricks
+			   left-cards right-cards) module
+    (setf left-tricks nil
+	  left-cards nil
+	  right-cards nil
+	  right-tricks nil
+	  own-tricks nil)))
+
+(defmethod leave ((module cards))
+  "Delete all cards"
+  (with-slots ()
+      module
+    (game-starts module)))	  ; wrong syntax but correct semantics
+
+(defmethod select-skat ((module cards))
+  "Prepare the cards module to let the player choose two cards for the skat"
+  (setf (select-p module) t		; make cards selectable
+	(n-max-select module) 2))
+
+(defmethod end-choose-skat ((module cards))
+  "Make cards no longer selectable and clear selection"
+  (clear-selected-cards module)
+  (setf (select-p module) nil))
+
+(defmethod add-cards ((module cards) cards)
+  (setf (cards module)
+	(mapcar #'(lambda (card)
+		    (make-ui-card :card card :covered-p nil))
+		(kern:sort-cards (nconc (mapcar #'ui-card-card (cards module)) cards) (game module)))))
+
+(define-delayed choose-card ((module cards)) 100
+  "Enables the handling of clicks on the cards"
+  (if (timeout-scheduled-p module :trick-push)
+      ;; wait until trick is gone
+      (choose-card module)
+      ;; now do it
+      (setf (choose-card-p module) t)))
+
+(defmethod select-card ((module cards) x y)
+  "Does a selection at P(x,y) and returns the card that the clicked object represents"
+  (declare (optimize debug))
+  (let ((hit-records (select (ui module) x y)))
+    (declare (optimize debug))
+    (when hit-records
+      (let ((record (dolist (r hit-records) ; look for a card hit
+		      (declare (optimize debug))
+		      (when (> (length (hit-record-names-on-stack r)) 0)
+			(when (= +own-cards+ (car (hit-record-names-on-stack r))) ; card hit
+			  (return r))))))
+	(declare (optimize debug))
+	(when record
+	  (let ((nth-card (1- (- (second (hit-record-names-on-stack record)) +own-cards+)))) ; offset
+	    (nth nth-card (cards module))))))))
+
+(define-delayed middle-stack-push ((module cards) card direction) 1 ; immediately if possible
+  "Pushes another card onto the the stack in the middle of the table"
+  (if (timeout-scheduled-p module :trick-push)
+      ;; trick is still shown, try again later
+      (delay-middle-stack-push 1000 module card direction)
+      ;; trick-push timeout timed out, execute now
+      (with-slots (middle-stack) module
+	(setf middle-stack (nconc middle-stack (list (make-ui-card :from direction :card card)))))))
+
+(defmethod send-card ((module cards) ui-card)
+  "Sends the card to the kernel to play it, so also remove it from the hand and
+prohibit further reaction on clicks on the cards"
+  (setf (choose-card-p module) nil)
+  (remove-cards module (list ui-card))
+  (middle-stack-push module (ui-card-card ui-card) :self)
+  (play-card (ui module) (ui-card-card ui-card)))
+
+(defmethod skat-in-the-middle ((module cards))
+  "Places the two skat cards in the middle"
+  (dotimes (n 2)
+    (push (make-ui-card :covered-p t :from (intern (format nil "SKAT~a" n) :keyword))
+	  (slot-value module 'middle-stack))))
+
+(defmethod clear-middle ((module cards))
+  "Removes the cards lying in the middle of the table"
+  (setf (slot-value module 'middle-stack) nil))
+
+(defmethod card-played ((module cards) from-direction card)
+  "Pushes the card onto the middle stack."
+  ;; and put the card in the middle
+  (middle-stack-push module card from-direction)
+  ;; remove a card from the other player's hand
+  (pop (slot-value module (ecase from-direction
+			    (:left 'left-cards)
+			    (:right 'right-cards)))))
+
+(defmethod add-other-players-cards ((module cards) left-or-right n)
+  "Pushes n covered cards to an other player's hand"
+  (dotimes (n n)
+    (push (make-ui-card :covered-p t)
+	  (slot-value module (ecase left-or-right
+			       (:left 'left-cards)
+			       (:right 'right-cards))))))
+
+(define-delayed trick-push ((module cards) direction) 2000
+  "Pushes the cards from the middle stack to the tricks of the player"
+  (hide-last-trick module)
+  (with-slots (own-tricks left-tricks right-tricks middle-stack)
+      module
+    ;; flip the cards in the middle
+    (dolist (ui-card middle-stack)
+      (setf (ui-card-covered-p ui-card) t))
+    ;; remember this trick as the latest trick
+    (setf (last-trick module) (cons direction middle-stack))
+    ;; push the trick cards to trick stack
+    (ecase direction
+      (:self (setf own-tricks (nconc own-tricks middle-stack)))
+      (:left (setf left-tricks (nconc left-tricks middle-stack)))
+      (:right (setf right-tricks (nconc right-tricks middle-stack))))
+    ;; and clear the table
+    (clear-middle module)))
+
+(define-delayed trick-to ((module cards) direction) 1
+  "Waits until all cards are on the table (middle-stack-push) and
+pushes the trick away (trick-push) afterwards"
+  (if (timeout-scheduled-p module :middle-stack-push)
+      (delay-trick-to 100 module direction)
+      (trick-push module direction)))
+
+(defmethod hide-last-trick ((module cards))
+  "Hides the last trick"
+  (setf (show-last-trick-p module) nil))
+
+(defmethod show-last-trick ((module cards))
+  "Display the last trick"
+  (setf (show-last-trick-p module) t))	
+
 ;; Module methods
 
 (defmethod handle-event ((module cards) event)
   (case-event event
     (:mouse-button-down-event (:x x :y y)
+			      (hide-last-trick module)
 			      (cond ((select-p module)
 				     ;; select a card if the maximum number of selectable cards
 				     ;; has not yet been reached, if the card is already selected

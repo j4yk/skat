@@ -69,6 +69,7 @@
 							   (:file after-game :depends-on (module agar))
 							   (:file cards :depends-on (gfx-utils selection
 										     gl-ui-utils agar))
+							   (:file general-buttons :depends-on (module agar))
 							   (:file gl-ui
 								  :depends-on (module
 										     gfx-utils
@@ -79,6 +80,7 @@
 										     login-and-register
 										     players
 										     declaration
+										     general-buttons
 										     after-game))
 							   (:file test-utils :depends-on (gl-ui))
 							   (:file agar-test :depends-on (gl-ui agar))

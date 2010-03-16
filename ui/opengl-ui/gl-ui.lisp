@@ -50,7 +50,7 @@ STUB"
 	  (mapcar (rcurry #'make-instance :ui ui)
 		  (list 'agar 'error-handling 'login-and-register
 			'bidding 'cards 'game-declaration 'players
-			'after-game))))
+			'after-game 'general-buttons))))
 
 ;; function and control flow
 
@@ -67,12 +67,17 @@ STUB"
   (with-modules (game-declaration)
     (query-declaration game-declaration hand-p)))
 
+(define-condition wrong-number-of-cards-error (error)
+  ()
+  (:report "Must push two cards into the skat!"))
+
 (defmethod send-skat ((ui opengl-ui))
   "Sends the chosen cards back to Kernel and removes the cards from
   the player's hand"
   (with-modules (cards)
     (let ((skat (selected-cards cards)))
-      (unless (= 2 (length skat)) (error "Must push two cards into the skat!"))
+      (unless (= 2 (length skat))
+	(error 'wrong-number-of-cards-error))
       (remove-cards cards skat)
       (end-choose-skat cards)		; cleanup
       (call-kernel-handler ui 'skat skat) ; pass it on
@@ -88,9 +93,17 @@ and presents the player the declaration dialog."
   "Sendet eine Karte zum Spielen an den Kernel zurück"
   (call-kernel-handler ui 'card card))
 
+(defmethod show-last-trick ((ui opengl-ui))
+  "Makes the cards module show the last trick"
+  (with-modules (cards)
+    (show-last-trick cards)))
+
 (defmethod leave ((ui opengl-ui))
   "Leave the table and your playmates"
-  (error "not implemented yet"))
+  (with-modules (players cards login-and-register)
+    (leave players)
+    (leave cards)
+    (query-registration login-and-register)))
 
 ;; request handlers
 
@@ -135,11 +148,10 @@ and presents the player the declaration dialog."
 
 (defhandler ui:game-start (opengl-ui)
   "Host sent game-start"
-  (with-modules (login-and-register bidding players cards)
+  (with-modules (login-and-register bidding players general-buttons cards)
     (reset-game-point-levels bidding)
-    (game-starts login-and-register)
-    (game-starts cards)
-    (game-starts players)))
+    (mapcar #'game-starts (list login-and-register cards players
+				general-buttons))))
 
 (defhandler ui:cards (opengl-ui cards)
   "Called by Kernel when the Host has distrubuted the cards.
@@ -213,7 +225,8 @@ Adds two cards and lets the player select two."
 
 (defhandler trick (opengl-ui cards winner)
   "Ein Stich wurde zugeteilt"
-  (with-modules (cards players)
+  (with-modules (cards general-buttons players)
+    (trick-available general-buttons)
     (trick-to cards (player-direction players winner))))
 
 (defhandler game-over (opengl-ui prompt)

@@ -247,9 +247,6 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
 (defmethod bid-received ((module bidding) sender value)
   "Moves the bidding and listening windows accordingly and sets their labels"
   (setf (bidder module) sender)
-  ;; check the validness of this bid
-  (assert (>= value (first (game-point-levels module)))
-	  (value (game-point-levels module)) "Received bidding value is too low")
   ;; cut the list of possible bidding values
   (kern:cut-away-game-point-levels value (game-point-levels module))
   ;; update bidder-window
@@ -320,14 +317,14 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
 (defmethod detach-own-listener-window ((module bidding))
   (when (slot-boundp module 'own-listener-window)
     (get-rid-of-window (window (own-listener-window module)))
-    (slot-makunbound module 'own-listener-window)
-    (hide (bidder-window module))))	; gehört in der Prozedur dazu
+    (slot-makunbound module 'own-listener-window)))
 
 (defmethod send-pass ((module bidding) value)
   "Sends a pass request to the kernel and hides the own bidding windows"
-  (hide (own-bidder-window module))
-  (detach-own-listener-window module)
+  (hide (own-bidder-window module))	; if player was bidder
   (hide (listener-window module))
+  (detach-own-listener-window module)	; if player was listener
+  (hide (bidder-window module))
   (setf (bidder-p module) nil
 	(listener-p module) nil)
   (call-kernel-handler (ui module) 'pass value))
