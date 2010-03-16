@@ -299,10 +299,14 @@ would see the other face than before"
 ;; convenience functions
 
 (defmethod game-starts ((module cards))
-  "Clears the middle stack and the trick stacks"
+  "Removes any cards, clears the middle stack and the trick stacks"
+  (setf (cards module) nil)
   (clear-middle module)
-  (with-slots (left-tricks right-tricks own-tricks) module
+  (with-slots (left-tricks right-tricks own-tricks
+			   left-cards right-cards) module
     (setf left-tricks nil
+	  left-cards nil
+	  right-tricks nil
 	  right-tricks nil
 	  own-tricks nil)))
 
