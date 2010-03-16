@@ -261,10 +261,25 @@ would see the other face than before"
     (with-pushed-matrix
       :modelview
       (rotate-to-player-view direction)
-      (when (eq direction :right)
-	;; draw the trick on the left side of the player if it
-	;; is the one to the right
-	))))
+      ;; rotation offset: this trick to the left of the right player
+      ;; else to the left and not hidden by our own cards
+      (gl:rotate (ecase direction
+		   (:self 45)
+		   (:right -40)
+		   (:left 40)) 0 1 0)
+      (gl:translate 0 0 (* 2.4 card-height))
+      (when (eq direction :self)
+	;; rotate in-place when these are our own cards
+	(gl:rotate -20 0 1 0))
+      (lay-down)
+      (let ((dy 0.01))
+	(dolist (card cards)
+	  (with-pushed-matrix
+	    :modelview
+	    (gl:translate 0 (* 1/2 card-height) 0)
+	    (draw-ui-card-here module card 9003 nil))
+	  (gl:rotate -30 0 0 1)
+	  (gl:translate 0 dy 0))))))
 
 (defmethod draw ((module cards))
   "Zeichnet die Karten"
@@ -404,6 +419,7 @@ prohibit further reaction on clicks on the cards"
 
 (defmethod trick-to ((module cards) direction)
   "Pushes the cards from the middle stack to the tricks of the player"
+  (hide-last-trick module)
   (with-slots (own-tricks left-tricks right-tricks middle-stack)
       module
     ;; flip the cards in the middle
@@ -430,6 +446,7 @@ prohibit further reaction on clicks on the cards"
 (defmethod handle-event ((module cards) event)
   (case-event event
     (:mouse-button-down-event (:x x :y y)
+			      (hide-last-trick module)
 			      (cond ((select-p module)
 				     ;; select a card if the maximum number of selectable cards
 				     ;; has not yet been reached, if the card is already selected
