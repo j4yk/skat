@@ -196,3 +196,9 @@
 					(:left 'left-player-window)
 					(:right 'right-player-window))))
 	    score))))
+
+(defmethod leave ((module players))
+  "Removes the player info windows and the saved player data"
+  (mapcar (curry #'slot-makunbound module)
+	  (list 'declarer-address 'left-player-name 'right-player-name))
+  (cleanup module))

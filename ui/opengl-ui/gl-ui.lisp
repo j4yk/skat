@@ -95,6 +95,8 @@ and presents the player the declaration dialog."
 
 (defmethod leave ((ui opengl-ui))
   "Leave the table and your playmates"
+  (with-modules (players)
+    (leave players))
   (error "not implemented yet"))
 
 ;; request handlers
