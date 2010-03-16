@@ -149,14 +149,23 @@ space"
 			     (get-rid-of-window (ag:event-ptr event 1)))))
   (values))
 
+(defmethod try-send-skat ((module game-declaration) skat-send-window)
+  "Tries to send the skat, if a wrong number of cards was selected,
+show an error dialog and don't close the send button window"
+  (handler-case
+      (progn
+	(send-skat (ui module))
+	(get-rid-of-window skat-send-window))
+    (wrong-number-of-cards-error ()
+      (ag:text-msg :error "Du musst genau zwei Karten in den Skat drücken!"))))
+
 (defmethod query-skat ((module game-declaration))
   "Displays the button to eventually send the two skat cards"
   (let* ((window (ag:window-new :notitle :noborders :modal :keepabove))
-	 (btn (ag:button-new-fn window nil
-				"Wähle zwei Karten aus und klicke dann hier zum absenden"
-				(std-event-handler
-				  (send-skat (ui module))
-				  (get-rid-of-window window)) "")))
+	 (btn (ag:new-button window nil
+			     "Wähle zwei Karten aus und klicke dann hier zum absenden"
+			     (std-event-handler
+			       (try-send-skat module window)))))
     (declare (ignore btn))
     (ag:window-show window)))
 

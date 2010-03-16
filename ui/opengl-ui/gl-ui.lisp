@@ -67,12 +67,17 @@ STUB"
   (with-modules (game-declaration)
     (query-declaration game-declaration hand-p)))
 
+(define-condition wrong-number-of-cards-error (error)
+  ()
+  (:report "Must push two cards into the skat!"))
+
 (defmethod send-skat ((ui opengl-ui))
   "Sends the chosen cards back to Kernel and removes the cards from
   the player's hand"
   (with-modules (cards)
     (let ((skat (selected-cards cards)))
-      (unless (= 2 (length skat)) (error "Must push two cards into the skat!"))
+      (unless (= 2 (length skat))
+	(error 'wrong-number-of-cards-error))
       (remove-cards cards skat)
       (end-choose-skat cards)		; cleanup
       (call-kernel-handler ui 'skat skat) ; pass it on
