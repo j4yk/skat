@@ -7,7 +7,7 @@
 (defmethod initialize-instance :after ((w general-buttons-window) &key)
   "Creates the window and its widgets"
   (let*-slots w
-      ((window (ag:window-new :noborders))
+      ((window (ag:window-new :noborders :notitle))
        (show-last-trick-btn
 	(ag:new-button window nil
 		       "Letzten Stich zeigen"
@@ -49,10 +49,12 @@
   "Asks with a dialog whether the player is sure"
   (ag:prompt-options "Willst du die Runde wirklich verlassen?"
 		     (list "Ja"
-			   (std-event-handler
+			   (lambda-event-handler event
+			     (get-rid-of-window (ag:event-ptr event 1))
 			     (leave module)))
 		     (list "Nein"
-			   (std-event-handler ; idle
+			   (lambda-event-handler event ; idle
+			     (get-rid-of-window (ag:event-ptr event 1))
 			     ))))
 
 (defmethod game-starts ((module general-buttons))
