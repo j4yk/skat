@@ -91,10 +91,6 @@
       (ag:detach-object (window own-player-window))
       (slot-makunbound module 'own-player-window)))))
 
-(defun check-slot-unbound (object slotname)
-  (when (slot-boundp object slotname)
-    (error "~s of ~s already bound!" slotname object)))
-
 (defmethod own-address ((module players) address)
   (let*-slots module ((own-address address))))
 
@@ -107,7 +103,11 @@
 (defmethod show-playmates ((module players))
   "Initializes and shows the player info windows"
   ;; execute this only if one of the windows was not already created
-  (when (find t (mapcar #'not (mapcar (curry #'slot-boundp module) (list 'left-player-window 'right-player-window 'own-player-window))))
+  (when (find t (mapcar #'not
+			(mapcar (curry #'slot-boundp module)
+				(list 'left-player-window
+				      'right-player-window
+				      'own-player-window))))
     (with-slots (left-player-name right-player-name own-address) module
       (let*-slots module
 	  ((left-player-window (make-instance 'player-info-window :player-name left-player-name :module module))
@@ -120,8 +120,11 @@
 
 (defmethod game-starts ((module players))
   "Shows the player info windows and resets the players' roles"
+  ;; create the windows if necessary
   (show-playmates module)
+  ;; no declarer anymore
   (slot-makunbound module 'declarer-address)
+  ;; reset the role displays
   (mapcar #'(lambda (slot)
 	      (setf (role (slot-value module slot)) ""))
 	  (list 'left-player-window 'right-player-window
@@ -132,7 +135,9 @@
   (with-slots (own-address left-player-name right-player-name
 			   own-player-window left-player-window right-player-window)
       module
+    ;; remember declarer address
     (setf (declarer-address module) declarer-address)
+    ;; set the role displays
     (cond ((equal declarer-address own-address)
 	   (setf (role own-player-window) "Alleinspieler"
 		 (role left-player-window) "Gegenspieler"
@@ -147,6 +152,7 @@
 		 (role right-player-window) "Alleinspieler")))))
 
 (defmethod player-name ((module players) player-address)
+  "Returns the name that is associated with that address"
   (with-slots (own-address left-player-name right-player-name)
       module
     (cond ((equal player-address own-address) own-address)
@@ -173,19 +179,18 @@
 
 ;; the following two methods must return their values with the same order of players
 
+(defmethod get-defenders-addresses ((module players))
+  (with-slots (declarer-address own-address left-player-name right-player-name)
+      module
+    (remove declarer-address
+	    (list own-address left-player-name right-player-name)
+	    :test #'equal)))
+
 (defmethod get-defenders-names ((module players))
   (with-slots (declarer-address own-address left-player-name right-player-name)
       module
     (mapcar (curry #'player-name module)
-	    (remove declarer-address
-		    (list own-address left-player-name right-player-name)
-		    :test #'equal))))
-
-(defmethod get-defenders-addresses ((module players))
-  (with-slots (declarer-address own-address left-player-name right-player-name)
-      module
-    (remove declarer-address (list own-address left-player-name right-player-name)
-	    :test #'equal)))
+	    (get-defenders-addresses module))))
 
 (defmethod update-scores ((module players) &rest address-score-pairs)
   (dotimes (n 3)
