@@ -50,7 +50,7 @@ STUB"
 	  (mapcar (rcurry #'make-instance :ui ui)
 		  (list 'agar 'error-handling 'login-and-register
 			'bidding 'cards 'game-declaration 'players
-			'after-game))))
+			'after-game 'general-buttons))))
 
 ;; function and control flow
 
@@ -92,6 +92,11 @@ and presents the player the declaration dialog."
 (defmethod play-card ((ui opengl-ui) card)
   "Sendet eine Karte zum Spielen an den Kernel zurück"
   (call-kernel-handler ui 'card card))
+
+(defmethod show-last-trick ((ui opengl-ui))
+  "Makes the cards module show the last trick"
+  (with-modules (cards)
+    (show-last-trick cards)))
 
 (defmethod leave ((ui opengl-ui))
   "Leave the table and your playmates"
@@ -142,11 +147,10 @@ and presents the player the declaration dialog."
 
 (defhandler ui:game-start (opengl-ui)
   "Host sent game-start"
-  (with-modules (login-and-register bidding players cards)
+  (with-modules (login-and-register bidding players general-buttons cards)
     (reset-game-point-levels bidding)
-    (game-starts login-and-register)
-    (game-starts cards)
-    (game-starts players)))
+    (mapcar #'game-starts (list login-and-register cards players
+				general-buttons))))
 
 (defhandler ui:cards (opengl-ui cards)
   "Called by Kernel when the Host has distrubuted the cards.
@@ -220,7 +224,8 @@ Adds two cards and lets the player select two."
 
 (defhandler trick (opengl-ui cards winner)
   "Ein Stich wurde zugeteilt"
-  (with-modules (cards players)
+  (with-modules (cards general-buttons players)
+    (trick-available general-buttons)
     (trick-to cards (player-direction players winner))))
 
 (defhandler game-over (opengl-ui prompt)
