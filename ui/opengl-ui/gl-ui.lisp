@@ -100,9 +100,10 @@ and presents the player the declaration dialog."
 
 (defmethod leave ((ui opengl-ui))
   "Leave the table and your playmates"
-  (with-modules (players)
-    (leave players))
-  (error "not implemented yet"))
+  (with-modules (players cards login-and-register)
+    (leave players)
+    (leave cards)
+    (query-registration login-and-register)))
 
 ;; request handlers
 

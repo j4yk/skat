@@ -333,13 +333,21 @@ would see the other face than before"
   "Removes any cards, clears the middle stack and the trick stacks"
   (setf (cards module) nil)
   (clear-middle module)
+  (hide-last-trick module)
+  (setf (last-trick module) nil)
   (with-slots (left-tricks right-tricks own-tricks
 			   left-cards right-cards) module
     (setf left-tricks nil
 	  left-cards nil
-	  right-tricks nil
+	  right-cards nil
 	  right-tricks nil
 	  own-tricks nil)))
+
+(defmethod leave ((module cards))
+  "Delete all cards"
+  (with-slots ()
+      module
+    (game-starts module)))	  ; wrong syntax but correct semantics
 
 (defmethod select-skat ((module cards))
   "Prepare the cards module to let the player choose two cards for the skat"
@@ -441,7 +449,7 @@ prohibit further reaction on clicks on the cards"
 
 (defmethod show-last-trick ((module cards))
   "Display the last trick"
-  (setf (show-last-trick-p module) t))
+  (setf (show-last-trick-p module) t))	
 
 ;; Module methods
 
