@@ -40,8 +40,8 @@ and schedules the timeout with Agar"
   (let ((timeout (getf (timeouts module) timeout-ident)))
     (unless (timeout-scheduled-p module timeout-ident)
       (ag:schedule-timeout (null-pointer) timeout ival))))
-
-(defvar *delayed-methods* nil "The names of methods that use the delaying mechanism")
+(eval-when (:compile-toplevel :load-toplevel)
+  (defvar *delayed-methods* nil "The names of methods that use the delaying mechanism"))
 
 (defmacro define-delayed (name lambda-list delay &body body)
   "Defines a method that should only be executed after a specific delay"
@@ -499,6 +499,29 @@ would see the other face than before"
 					       (slot-makunbound module 'candidate-card)))
 					 (slot-makunbound module 'candidate-card))))))))
 
+(defmethod timeout-callback ((module cards) do-method timeout-ident)
+  (declare (optimize debug))
+  (restart-case
+      (let* ((queued-top (pop (queued-args module timeout-ident)))
+	     (elapsed (ag:get-ticks))
+	     (args (cdr queued-top))) ; args for funcall
+	(apply do-method args)
+	(let ((rest (queued-args module timeout-ident)))
+	  (when (and rest (> (- (caar rest) elapsed) 3000))
+	    (warn "~a deferred more than 3 sec (~s ticks)!"
+		  timeout-ident
+		  (- (caar rest) elapsed))
+	    (break))
+	  (if rest
+	      ;; there are more of these timeouts to come
+	      (max (- (caar rest) ; this is the next ival
+		      elapsed)
+		   1) ; but at least 1 tick!
+	      ;; else don't reschedule
+	      0)))
+    (continue () :report "Return from timeout callback without rescheduling"
+	      0)))
+
 (defmacro delayed-timeouts (module)
   `(list
     ,@(loop for methodname in *delayed-methods*
@@ -509,26 +532,7 @@ would see the other face than before"
 			 (ag:set-timeout timeout
 					 (lambda-timeout-callback (obj ival arg)
 					   (declare (ignore obj ival arg) (optimize debug))
-					   (restart-case
-					       (let* ((queued-top (pop (queued-args ,module ,timeout-ident)))
-						      (elapsed (car queued-top))
-						      (args (cdr queued-top)) ; args for funcall
-						      (rest (queued-args ,module ,timeout-ident)))
-						 (apply #',do-method args)
-						 (when (and rest (> (- (caar rest) elapsed) 3000))
-						   (warn "~a deferred more than 3 sec (~s ticks)!"
-							 ,timeout-ident
-							 (- (caar rest) elapsed))
-						   (break))
-						 (if rest
-						     ;; there are more of these timeouts to come
-						     (max (- (caar rest) ; this is the next ival
-							     elapsed)
-							  1) ; but at least 1 tick!
-						     ;; else don't reschedule
-						     0))
-					     (continue () :report "Return from timeout callback without rescheduling"
-						       0)))
+					   (timeout-callback ,module #',do-method ,timeout-ident))
 					 (null-pointer) nil)
 			 timeout))))))
 
@@ -536,9 +540,12 @@ would see the other face than before"
   `(list ,@(loop for methodname in *delayed-methods*
 	      collect `(cons ,(to-keyword methodname) nil))))
 
+(defmethod setup-timeouts ((module cards))
+  (setf (timeouts module) (delayed-timeouts module)
+	(queued-actions module) (make-queued-actions-list)))
+
 (defmethod initialize-instance :after ((module cards) &key)
   "Loads the card textures and defines callbacks for this module"
   (load-textures module)
   (create-display-lists module)
-  (setf (timeouts module) (delayed-timeouts module)
-	(queued-actions module) (make-queued-actions-list)))
+  (setup-timeouts module))
