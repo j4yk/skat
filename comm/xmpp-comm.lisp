@@ -79,7 +79,7 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
 	(xmpp:xmpp-protocol-error-cancel (error 'login-unsuccessful :additional-information auth-result))))
     ;; der Vollständigkeit halber die Ressource merken, alles andere steckt in connection
     (setf (resource comm) resource
-	  (address comm) (format nil "~a@~a/~a" username jid-domain-part resource))
+	  (address comm) (format nil "~a@~a/~a" username (or jid-domain-part hostname) resource))
     ;; kernel die eigene Adresse mitteilen
     (push-request comm comm 'own-address (list (address comm))))
   ;; Host instruieren, was für die Registrierung benötigt wird
