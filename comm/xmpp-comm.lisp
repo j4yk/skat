@@ -111,7 +111,11 @@ Beendet die XMPP-Verbindung."
   (when (slot-boundp comm 'connection)	; nur wenn die XMPP-Verbindung schon besteht
     (with-slots (connection) comm
       (loop while (xmpp:stanza-waiting-p connection)
-	 do (xmpp:receive-stanza connection)))))
+	 do (handler-case
+		(with-timeout (1) 		; don't wait forever, stop it after a second
+		  (xmpp:receive-stanza connection))
+	      ;; send a message to yourself, to make stanza-waiting-p hopefully work correctly
+	      (timeout-error () (send comm (address comm) 'server-update :idle)))))))
 
 (defmethod xmpp:handle ((connection xmpp-skat-connection) (message xmpp:message))
   "Behandelt eingehende XMPP-Nachrichten-Stanzas. Wenn die Nachricht eine Liste ist, wird sie in die Queue gepackt. 
