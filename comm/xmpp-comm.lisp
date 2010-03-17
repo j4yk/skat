@@ -37,7 +37,25 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
        ,@body)))
 
 (define-condition login-unsuccessful (error)
-  ((additional-information :accessor additional-information :initarg :additional-information)))
+  ((additional-information :accessor additional-information :initarg :additional-information))
+  (:report (lambda (condition stream)
+	     (case (additional-information condition)
+	       (:timeout (format stream "Login was unsuccessful.  Reason: connection attempt timed out"))
+	       (:host-not-found (format stream "Login was unsuccessful.  Reason: hostname could not be resolved"))
+	       (t (let ((*print-escape* nil))
+		    (format stream "Login was unsuccessful.  Reason: see additional-information ~s"
+			    (additional-information condition))))))))
+
+(defun connect (hostname &optional domain)
+  (handler-case
+      (with-timeout (10)
+	(xmpp:connect-tls :hostname hostname :jid-domain-part domain :class 'xmpp-skat-connection))
+    (timeout-error ()
+      (error 'login-unsuccessful :additional-information :timeout))
+    #+sbcl
+    (sb-bsd-sockets:name-service-error ()
+      (error 'login-unsuccessful :additional-information :host-not-found))
+    (error (c) (error 'login-unsuccessful :additional-information c))))
 
 (defmethod login ((comm xmpp-comm) data)
   "Stellt die XMPP-Verbindung zum Server her und loggt sich dort mit den bereitgestellten Daten ein."
@@ -52,7 +70,7 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
 	(password (xmpp-login-data-password data))
 	(mechanism (xmpp-login-data-mechanism data)))
     ;; Verbindung herstellen und bei connection speichern
-    (setf (connection comm) (xmpp:connect :hostname hostname :jid-domain-part jid-domain-part :class 'xmpp-skat-connection))
+    (setf (connection comm) (connect hostname jid-domain-part))
     ;; Rückverweis im Verbindungsobjekt setzen (wichtig für xmpp:handle)
     (setf (comm-object (connection comm)) comm)
     ;; einloggen

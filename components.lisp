@@ -43,7 +43,7 @@
 
 (define-package-which-exports-all-requests skat-communication
   (:nicknames :skat-comm :comm)
-  (:use cl skat-utils)
+  (:use cl skat-utils trivial-timeout)
   (:export start ; startet das Kommunikationsobjekt
 	   login ; lässt es sich einwählen
 	   register ; weist zur Registrierung mit einem Host an
