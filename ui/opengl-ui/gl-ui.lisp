@@ -39,7 +39,7 @@ Meant to be used in request handler functions where 'ui is bound to the ui."
   #+windows (sdl:init-image :png)
   (setf (screen ui) (skat-window))
   (ag:init-core "Skat" 0)
-  (ag:init-video-sdl (screen ui))
+  (ag:init-video-sdl (sdl:fp (screen ui)))
   (mapcar (rcurry #'insert-module ui)
 	  (mapcar (rcurry #'make-instance :ui ui)
 		  (list 'agar 'error-handling 'login-and-register
