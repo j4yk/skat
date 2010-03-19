@@ -137,12 +137,21 @@ Host ignoriert diese einfach.")
   (when (member sender (registered-players host) :test (address-compare-function host))
     (ecase (state host)
       (registration
+       ;; players are still registering and leaving at will, normal operation
        ;; Spieler aus der Liste entfernen
        (setf (registered-players host)
 	     (delete sender (registered-players host) :test (address-compare-function host)))
        (slot-makunbound host 'dealers)	; die Tischrunde auflösen
-       (inform-players-of-leaving-player)
-       (send-to-players host 'message (format nil "Spieler ~a verlässt die Runde." sender))))))
+       ;; inform other players
+       (send-to-players host 'server-update :player-leave sender))
+      ((bidding-1 bidding-2 bidding-3
+		  declarer-found skat-away await-declaration
+		  in-game game-over)
+       ;; someone left "in-game"
+       ;; end the game and dissolve the round
+       (switch-to-game-over host nil t)	; among other things informs the players
+       (switch-to-registration host t)	; reset the table and be available for registration again
+       ))))
 
 ;; game-start wird ansonsten vorrangig im game-over state behandelt
 ;; deshalb steht der Handler unten
