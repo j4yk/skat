@@ -14,16 +14,18 @@
 
 (defun create-and-start (kernel-class ui-class comm-class &rest kernel-initargs)
   "Erzeugt das Spieler- oder Hostobjekt, sowie Kommunikations- und UI-Objekt und startet deren Aktivität."
-  (let* ((ui (make-instance ui-class))
-	 (comm (make-instance comm-class))
-	 (kernel (apply 'make-instance kernel-class :ui ui :comm comm kernel-initargs)))
-    (setf (ui:kernel ui) kernel)
-    (comm:start comm)
-    (ui:start ui)
-    (ui:run ui)			   ; run the game
-    ;; game has been closed, do cleanup
-    (comm:stop ui)
-    (comm:stop comm)))
+  (let ((ui (make-instance ui-class)))
+    (unwind-protect
+	 (let ((comm (make-instance comm-class)))
+	   (unwind-protect
+		(let ((kernel (apply 'make-instance kernel-class
+				     :ui ui :comm comm kernel-initargs)))
+		  (setf (ui:kernel ui) kernel)
+		  (comm:start comm)
+		  (ui:start ui)
+		  (ui:run ui))			   ; run the game
+	     (comm:stop comm)))
+      (ui:stop ui))))
 
 (defun start-skat (&optional (host-or-player nil) (ui-implementation 'ui:stub-ui) (comm-implementation 'comm:stub-comm) &rest kernel-initargs)
   "Haupteintrittsfunktion des Spiels"
