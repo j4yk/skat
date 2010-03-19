@@ -124,7 +124,7 @@ entsprechenden Spieler"
 (deftest "before bidding" :category "player-tests"
 	 :test-fn #'test-game-before-bidding
 	 :input-form (init-test-set)
-	 :compare-fn #'always-true)	; es geht nur um die Fehler während der Ausführung
+	 :compare-fn (constantly t))	; es geht nur um die Fehler während der Ausführung
 
 (defun bidding-mates-correct-p (bidder listener)
   "Gibt t zurück, wenn die bidding-mate Slots richtig gesetzt sind."
@@ -170,7 +170,7 @@ entsprechenden Spieler"
 (deftest "ready for bidding" :category "player-tests"
 	 :test-fn #'ready-for-bidding-p
 	 :input-form (apply #'test-game-before-bidding (multiple-value-list (init-test-set)))
-	 :compare-fn #'always-true)
+	 :compare-fn (constantly t))
 
 (defun bid-and-pass (players host who-passes)
   "Verallgemeinerung folgender Prozedur: Bidder reizt,
@@ -268,7 +268,7 @@ Die Variablen bidder listener und dealer sind für body gebunden."
      (deftest ,(symbol-name name) :category "player-tests"
 	      :test-fn #',name
 	      :input-form (apply #'test-game-before-bidding (multiple-value-list (init-test-set)))
-	      :compare-fn #'always-true)))
+	      :compare-fn (constantly t))))
 
 (defun reset-received-requests (players)
   "Setzt die Listen der empfangenen Anfragen zurück."
@@ -479,7 +479,7 @@ eine komplette Runde hinter sich haben.
 (deftest "test game" :category "player-tests"
 	 :input-fn #'(lambda () (chain-functions (init-test-set) #'test-game-before-bidding #'bidder-and-dealer-pass))
 	 :test-fn #'test-game
-	 :compare-fn #'always-true)
+	 :compare-fn (constantly t))
 
 (deftest "two games" :category "player-tests"
 	 :input-fn #'(lambda () (chain-functions (init-test-set)
@@ -489,7 +489,7 @@ eine komplette Runde hinter sich haben.
 						 #'start-new-test-game-after-complete
 						 #'bidder-and-listener-pass))
 	 :test-fn #'test-game
-	 :compare-fn #'always-true)
+	 :compare-fn (constantly t))
 
 (deftest "second game after all passed" :category "player-tests"
 	 :input-fn #'(lambda () (chain-functions (init-test-set)
@@ -498,7 +498,7 @@ eine komplette Runde hinter sich haben.
 						 #'start-new-test-game
 						 #'listener-and-dealer-pass))				       
 	 :test-fn #'test-game
-	 :compare-fn #'always-true)
+	 :compare-fn (constantly t))
 
 (deftest "game, pass all, game" :category "player-tests"
 	 :input-fn #'(lambda () (chain-functions (init-test-set)
@@ -510,4 +510,4 @@ eine komplette Runde hinter sich haben.
 						 #'start-new-test-game
 						 #'listener-and-bidder-pass))
 	 :test-fn #'test-game
-	 :compare-fn #'always-true)
+	 :compare-fn (constantly t))
