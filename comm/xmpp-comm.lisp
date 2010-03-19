@@ -156,14 +156,15 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
 (defmethod stop ((comm xmpp-comm))
   "Signalisiert dem XMPP-Kommunikationsmodul die Arbeit einzustellen.
 Beendet die XMPP-Verbindung."
-  (bt:with-lock-held ((lock comm))
-    (append-to-thread-commands comm `(xmpp:stop-stanza-loop ,(connection comm)))
-    ;; send something to let the thread return from receive-stanza
-    ;; (the content of the message is equal)
-    (append-to-thread-commands comm `(xmpp:message ,(connection comm) ,(address comm) "Terminate")))
-  ;; wait for this thread to finish
-  (bt:join-thread (receive-stanza-loop-thread comm))
-  (xmpp:disconnect (connection comm)))
+  (when (slot-boundp comm 'connection)
+    (bt:with-lock-held ((lock comm))
+      (append-to-thread-commands comm `(xmpp:stop-stanza-loop ,(connection comm)))
+      ;; send something to let the thread return from receive-stanza
+      ;; (the content of the message is equal)
+      (append-to-thread-commands comm `(xmpp:message ,(connection comm) ,(address comm) "Terminate")))
+    ;; wait for this thread to finish
+    (bt:join-thread (receive-stanza-loop-thread comm))
+    (xmpp:disconnect (connection comm))))
 
 (defmethod receive-requests ((comm xmpp-comm))
   "Does nothing because receive-stanza-loop runs in another thread")
