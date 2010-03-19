@@ -41,7 +41,7 @@
 (defsystem skat-xmpp-comm
   :author "Jakob Reschke <jakob@resfarm.de>"
   :license "GNU General Public License"
-  :depends-on (skat-core :cl-xmpp-tls)
+  :depends-on (skat-core trivial-timeout :cl-xmpp-tls bordeaux-threads)
   :components ((:module comm
 			:components ((:file xmpp-comm)))))
 
