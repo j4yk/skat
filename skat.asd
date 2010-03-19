@@ -8,7 +8,7 @@
   :version "0.1"
   :author "Jakob Reschke <jakob@resfarm.de>"
   :license "GNU General Public License"
-  :depends-on (:cl-xmpp-tls :clunit)
+  :depends-on (:cl-xmpp-tls #+clunit :clunit)
   :serial t
   :components (;(:file skat-packages)
 	       (:file utils)
@@ -39,7 +39,7 @@
 				     (:file ringlist)
 				     (:file kernel)
 				     (:file states :depends-on (kernel))
-				     (:file host)
-				     (:file player)
-				     (:file player-tests)))
+				     (:file host :depends-on (kernel states))
+				     (:file player :depends-on (kernel states cards))
+				     #+clunit (:file player-tests :depends-on (host player)))
 	       (:file debugutils)))
