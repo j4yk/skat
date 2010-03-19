@@ -31,6 +31,7 @@
 	   handler-fn
 	   call-handler-fn
 	   start
+	   run
 	   stop
 	   stub-ui
 	   host-ui
