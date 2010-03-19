@@ -38,11 +38,15 @@ Endet, wenn Slot stop-received initialisiert wird."
     (main-loop ui)))
 
 (defmethod start ((ui host-ui) &optional new-thread-p)
-  "Startet die Hauptschleife für den Host in einem neuen Thread."
-  (slot-makunbound ui 'stop-received)
-  (if new-thread-p
-      (sb-thread:make-thread #'(lambda () (main-loop-in-other-thread ui)) :name "Host Main Loop Thread")
-      (main-loop ui)))
+  "Makes stop-received unbound"
+  (slot-makunbound ui 'stop-received))
+  ;; (if new-thread-p
+  ;;     (sb-thread:make-thread #'(lambda () (main-loop-in-other-thread ui)) :name "Host Main Loop Thread")
+  ;;     (main-loop ui)))
+
+(defmethod run ((ui host-ui))
+  "Runs the main loop"
+  (main-loop ui))
 
 (defmethod stop ((ui host-ui))
   "Hält die UI an, indem die Abbruchvariable gesetzt wird."

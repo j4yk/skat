@@ -53,6 +53,10 @@ to-be-ignored, da host-ui bspw. einen zweiten Parameter nimmt"
   (verbose 1 (stub-ui-msg ui "started."))
   (values))
 
+(defmethod run ((ui stub-ui))
+  "Raises an error because one cannot really run this stub"
+  (error "Cannot run STUB-UI, because it's a stub implementation of an UI."))
+
 (define-condition stub-ui-request-arrived ()
   ((ui :accessor ui :initarg :ui)
    (request-call :accessor request-call :initarg :request-call))
