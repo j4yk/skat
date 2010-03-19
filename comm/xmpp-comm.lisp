@@ -65,7 +65,7 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
     ;; kernel die eigene Adresse mitteilen
     (push-request comm comm 'own-address (list (address comm))))
   ;; Host instruieren, was für die Registrierung benötigt wird
-  (push-request comm comm 'registration-parameters (list '((host-address string "JID des Skat-Hostes")))))
+  (push-request comm comm 'registration-struct (list 'xmpp-registration-data)))
  
 ;; Das hier ist nur notwendig, damit comm seine speziellen Datensätze auspacken kann
 ;; (die sind ja von comm zu comm verschieden und das Gedöns soll nicht in den Kernel)
