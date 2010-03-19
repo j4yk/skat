@@ -86,7 +86,9 @@ Error Conditions: invalid-request-sender-error"
      do (multiple-value-bind (request-name sender request-args) (comm:get-request (comm kernel))
 	  (verbose 1 (format *debug-io* "~%processing ~a ~a from ~a" request-name request-args sender))
 	  (restart-case (apply (handler-fn request-name) kernel sender request-args)
-	    (next-request () :report "Anfrage überspringen und weitermachen")))))
+	    (retry () :report "Process the request again"
+		   (comm::prepend-request (comm kernel) sender request-name request-args))
+	    (continue () :report "Skip this request")))))
 
 (define-condition invalid-kernel-state-error (error)
   ((kernel-class :accessor kernel-class :initarg :kernel-class)
