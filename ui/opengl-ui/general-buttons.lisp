@@ -20,7 +20,7 @@
     (ag:disable-widget show-last-trick-btn)
     (ag:set-window-position window :br nil)))
 
-(defmethod trick-available ((w general-buttons))
+(defmethod trick-available ((w general-buttons-window))
   (with-slots (show-last-trick-btn) w
     (ag:enable-widget show-last-trick-btn)))
 
