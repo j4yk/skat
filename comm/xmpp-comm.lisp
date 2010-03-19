@@ -112,7 +112,7 @@ Beendet die XMPP-Verbindung."
     (with-slots (connection) comm
       (loop while (xmpp:stanza-waiting-p connection)
 	 do (handler-case
-		(with-timeout (1) 		; don't wait forever, stop it after a second
+		(with-timeout (2) 		; don't wait forever, stop it after two seconds
 		  (xmpp:receive-stanza connection))
 	      ;; send a message to yourself, to make stanza-waiting-p hopefully work correctly
 	      (timeout-error () (send comm (address comm) 'server-update :idle)))))))
