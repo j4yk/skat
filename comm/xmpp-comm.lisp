@@ -24,7 +24,7 @@
 
 (defmethod start ((comm xmpp-comm))
   "Initialisiert dieses XMPP-Verbindungsobjekt. Fügt nur die Login-Parameterliste für Kernel zum Abruf ein."
-  (push-request comm comm 'login-struct 'xmpp-login-data)
+  (push-request comm comm 'login-struct (list 'xmpp-login-data))
   (values))
 
 (defmacro let-multiple-getf (place (&rest indicators-and-varnames) &body body)
