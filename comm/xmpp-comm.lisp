@@ -68,12 +68,10 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
   (handler-case
       (with-timeout (10)
 	(xmpp:connect-tls :hostname hostname :jid-domain-part domain :class 'xmpp-skat-connection))
-    (timeout-error ()
-      (error 'login-unsuccessful :additional-information :timeout))
+    (timeout-error () :timeout)
     #+sbcl
-    (sb-bsd-sockets:name-service-error ()
-      (error 'login-unsuccessful :additional-information :host-not-found))
-    (error (c) (error 'login-unsuccessful :additional-information c))))
+    (sb-bsd-sockets:name-service-error () :host-not-found)
+    (error (c) c)))
 
 (defun remote-thread-loop (comm)
   (loop
@@ -90,13 +88,17 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
 
 (defun do-login (comm hostname domain username resource password mechanism)
   ;; Verbindung herstellen und bei connection speichern
-  (setf (connection comm) (connect hostname domain))
-  ;; Rückverweis im Verbindungsobjekt setzen (wichtig für xmpp:handle)
-  (setf (comm-object (connection comm)) comm)
-  ;; einloggen
-  (setf (login-result comm) (xmpp:auth (connection comm) username password resource :mechanism mechanism))
+  (let ((conn (connect hostname domain)))
+    (if (and (typep conn 'xmpp-skat-connection) (xmpp:connectedp conn))
+	(progn
+	  (setf (connection comm) conn)
+	  ;; Rückverweis im Verbindungsobjekt setzen (wichtig für xmpp:handle)
+	  (setf (comm-object (connection comm)) comm)
+	  ;; einloggen
+	  (setf (login-result comm) (xmpp:auth (connection comm) username password resource :mechanism mechanism)))
+	(setf (login-result comm) conn)))
   ;; fertig
-  (bt:condition-notify (login-done comm)))
+  (bt:condition-notify (login-done comm)))	
 
 (defmethod login ((comm xmpp-comm) data)
   "Stellt die XMPP-Verbindung zum Server her und loggt sich dort mit den bereitgestellten Daten ein."
