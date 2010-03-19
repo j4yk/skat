@@ -147,8 +147,8 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
 ;; (die sind ja von comm zu comm verschieden und das Gedöns soll nicht in den Kernel)
 (defmethod register ((comm xmpp-comm) data)
   "Schickt dem Host die Registrierungsanfrage."
-  (let-multiple-getf data (:host-address host-address)
-    (send comm host-address 'registration-request)))
+  (declare (xmpp-registration-data data))
+  (send comm (xmpp-registration-data-host-jid data) 'registration-request))
 
 (defmethod host-address ((comm xmpp-comm) data)
   "Gibt die Host-Adresse aus den Registrierungsdaten zurück."
