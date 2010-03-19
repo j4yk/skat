@@ -77,7 +77,7 @@
 
 (defhandler login-struct (start) comm (player struct-classname)
    "Behandelt die Loginparameterliste der Comm. Gibt sie an die UI weiter."
-   (call-ui 'login-parameters player sender struct-classname))
+   (call-ui 'login-struct player sender struct-classname))
 
 (define-state-switch-function unregistered (player)
   "Wechselt den Zustand zu unregistered."
