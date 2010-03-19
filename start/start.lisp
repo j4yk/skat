@@ -17,8 +17,13 @@
   (let* ((ui (make-instance ui-class))
 	 (comm (make-instance comm-class))
 	 (kernel (make-instance kernel-class :ui ui :comm comm)))
-    (skat-comm:start comm)
-    (skat-ui:start ui)))
+    (setf (ui:kernel ui) kernel)
+    (comm:start comm)
+    (ui:start ui)
+    (ui:run ui)			   ; run the game
+    ;; game has been closed, do cleanup
+    (comm:stop ui)
+    (comm:stop comm)))
 
 (defun start-skat (&optional (host-or-player nil) (ui-implementation 'ui:stub-ui) (comm-implementation 'comm:stub-comm))
   "Haupteintrittsfunktion des Spiels"
