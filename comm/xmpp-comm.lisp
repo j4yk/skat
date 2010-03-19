@@ -5,11 +5,26 @@
 
 (defclass xmpp-comm (base-comm)
   ((connection :accessor connection)
+   (comm-lock :accessor lock :initform (bt:make-lock "XMPP Comm lock"))
+   (receive-stanza-loop-thread :accessor receive-stanza-loop-thread)
    (stop-working :accessor stop-working :initform nil)
    (resource :accessor resource)
    (address :accessor address)
    (address-compare-function :initform #'equalp))
   (:documentation "Communication over an XMPP-Connection. The addresses are JID-strings."))
+
+(defmacro require-lock-for-method (generic-function-name lambda-list)
+  "Defines a method that aquires the lock accessed with #'lock on the first parameter
+and calls the next method"
+  `(defmethod ,generic-function-name ,lambda-list
+     "Aquires the lock and calls the next method"
+     (bt:with-lock-held ((lock ,(caar lambda-list)))
+       (call-next-method))))
+
+(require-lock-for-method push-request ((comm xmpp-comm) sender request-name request-args))
+(require-lock-for-method prepend-request ((comm xmpp-comm) sender request-name request-args))
+(require-lock-for-method get-request ((comm xmpp-comm)))
+(require-lock-for-method has-request ((comm xmpp-comm)))
 
 (kern:define-login-data xmpp-login-data
     (username nil :type string) (hostname nil :type string) (domain nil :type string)
@@ -83,7 +98,10 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
     ;; kernel die eigene Adresse mitteilen
     (push-request comm comm 'own-address (list (address comm))))
   ;; Host instruieren, was für die Registrierung benötigt wird
-  (push-request comm comm 'registration-parameters (list '((host-address string "JID des Skat-Hostes")))))
+  (push-request comm comm 'registration-parameters (list '((host-address string "JID des Skat-Hostes"))))
+  ;; receive-stanza-loop in anderem Thread starten
+  (setf (receive-stanza-loop-thread comm)
+	(bt:make-thread (lambda () (xmpp:receive-stanza-loop (connection comm))) :name "XMPP Thread")))
  
 ;; Das hier ist nur notwendig, damit comm seine speziellen Datensätze auspacken kann
 ;; (die sind ja von comm zu comm verschieden und das Gedöns soll nicht in den Kernel)
@@ -104,22 +122,21 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
 (defmethod stop ((comm xmpp-comm))
   "Signalisiert dem XMPP-Kommunikationsmodul die Arbeit einzustellen.
 Beendet die XMPP-Verbindung."
+  (xmpp:stop-stanza-loop (connection comm))
+  ;; send something to let the thread return from receive-stanza
+  ;; (the content of the message is equal)
+  (xmpp:message (connection comm) (address comm) "Terminate")
+  ;; wait for this thread to finish
+  (bt:join-thread (receive-stanza-loop-thread comm))
   (xmpp:disconnect (connection comm)))
 
 (defmethod receive-requests ((comm xmpp-comm))
-  "Lässt alle wartenden Anfragen abrufen"
-  (when (slot-boundp comm 'connection)	; nur wenn die XMPP-Verbindung schon besteht
-    (with-slots (connection) comm
-      (loop while (xmpp:stanza-waiting-p connection)
-	 do (handler-case
-		(with-timeout (2) 		; don't wait forever, stop it after two seconds
-		  (xmpp:receive-stanza connection))
-	      ;; send a message to yourself, to make stanza-waiting-p hopefully work correctly
-	      (timeout-error () (send comm (address comm) 'server-update :idle)))))))
+  "Does nothing because receive-stanza-loop runs in another thread")
 
 (defmethod xmpp:handle ((connection xmpp-skat-connection) (message xmpp:message))
   "Behandelt eingehende XMPP-Nachrichten-Stanzas. Wenn die Nachricht eine Liste ist, wird sie in die Queue gepackt. 
-Sonst wird received-other-content signalisiert."
+Sonst wird received-other-content signalisiert.
+note: this is executed in another thread!"
   (let ((read-message (handler-case (read-from-string (xmpp:body message))
 			(end-of-file () 'malformed)))
 	(sender (xmpp:from message)))
