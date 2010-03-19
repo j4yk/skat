@@ -53,8 +53,11 @@ Meant to be used in request handler functions where 'ui is bound to the ui."
 (defmethod ui:stop ((ui opengl-ui))
   "Hält die OpenGL-Benutzerschnittstelle an.
 STUB"
-  (declare (ignore ui))
-  (error "Not implemented yet!"))
+  (mapcar #'cleanup (nreverse (modules ui)))
+  (setf (modules ui) nil)
+  (ag:destroy-video)
+  (sdl:close-audio)
+  (sdl:quit-sdl :video t))
 
 ;; function and control flow
 
