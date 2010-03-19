@@ -25,7 +25,7 @@
   "Führt die Hauptschleife für den Host aus.
 Endet, wenn Slot stop-received initialisiert wird."
   (loop
-     (sleep 0.5)
+     (sleep 0.2)			; five updates per second suffices
      (when (eq (main-loop-once ui) 'STOP-RECEIVED)
        (return))))
 
