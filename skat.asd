@@ -43,3 +43,6 @@
 				     (:file player :depends-on (kernel states cards))
 				     #+clunit (:file player-tests :depends-on (host player)))
 	       (:file debugutils)))
+	       (:module start
+			:depends-on (components)
+			:components ((:file start))))
