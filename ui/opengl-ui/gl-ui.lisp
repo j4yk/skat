@@ -2,7 +2,7 @@
 
 (defclass opengl-ui (ui::base-ui)
   ((modules :accessor modules :initform nil :documentation "Liste der aktiven Module")
-   (priortized-modules :accessor priortized-modules :initform nil :documentation "Liste der aktiven Module, die Events zuerst verarbeiten dürfen")
+   (screen :accessor screen :documentation "SDL screen surface")
    (running-p :reader running-p :initform nil)
    (last-selection :initform nil))
   (:documentation "OpenGL-UI Klasse. Zentrales Objekt für die OpenGL-Schnittstelle"))
@@ -33,10 +33,14 @@ Meant to be used in request handler functions where 'ui is bound to the ui."
 ;; UI specific
 
 (defmethod ui:start ((ui opengl-ui) &optional no-new-thread-p)
-  "Startet die OpenGL-Benutzerschnittstelle.
-STUB"
-  (declare (ignore ui no-new-thread-p))
-  (error "Not implemented yet!"))
+  "Startet die OpenGL-Benutzerschnittstelle."
+  (declare (ignore no-new-thread-p))
+  (sdl:init-sdl :video t)
+  #+windows (sdl:init-image :png)
+  (setf (screen ui) (skat-window))
+  (ag:init-core "Skat" 0)
+  (ag:init-video-sdl (screen ui))
+  (standard-main-loop ui))
 
 (defmethod ui:stop ((ui opengl-ui))
   "Hält die OpenGL-Benutzerschnittstelle an.
