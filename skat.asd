@@ -36,8 +36,11 @@
 				     (:file states :depends-on (kernel))
 				     (:file host :depends-on (kernel states))
 				     (:file player :depends-on (kernel states cards))
-				     #+clunit (:file player-tests :depends-on (host player))))))
-
+				     #+clunit (:file player-tests :depends-on (host player))))
+	       (:module start
+			:depends-on (components)
+			:components ((:file start)))))
+	       
 (defsystem skat-xmpp-comm
   :author "Jakob Reschke <jakob@resfarm.de>"
   :license "GNU General Public License"
