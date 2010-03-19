@@ -389,7 +389,8 @@ returns sorted hit-records."
 			       (sleep 0.1))))
 		    (continuable-main-loop ()
 		      (restart-case (main-loop)
-			(continue-main-loop () (continuable-main-loop))
-			(terminate-main-loop () (format t "~%main loop has been terminated")))))
+			(continue () :report "Continue gl-ui main loop" (continuable-main-loop))
+			(abort () :report "terminate GL-UI main loop"
+			       (format t "~%main loop has been terminated")))))
 	     (continuable-main-loop))))
     (setf (slot-value ui 'running-p) nil)))
