@@ -32,14 +32,17 @@ Meant to be used in request handler functions where 'ui is bound to the ui."
 
 ;; UI specific
 
-(defmethod ui:start ((ui opengl-ui) &optional no-new-thread-p)
-  "Startet die OpenGL-Benutzerschnittstelle."
-  (declare (ignore no-new-thread-p))
+(defmethod ui:start ((ui opengl-ui) &optional to-be-ignored)
+  "Initializes all the functionalities of GL-UI"
+  (declare (ignore to-be-ignored))
   (sdl:init-sdl :video t)
   #+windows (sdl:init-image :png)
   (setf (screen ui) (skat-window))
   (ag:init-core "Skat" 0)
-  (ag:init-video-sdl (screen ui))
+  (ag:init-video-sdl (screen ui)))
+
+(defmethod ui:run ((ui opengl-ui))
+  "Runs the main loop"
   (standard-main-loop ui))
 
 (defmethod ui:stop ((ui opengl-ui))
