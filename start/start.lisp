@@ -24,10 +24,6 @@
   "Haupteintrittsfunktion des Spiels"
   (multiple-value-bind (host-or-player ui-implementation comm-implementation) 
       (user-provide host-or-player ui-implementation comm-implementation)
-    (if (eq host-or-player 'both)
-	(progn
-	  (sb-thread:make-thread (lambda () (create-and-start 'kern:host ui-implementation comm-implementation)) :name "Host Thread")
-	  (create-and-start 'kern:player ui-implementation comm-implementation))
-	(if (eq host-or-player 'player)
-	    (create-and-start 'kern:player ui-implementation comm-implementation)
-	    (create-and-start 'kern:host ui-implementation comm-implementation)))))
+    (create-and-start (ecase host-or-player
+			(:player 'kern:player)
+			(:host 'kern:host)) ui-implementation comm-implementation)))
