@@ -39,7 +39,12 @@ Meant to be used in request handler functions where 'ui is bound to the ui."
   #+windows (sdl:init-image :png)
   (setf (screen ui) (skat-window))
   (ag:init-core "Skat" 0)
-  (ag:init-video-sdl (screen ui)))
+  (ag:init-video-sdl (screen ui))
+  (mapcar (rcurry #'insert-module ui)
+	  (mapcar (rcurry #'make-instance :ui ui)
+		  (list 'agar 'error-handling 'login-and-register
+			'bidding 'cards 'game-declaration 'players
+			'after-game 'general-buttons))))
 
 (defmethod ui:run ((ui opengl-ui))
   "Runs the main loop"
@@ -50,14 +55,6 @@ Meant to be used in request handler functions where 'ui is bound to the ui."
 STUB"
   (declare (ignore ui))
   (error "Not implemented yet!"))
-
-(defmethod initialize-instance :after ((ui opengl-ui) &key)
-  "Inserts the following modules: agar, error-handling"
-  (mapcar (rcurry #'insert-module ui)
-	  (mapcar (rcurry #'make-instance :ui ui)
-		  (list 'agar 'error-handling 'login-and-register
-			'bidding 'cards 'game-declaration 'players
-			'after-game 'general-buttons))))
 
 ;; function and control flow
 
