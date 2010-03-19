@@ -66,7 +66,7 @@ Works."
 	  (let ((win (ag::window-new)))
 	    (ag:window-set-caption win (format nil "TL~a" n))
 	    (ag:label-new-string win (format nil "Top Left ~a" n))
-	    (ag:window-set-position win :tl t)
+	    (ag:set-window-position win :tl t)
 	    (ag:window-show win)))
 	(sdl:with-events (:poll ev)
 	  (:quit-event nil t)
