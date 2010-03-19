@@ -7,6 +7,9 @@
   ((connection :accessor connection)
    (comm-lock :accessor lock :initform (bt:make-lock "XMPP Comm lock"))
    (receive-stanza-loop-thread :accessor receive-stanza-loop-thread)
+   (thread-commands :accessor thread-commands :initform nil)
+   (login-done :accessor login-done :initform (bt:make-condition-variable))
+   (login-result :accessor login-result)
    (stop-working :accessor stop-working :initform nil)
    (resource :accessor resource)
    (address :accessor address)
@@ -72,9 +75,32 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
       (error 'login-unsuccessful :additional-information :host-not-found))
     (error (c) (error 'login-unsuccessful :additional-information c))))
 
+(defun remote-thread-loop (comm)
+  (loop
+     (sleep 0.2)
+     (unless (null (thread-commands comm))
+       (let ((command (bt:with-lock-held ((lock comm))
+			(pop (thread-commands comm)))))
+	 (eval command)))))
+
+(defmacro append-to-thread-commands (comm &rest forms)
+  `(setf (thread-commands ,comm)
+	 (nconc (thread-commands ,comm)
+		(list ,@forms))))
+
+(defun do-login (comm hostname domain username resource password mechanism)
+  ;; Verbindung herstellen und bei connection speichern
+  (setf (connection comm) (connect hostname domain))
+  ;; Rückverweis im Verbindungsobjekt setzen (wichtig für xmpp:handle)
+  (setf (comm-object (connection comm)) comm)
+  ;; einloggen
+  (setf (login-result comm) (xmpp:auth (connection comm) username password resource :mechanism mechanism))
+  ;; fertig
+  (bt:condition-notify (login-done comm)))
+
 (defmethod login ((comm xmpp-comm) data)
   "Stellt die XMPP-Verbindung zum Server her und loggt sich dort mit den bereitgestellten Daten ein."
-  ;; data ist vom Typ xmpp-login-data (struct) 
+  (declare (xmpp-login-data data))
   (let ((hostname (xmpp-login-data-hostname data))
 	(jid-domain-part (let ((d (xmpp-login-data-domain data)))
 			   (if (string= d "")
@@ -84,25 +110,37 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
 	(resource (xmpp-login-data-resource data))
 	(password (xmpp-login-data-password data))
 	(mechanism (xmpp-login-data-mechanism data)))
-    ;; Verbindung herstellen und bei connection speichern
-    (setf (connection comm) (connect hostname jid-domain-part))
-    ;; Rückverweis im Verbindungsobjekt setzen (wichtig für xmpp:handle)
-    (setf (comm-object (connection comm)) comm)
-    ;; einloggen
-    (let ((auth-result (xmpp:auth (connection comm) username password resource :mechanism mechanism)))
-      (typecase auth-result
-	(xmpp:xmpp-protocol-error-cancel (error 'login-unsuccessful :additional-information auth-result))))
-    ;; der Vollständigkeit halber die Ressource merken, alles andere steckt in connection
-    (setf (resource comm) resource
-	  (address comm) (format nil "~a@~a/~a" username (or jid-domain-part hostname) resource))
-    ;; kernel die eigene Adresse mitteilen
-    (push-request comm comm 'own-address (list (address comm))))
+    (bt:with-lock-held ((lock comm))
+      ;; feed the not yet running other thread with the login instruction
+      (append-to-thread-commands comm `(do-login ,comm ,hostname ,jid-domain-part ,username
+						 ,resource ,password ,mechanism))
+      ;; create the other thread
+      (setf (receive-stanza-loop-thread comm)
+	    (bt:make-thread (lambda () (remote-thread-loop comm)) :name "XMPP Thread"))
+      ;; wait until the other thread finished
+      (bt:condition-wait (login-done comm) (lock comm))
+      ;; the other thread bound login-result, check that
+      (unless (eq (login-result comm) :authentication-successful)
+	(append-to-thread-commands comm `(return)) ; end the other thread
+	(error 'login-unsuccessful :additional-information (login-result comm)))
+      ;; der Vollständigkeit halber die Ressource merken, der Rest steckt in Connection
+      (setf (resource comm) resource
+	    (address comm) (format nil "~a@~a/~a" username (or jid-domain-part hostname) resource))))
+  ;; kernel die eigene Adresse mitteilen
+  (push-request comm comm 'own-address (list (address comm)))
   ;; Host instruieren, was für die Registrierung benötigt wird
   (push-request comm comm 'registration-struct (list 'xmpp-registration-data))
   ;; receive-stanza-loop in anderem Thread starten
   (setf (receive-stanza-loop-thread comm)
 	(bt:make-thread (lambda () (xmpp:receive-stanza-loop (connection comm))) :name "XMPP Thread")))
  
+(defmethod send ((comm xmpp-comm) address request-name &rest request-args)
+  "Sendet eine Anfrage an einen anderen Spieler. Das Format der Anfrage ist eine Liste: (cons request-name request-args)."
+  (bt:with-lock-held ((lock comm))
+    (append-to-thread-commands
+     comm
+     `(xmpp:message ,(connection comm) ,address ,(format nil "~s" (cons request-name request-args))))))
+
 ;; Das hier ist nur notwendig, damit comm seine speziellen Datensätze auspacken kann
 ;; (die sind ja von comm zu comm verschieden und das Gedöns soll nicht in den Kernel)
 (defmethod register ((comm xmpp-comm) data)
@@ -115,17 +153,14 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
   (let-multiple-getf data (:host-address host-address)
     host-address))
 
-(defmethod send ((comm xmpp-comm) address request-name &rest request-args)
-  "Sendet eine Anfrage an einen anderen Spieler. Das Format der Anfrage ist eine Liste: (cons request-name request-args)."
-  (xmpp:message (connection comm) address (format nil "~s" (cons request-name request-args))))
-
 (defmethod stop ((comm xmpp-comm))
   "Signalisiert dem XMPP-Kommunikationsmodul die Arbeit einzustellen.
 Beendet die XMPP-Verbindung."
-  (xmpp:stop-stanza-loop (connection comm))
-  ;; send something to let the thread return from receive-stanza
-  ;; (the content of the message is equal)
-  (xmpp:message (connection comm) (address comm) "Terminate")
+  (bt:with-lock-held ((lock comm))
+    (append-to-thread-commands comm `(xmpp:stop-stanza-loop ,(connection comm)))
+    ;; send something to let the thread return from receive-stanza
+    ;; (the content of the message is equal)
+    (append-to-thread-commands comm `(xmpp:message ,(connection comm) ,(address comm) "Terminate")))
   ;; wait for this thread to finish
   (bt:join-thread (receive-stanza-loop-thread comm))
   (xmpp:disconnect (connection comm)))
