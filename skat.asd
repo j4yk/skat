@@ -67,7 +67,8 @@
 							   (:file players :depends-on (module agar))
 							   (:file declaration :depends-on (module agar))
 							   (:file after-game :depends-on (module agar))
-							   (:file cards :depends-on (gfx-utils selection gl-ui-utils))
+							   (:file cards :depends-on (gfx-utils selection
+										     gl-ui-utils agar))
 							   (:file general-buttons :depends-on (module agar))
 							   (:file gl-ui
 								  :depends-on (module

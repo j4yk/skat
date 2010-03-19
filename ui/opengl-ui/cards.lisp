@@ -18,8 +18,62 @@
    (selected-cards :reader selected-cards :initform nil :documentation "The currently selected cards")
    (choose-card-p :accessor choose-card-p :initform nil :documentation "Indicates whether a card is to be chosen")
    (candidate-card :initform nil :documentation "The card on which a click was started")
+   (queued-actions :accessor queued-actions :initform nil
+		   :documentation "Function calls to be done if some
+		   timeouts have passed.")
+   (timeouts :accessor timeouts)
    (last-mouse-pos :accessor last-mouse-pos :initform #(0 0) :documentation "Saves the last known mouse position"))
   (:documentation "Module zum Zeichnen der Karten und zum Verarbeiten kartenspezifischer Aktionen"))
+
+(defmacro queued-args (module timeout-ident)
+  "Shorthand for the cdr of the timeout assoc in (queued-actions module)"
+  `(cdr (assoc ,timeout-ident (queued-actions ,module))))
+
+(defun timeout-scheduled-p (module timeout-ident)
+  "Returns t if the timeout referenced with timeout-ident is currenly due."
+  (ag:with-locked-timeouts (null-pointer)
+    (ag:timeout-is-scheduled (null-pointer) (getf (timeouts module) timeout-ident))))
+
+(defmethod schedule-timeout ((module cards) timeout-ident ival &rest args)
+  "Pushes the args onto the stack of queued-actions in the timeout-ident assoc
+and schedules the timeout with Agar"
+  (setf (queued-args module timeout-ident)
+	(nconc (queued-args module timeout-ident) (list (cons (+ (ag:get-ticks) ival) args))))
+  (let ((timeout (getf (timeouts module) timeout-ident)))
+    (unless (timeout-scheduled-p module timeout-ident)
+      (ag:schedule-timeout (null-pointer) timeout ival))))
+(eval-when (:compile-toplevel :load-toplevel)
+  (defvar *delayed-methods* nil "The names of methods that use the delaying mechanism"))
+
+(defmacro define-delayed (name lambda-list delay &body body)
+  "Defines a method that should only be executed after a specific delay"
+  (let ((do-name (conc-symbols 'do- name))
+	(delay-name (conc-symbols 'delay- name))
+	(timeout-ident (to-keyword name))
+	(module-param (caar lambda-list))
+	(ival-arg (gensym "IVAL"))
+	(args (get-args-from-specialized-lambda-list lambda-list)))
+    (pushnew name *delayed-methods*)
+    (if (find-if (rcurry #'member '(&optional &key &rest)) args)
+	(error "Define-delayed cannot handle optional, key and rest arguments")
+	`(progn
+	   (defmethod ,delay-name ,(append (list ival-arg) lambda-list)
+	     ,(format nil "Schedules a call to ~a" do-name)
+	     (schedule-timeout ,module-param ,timeout-ident ,ival-arg ,@args))
+	   (defmethod ,name ,lambda-list
+	     ,(format nil "Schedules a call to ~a in ~a ticks" do-name delay)
+	     (,delay-name ,delay ,@args))
+	   (defmethod ,do-name ,lambda-list ,@body)))))
+
+(let ((counter 1))
+  (define-delayed delayed-test ((module cards)) 2000
+    "A test delay function, shows up a window when body is executed"
+    (let ((win (ag:window-new)))
+      (ag:window-set-caption win "~a" counter)
+      (ag:set-window-position win :tl nil)
+      (ag:new-label win nil (format nil "~a" counter))
+      (incf counter)
+      (ag:window-show win))))
 
 (defmethod remove-cards ((module cards) cards)
   "Deletes cards from the player's hand."
@@ -87,11 +141,6 @@ If the card is already selected it will be removed from that list."
   "Returns the texture name for this specific card"
   (check-type card kern:card)
   (intern (subseq (with-output-to-string (s) (kern:print-card card s)) 2) 'keyword))
-
-(defmethod initialize-instance :after ((module cards) &key)
-  "Loads the card textures"
-  (load-textures module)
-  (create-display-lists module))
 
 (defun candidate-card-p (module card)
   (equalp card (slot-value module 'candidate-card)))
@@ -365,9 +414,13 @@ would see the other face than before"
 		    (make-ui-card :card card :covered-p nil))
 		(kern:sort-cards (nconc (mapcar #'ui-card-card (cards module)) cards) (game module)))))
 
-(defmethod choose-card ((module cards))
+(define-delayed choose-card ((module cards)) 100
   "Enables the handling of clicks on the cards"
-  (setf (choose-card-p module) t))
+  (if (timeout-scheduled-p module :trick-push)
+      ;; wait until trick is gone
+      (choose-card module)
+      ;; now do it
+      (setf (choose-card-p module) t)))
 
 (defmethod select-card ((module cards) x y)
   "Does a selection at P(x,y) and returns the card that the clicked object represents"
@@ -385,18 +438,22 @@ would see the other face than before"
 	  (let ((nth-card (1- (- (second (hit-record-names-on-stack record)) +own-cards+)))) ; offset
 	    (nth nth-card (cards module))))))))
 
-(defmethod middle-stack-push ((module cards) card direction)
+(define-delayed middle-stack-push ((module cards) card direction) 1 ; immediately if possible
   "Pushes another card onto the the stack in the middle of the table"
-  (with-slots (middle-stack) module
-    (setf middle-stack (nconc middle-stack (list (make-ui-card :from direction :card card))))))
+  (if (timeout-scheduled-p module :trick-push)
+      ;; trick is still shown, try again later
+      (delay-middle-stack-push 1000 module card direction)
+      ;; trick-push timeout timed out, execute now
+      (with-slots (middle-stack) module
+	(setf middle-stack (nconc middle-stack (list (make-ui-card :from direction :card card)))))))
 
 (defmethod send-card ((module cards) ui-card)
   "Sends the card to the kernel to play it, so also remove it from the hand and
 prohibit further reaction on clicks on the cards"
-  (play-card (ui module) (ui-card-card ui-card))
   (setf (choose-card-p module) nil)
   (remove-cards module (list ui-card))
-  (middle-stack-push module (ui-card-card ui-card) :self))
+  (middle-stack-push module (ui-card-card ui-card) :self)
+  (play-card (ui module) (ui-card-card ui-card)))
 
 (defmethod skat-in-the-middle ((module cards))
   "Places the two skat cards in the middle"
@@ -425,7 +482,7 @@ prohibit further reaction on clicks on the cards"
 			       (:left 'left-cards)
 			       (:right 'right-cards))))))
 
-(defmethod trick-to ((module cards) direction)
+(define-delayed trick-push ((module cards) direction) 2000
   "Pushes the cards from the middle stack to the tricks of the player"
   (hide-last-trick module)
   (with-slots (own-tricks left-tricks right-tricks middle-stack)
@@ -433,7 +490,7 @@ prohibit further reaction on clicks on the cards"
     ;; flip the cards in the middle
     (dolist (ui-card middle-stack)
       (setf (ui-card-covered-p ui-card) t))
-    ;; remember this trick as the last trick
+    ;; remember this trick as the latest trick
     (setf (last-trick module) (cons direction middle-stack))
     ;; push the trick cards to trick stack
     (ecase direction
@@ -442,6 +499,13 @@ prohibit further reaction on clicks on the cards"
       (:right (setf right-tricks (nconc right-tricks middle-stack))))
     ;; and clear the table
     (clear-middle module)))
+
+(define-delayed trick-to ((module cards) direction) 1
+  "Waits until all cards are on the table (middle-stack-push) and
+pushes the trick away (trick-push) afterwards"
+  (if (timeout-scheduled-p module :middle-stack-push)
+      (delay-trick-to 100 module direction)
+      (trick-push module direction)))
 
 (defmethod hide-last-trick ((module cards))
   "Hides the last trick"
@@ -489,4 +553,54 @@ prohibit further reaction on clicks on the cards"
 					       (send-card module card)
 					       (slot-makunbound module 'candidate-card)))
 					 (slot-makunbound module 'candidate-card))))))))
-  
+
+(defmethod timeout-callback ((module cards) do-method timeout-ident)
+  (declare (optimize debug))
+  (restart-case
+      (let* ((queued-top (pop (queued-args module timeout-ident)))
+	     (elapsed (ag:get-ticks))
+	     (args (cdr queued-top))) ; args for funcall
+	(apply do-method args)
+	(let ((rest (queued-args module timeout-ident)))
+	  (when (and rest (> (- (caar rest) elapsed) 3000))
+	    (warn "~a deferred more than 3 sec (~s ticks)!"
+		  timeout-ident
+		  (- (caar rest) elapsed))
+	    (break))
+	  (if rest
+	      ;; there are more of these timeouts to come
+	      (max (- (caar rest) ; this is the next ival
+		      elapsed)
+		   1) ; but at least 1 tick!
+	      ;; else don't reschedule
+	      0)))
+    (continue () :report "Return from timeout callback without rescheduling"
+	      0)))
+
+(defmacro delayed-timeouts (module)
+  `(list
+    ,@(loop for methodname in *delayed-methods*
+	 appending (let ((do-method (conc-symbols 'do- methodname))
+			 (timeout-ident (to-keyword methodname)))
+		     `(,timeout-ident
+		       (let ((timeout (alloc-finalized ,module 'ag:timeout)))
+			 (ag:set-timeout timeout
+					 (lambda-timeout-callback (obj ival arg)
+					   (declare (ignore obj ival arg) (optimize debug))
+					   (timeout-callback ,module #',do-method ,timeout-ident))
+					 (null-pointer) nil)
+			 timeout))))))
+
+(defmacro make-queued-actions-list ()
+  `(list ,@(loop for methodname in *delayed-methods*
+	      collect `(cons ,(to-keyword methodname) nil))))
+
+(defmethod setup-timeouts ((module cards))
+  (setf (timeouts module) (delayed-timeouts module)
+	(queued-actions module) (make-queued-actions-list)))
+
+(defmethod initialize-instance :after ((module cards) &key)
+  "Loads the card textures and defines callbacks for this module"
+  (load-textures module)
+  (create-display-lists module)
+  (setup-timeouts module))
