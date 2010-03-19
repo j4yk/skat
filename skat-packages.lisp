@@ -42,8 +42,8 @@
 
 
 (define-skat-packages 
-    (login-parameters
-     registration-parameters
+    (login-struct
+     registration-struct
      registration-reply
      server-update
      playmates
