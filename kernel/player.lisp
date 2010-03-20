@@ -346,7 +346,7 @@ wenn der Benutzer eine Karte spielt."
   (declare (ignore just-send-game-over)) ; host hat auch ein switch-to-game-over
   (call-ui 'game-over player (host player) prompt))
 
-(defhandler game-over (in-game bidding-wait) host (player prompt)
+(defhandler game-over (in-game play-cards bidding-wait) host (player prompt)
   "Behandelt die Beendigung der Runde durch den Host."
   (switch-to-game-over player prompt))
 
