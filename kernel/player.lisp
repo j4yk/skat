@@ -45,7 +45,7 @@
 
 (defmethod send-to-all-others ((player player) request-name &rest request-args)
   "Ruft comm:send mit gleicher Anfrage für Host, linken und rechten Mitspieler auf."
-  (dolist (receiver (list (host player) (left-playmate player) (right-playmate player)))
+  (dolist (receiver (list (left-playmate player) (right-playmate player) (host player)))
     (apply #'comm:send (comm player) receiver request-name request-args)))
 
 (defmethod (setf cards) (cards (player player))
