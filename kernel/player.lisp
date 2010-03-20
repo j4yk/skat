@@ -4,7 +4,7 @@
     (start
      unregistered registration-pending registration-succeeded
      bidding-wait bid listen preparations
-     in-game game-over)     
+     in-game play-cards trick-full game-over)     
   ((cards :accessor cards :documentation "Die Karten, die der Spieler auf der Hand hält")
    (current-trick :accessor current-trick :documentation "Liste der momentan auf dem Tisch liegenden Karten")
    (won-tricks :accessor won-tricks :documentation "Liste von Kartenlisten, die die gewonnenen Stiche sind")
@@ -123,7 +123,7 @@ Weist comm an sich mit den Daten bei einem Host zu registrieren."
   "Behandelt Neuigkeiten vom Host."
   (CALL-UI 'SERVER-UPDATE PLAYER SENDER EVENTS))
 
-(DEFHANDLER UNREGISTER (REGISTRATION-SUCCEEDED) ui (PLAYER)
+(DEFHANDLER UNREGISTER () ui (PLAYER)
   "Soll von der UI aufgerufen werden, wenn der Spieler eine Loslösung
 vom Host wünscht."
   (SKAT-COMMUNICATION:SEND (COMM PLAYER) (HOST PLAYER) 'UNREGISTER)
@@ -290,21 +290,27 @@ soll durch die UI aufgerufen werden, wenn Karten in den Skat gedrückt werden."
       (SEND-TO-ALL-OTHERS PLAYER 'DECLARATION DECLARATION) ; Ansage verschicken
       (CALL-UI 'DECLARATION PLAYER (declarer player) DECLARATION))) ; UI Bescheid sagen
 
+(define-state-switch-function play-cards (player))
+
+(define-state-switch-function trick-full (player))
+
 (DEFHANDLER DECLARATION (PREPARATIONS) (ui declarer) (PLAYER DECLARATION)
   "Behandelt die Ansage des Spielführers."
   (switch-to-in-game player declaration))
 
-(DEFHANDLER CHOOSE-CARD (IN-GAME) host (PLAYER)
+(DEFHANDLER CHOOSE-CARD (IN-GAME play-cards) host (PLAYER)
   "Behandelt die Mitteilung des Hosts, dass man am Stich ist."
+  (if (eq (state player) 'in-game) (switch-to-play-cards player))
   (LOOP UNTIL (address-equal player (CAR (TABLE PLAYER)) (OWN-ADDRESS PLAYER))
      DO (TURN-TABLE PLAYER))		; Tisch zu sich selbst drehen
   (CALL-UI 'CHOOSE-CARD PLAYER SENDER))	; und UI in die Spur schicken
 
 ;(defhandler card ;; ... UI->Komm, richter-Spieler->UI, turn table nicht vergessen
 
-(defhandler card (in-game) (ui current-player) (player card)
+(defhandler card (in-game play-cards) (ui current-player) (player card)
   "Behandelt eine gespielte Karte und soll von der UI aufgerufen werden,
 wenn der Benutzer eine Karte spielt."
+  (if (eq (state player) 'in-game) (switch-to-play-cards player))
   (if (equalp sender (ui player))
       (progn
 	(unless (address-equal player (current-player player) (own-address player))
@@ -318,18 +324,22 @@ wenn der Benutzer eine Karte spielt."
       (call-ui 'card player sender card))    ; von draußen
   (push card (current-trick player))	     ; Karte für den aktuellen Stich eintragen
   (turn-table player)		       ; nächster Spieler
-  (when (and (address-equal player (own-address player) (current-player player))
-	     (< (length (current-trick player)) 3))
-    ;; Spieler ist nun an der Reihe und der Stich ist noch nicht voll
-    (call-ui 'choose-card player player))) ; Karte auswählen lassen
+  (if (< (length (current-trick player)) 3)
+      (when (address-equal player (own-address player) (current-player player))
+	;; Spieler ist nun an der Reihe und der Stich ist noch nicht voll
+	(call-ui 'choose-card player player)) ; Karte auswählen lassen
+      ;; der Stich ist voll
+      (switch-to-trick-full player)))
 
-(DEFHANDLER TRICK (IN-GAME) host (PLAYER CARDS WINNER)
+(DEFHANDLER TRICK (trick-full) host (PLAYER CARDS WINNER)
   "Behandelt die Auswertung des Stiches durch den Host."
   (IF (address-equal player winner (own-address player))
       (push CARDS (WON-TRICKS PLAYER)))	; zu den gewonnenen Stichen dazupacken
   (setf (current-trick player) nil)	; aktuellen Stich zurücksetzen
   (CALL-UI 'TRICK PLAYER SENDER CARDS WINNER) ; UI benachrichtigen
-  (turn-table-to player winner))	      ; der Gewinner ist nun am Stich
+  (turn-table-to player winner)	       ; der Gewinner ist nun am Stich
+  ;; und nun sollen wieder Karten gespielt werden
+  (switch-to-play-cards player))
 
 (define-state-switch-function game-over (player prompt &optional just-send-game-over)
   "Wechselt in den game-over Zustand."
