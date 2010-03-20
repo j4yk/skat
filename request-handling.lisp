@@ -36,7 +36,9 @@
   "Signalisiert einen error-in-kernel-handler error."
   (restart-bind ((raise-inner-condition #'(lambda () (error condition))))
     (restart-case (error  'error-in-kernel-handler :error condition :handler-fn-name fn-name :kernel kernel)
-      (push-request-back ()		; Anfrage zurückpacken, damit sie nicht verloren geht
+      (push-request-back ()
+	:report "put the request back into comm (this is from the kernel handler function)"
+	;; Anfrage zurückpacken, damit sie nicht verloren geht
 	(comm::prepend-request (comm kernel) sender request-name args)
 	(error 'error-in-kernel-handler :error condition :handler-fn-name fn-name :kernel kernel)))))
 
@@ -81,17 +83,19 @@ body:         forms des handlers"
 	   (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) sender ,@request-args)
 	     ,(or docstring (format nil "Handler Funktion für Request ~a" request-name))
 	     ,declarations
-	     (handler-bind ((error #'(lambda (condition) (raise-error-in-kernel-handler ,kernel-class-and-varname condition
-											',handler-fn-name sender
-											',request-name (list ,@request-args)))))
-	       ,(if (null states) ; states = () bedeutet, Handler gilt immer
-		    encapsulated-body
-		    `(if (member (state ,kernel-class-and-varname) '(,@states)) ; vorher state abfragen
-			 ,encapsulated-body
-			 (error 'request-state-mismatch :state (state ,kernel-class-and-varname) 
-				 :request-name ',request-name :request-args ,@request-args)))))
+	     (restart-case 
+		 ,(if (null states) ; states = () bedeutet, Handler gilt immer
+		      encapsulated-body
+		      `(if (member (state ,kernel-class-and-varname) '(,@states)) ; vorher state abfragen
+			   ,encapsulated-body
+			   (error 'request-state-mismatch :state (state ,kernel-class-and-varname) 
+				  :request-name ',request-name :request-args ,@request-args)))
+	       (retry () :report "call the kernel handler again"
+		      (,handler-fn-name ,kernel-class-and-varname sender ,@request-args))))
 	 ;; handler function registrieren
 	 (register-handler-fn ',request-name #',handler-fn-name)))))
+
+
 
 (defun call-handler-fn (kernel sender request-name &rest arguments)
   "Ruft eine Handlerfunktion auf"
