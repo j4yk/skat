@@ -106,8 +106,9 @@ and presents the player the declaration dialog."
     (show-last-trick cards)))
 
 (defmethod leave ((ui opengl-ui))
-  "Leave the table and your playmates"
+  "Leave the table and your playmates and send unregister to kernel"
   (with-modules (players cards login-and-register)
+    (call-kernel-handler ui 'unregister)
     (leave players)
     (leave cards)
     (query-registration login-and-register)))
@@ -358,7 +359,6 @@ returns sorted hit-records."
   (setf (slot-value ui 'running-p) t)
   (unwind-protect
        (let ((agar-module (find-module 'agar ui)))
-	 (defun %used-agar-module () agar-module)
 	 (macrolet ((process-event ()
 		      `(dolist (module (modules ui))
 			 (handle-event module sdl-event))))
@@ -394,6 +394,7 @@ returns sorted hit-records."
 		      (restart-case (main-loop)
 			(continue () :report "Continue gl-ui main loop" (continuable-main-loop))
 			(abort () :report "terminate GL-UI main loop"
+			       (leave ui)
 			       (format t "~%main loop has been terminated")))))
 	     (continuable-main-loop))))
     (setf (slot-value ui 'running-p) nil)))
