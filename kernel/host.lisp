@@ -118,8 +118,12 @@ Host ignoriert diese einfach.")
 		 decline
 		 (progn
 		   (send-to-players host 'server-update `(:player-join ,sender))
-		   (push sender registered-players) ; Spieler aufnehmen
 		   accept
+		   ;; inform the new player of already registered players
+		   (mapcar #'(lambda (addr) (comm:send (comm host) sender 'server-update `(:player-join ,addr)))
+			   (registered-players host))
+		   ;; welcome player
+		   (push sender registered-players)
 		   (when (= (length registered-players) 3)
 		     (with-slots (dealers) host
 		       (setf dealers (make-ring registered-players)) ; setze die Spieler an einen runden Tisch
@@ -143,7 +147,7 @@ Host ignoriert diese einfach.")
 	     (delete sender (registered-players host) :test (address-compare-function host)))
        (slot-makunbound host 'dealers)	; die Tischrunde auflösen
        ;; inform other players
-       (send-to-players host 'server-update :player-leave sender))
+       (send-to-players host 'server-update (list :player-leave sender)))
       ((bidding-1 bidding-2 bidding-3
 		  declarer-found skat-away await-declaration
 		  in-game game-over)
