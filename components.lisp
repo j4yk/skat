@@ -12,6 +12,7 @@
 	   receive-requests
 	   call-handler-fn
 	   error-in-handler
+	   request-state-mismatch
 	   define-login-data	        ; Login- Strutkturen für Comm
 	   define-registration-data	; Registrierungs-Strutkturen für Comm
 	   slots-of-class		; Slotliste holen

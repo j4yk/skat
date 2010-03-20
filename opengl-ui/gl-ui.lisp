@@ -381,8 +381,13 @@ returns sorted hit-records."
 			(:sys-wm-event () (process-event))
 			(:user-event () (process-event))
 			(:idle ()
-			       (handler-bind ((kern::error-in-handler (curry #'handle-error-in-ui-handler
-									     (find-module 'error-handling ui))))
+			       (handler-bind ((kern::error-in-handler
+					       (curry #'handle-error-in-ui-handler
+						      (find-module 'error-handling ui)))
+					      ;; if the requests are not in the right order
+					      ;; defer the ones that do not fit
+					      (kern:request-state-mismatch
+					       (curry #'invoke-restart 'retry-later)))
 				 (handle-swank-requests)
 				 (when (slot-boundp ui 'kernel)
 				   ;; let the kernel work

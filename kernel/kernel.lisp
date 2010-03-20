@@ -12,6 +12,7 @@
   ((ui :accessor ui :initarg :ui)
    (comm :accessor comm :initarg :comm)
    (state :accessor state :initform 'start)
+   (deferred-requests :accessor deferred-requests :initform nil)
    (own-address :accessor own-address)))
 
 (defmacro defkernel (name (&rest states) direct-slots &rest options)
@@ -80,15 +81,43 @@ Error Conditions: invalid-request-sender-error"
   "Gibt t zurück, wenn die Adressen laut address-compare-function gleich sind."
   (funcall (address-compare-function kernel) address1 address2))
 
+(defmethod defer-request ((kernel kernel) request-name sender request-args tries)
+  "Appends the request to (deferred-requets kernel)"
+  (if (null (deferred-requests kernel))
+      (push (list request-name sender request-args tries)
+	    (deferred-requests kernel))
+      (setf (cdr (last (deferred-requests kernel)))
+	    (list request-name sender request-args tries))))
+
+(defmethod get-deferred-request ((kernel kernel))
+  "Pops a request from (deferred-requests kernel) and returns it with (values-list)"
+  (values-list (pop (deferred-requests kernel))))
+
+(defmethod has-deferred-request-p ((kernel kernel))
+  (not (null (deferred-requests kernel))))
+
 (defmethod receive-requests ((kernel kernel))
   "Holt alle vorliegenden Anfragen aus dem Kommunikationsobjekt heraus und ruft entsprechende Anfragehandler auf."
-  (loop while (comm:has-request (comm kernel))
-     do (multiple-value-bind (request-name sender request-args) (comm:get-request (comm kernel))
-	  (verbose 1 (format *debug-io* "~%kernel: processing ~a ~a from ~a" request-name request-args sender))
-	  (restart-case (apply (handler-fn request-name) kernel sender request-args)
-	    (retry () :report "Process the request again"
-		   (comm::prepend-request (comm kernel) sender request-name request-args))
-	    (continue () :report "Skip this request")))))
+  (let ((defer nil))
+    (loop while (or (has-deferred-request-p kernel) (comm:has-request (comm kernel)))
+       do (multiple-value-bind (request-name sender request-args tries)
+	      (if defer
+		  ;; don't get the deferred request instantly again
+		  (progn (setf defer nil) (comm:get-request (comm kernel)))
+		  ;; get deferred ones first, then freshly arrived
+		  (or (get-deferred-request kernel) (comm:get-request (comm kernel))))
+	    (verbose 1 (format *debug-io* "~%kernel: processing ~a ~a from ~a, try ~a"
+			       request-name request-args sender (or tries 1)))
+	    (when (> (or tries 1) 5)
+	      (error "Request ~a ~a from ~a would be handled for the sixth time now!"
+		     request-name request-args sender))
+	    (restart-case (apply (handler-fn request-name) kernel sender request-args)
+	      (retry () :report "Process the request again"
+		     (comm::prepend-request (comm kernel) sender request-name request-args))
+	      (retry-later () :report "Process the request again after the next request has been processed"
+			   (defer-request kernel request-name sender request-args (if tries (1+ tries) 1))
+			   (setf defer t))
+	      (continue () :report "Skip this request"))))))
 
 (define-condition invalid-kernel-state-error (error)
   ((kernel-class :accessor kernel-class :initarg :kernel-class)
