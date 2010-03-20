@@ -90,3 +90,6 @@
 		   (1 `(delete-cards cards1))
 		   (2 `(delete-cards cards2))
 		   (3 `(delete-cards cards3))))))))
+
+(defun start-gl-ui-player ()
+  (start-skat :player 'gl-ui:opengl-ui 'comm:xmpp-comm))

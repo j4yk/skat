@@ -86,4 +86,4 @@
 				     (:file test-utils :depends-on (gl-ui))
 				     (:file agar-test :depends-on (gl-ui agar))
 				     (:file test-module :depends-on (gl-ui))))
-	       (:file debugutils :depends-on (kernel comm ui host-ui))))
+	       (:file debugutils :depends-on (kernel comm ui host-ui opengl-ui))))
