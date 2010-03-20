@@ -154,8 +154,10 @@ If the card is already selected it will be removed from that list."
 
 ;; graphics
 
-(defvar card-height 3)
-(defvar card-width 2)
+(defvar card-height 3.0)
+(defvar card-width 2.0)
+
+(declaim (single-float card-height card-width))
 
 (defmethod create-display-lists ((module cards))
   ;; create display lists for the two types of cards (front and back)
@@ -183,7 +185,9 @@ If the card is already selected it will be removed from that list."
 	  )))))
 
 (defun draw-card-here (module texture selection-name &key back-p selected-p)
-  (declare (optimize debug))
+  (declare (optimize speed)
+	   (cards module) (integer texture selection-name)
+	   ((or (eql t) (eql nil)) back-p selected-p))
   (gl:bind-texture :texture-2d
 		   (cond ((and back-p (getf (textures module) :backside))
 			  (getf (textures module) :backside))
@@ -203,6 +207,9 @@ If the card is already selected it will be removed from that list."
     (gl:disable :color-logic-op)))
 
 (defmethod draw-ui-card-here ((module cards) ui-card selname selected-p)
+  (declare (optimize speed)
+	   (ui-card ui-card) (integer selname)
+	   ((or (eql t) (eql nil)) selected-p))
   (draw-card-here module
 		  (getf (textures module)
 			(card-to-texture-name (ui-card-card ui-card)))
@@ -212,10 +219,12 @@ If the card is already selected it will be removed from that list."
 
 (defun draw-hand (module cards selname-generator-fn)
   "Zeichnet eine aufgefaltete Hand von Karten"
-  (declare (optimize debug))
+  (declare (optimize speed)
+	   (cards module) (list cards)
+	   ((function (integer) integer) selname-generator-fn))
   (with-pushed-matrix :modelview
     (let ((ncards (length cards))
-	  (dzrot (/ 90 8))		; 8 cards make up 90°
+	  (dzrot (float (/ 90 8)))		; 8 cards make up 90°
 	  (dz 0.1))
       (loop
 	 for n from 1 to ncards
@@ -223,15 +232,15 @@ If the card is already selected it will be removed from that list."
 	 do (with-pushed-matrix
 	      :modelview
 	      (let* (;; create a fan with the hand:
-		     (rot-radius (* 0.7 card-height)) ; turn a little below the lower edge of the cards
-		     (zrot-angle (* (- (+ (/ ncards 2)) n) dzrot))
+		     (rot-radius (* 0.7 (float card-height))) ; turn a little below the lower edge of the cards
+		     (zrot-angle (* (- (+ (/ (float ncards) 2)) (float n)) dzrot))
 		     (zrot-angle-rad (- (/ (* zrot-angle pi) 180)))
 		     ;; bending with the hand:
 		     (bend-radius (* 1.2 card-height))
 		     ;; translations
-		     (delta-x (* rot-radius (sin zrot-angle-rad)))
-		     (delta-y (- (* rot-radius (- 1 (cos zrot-angle-rad)))))
-		     (delta-z (+ (* n dz) (- bend-radius (sqrt (- (* bend-radius bend-radius) (* delta-x delta-x))))))
+		     (delta-x (* rot-radius (sin (the (float 0.0 4.0) zrot-angle-rad))))
+		     (delta-y (- (* rot-radius (- 1 (cos (the (float 0.0 4.0) zrot-angle-rad))))))
+		     (delta-z (+ (* (float n) dz) (- bend-radius (sqrt (- (* bend-radius bend-radius) (* delta-x delta-x))))))
 		     ;; rotation angle for bending
 		     (bend-rot-angle (- (* (/ (acos (/ delta-x bend-radius)) pi) 180) 90)))
 		(gl:translate delta-x delta-y delta-z)
@@ -241,6 +250,7 @@ If the card is already selected it will be removed from that list."
 				 (card-selected-p module card)))))))
 
 (defun draw-table ()
+  (declare (optimize speed))
   (gl:disable :texture-2d)
   (gl:disable :depth-test)
   (gl:color 0 0.6 0)
@@ -256,6 +266,7 @@ If the card is already selected it will be removed from that list."
       (gl:vertex 0 0 0)))
 
 (defun rotate-to-player-view (direction)
+  (declare (optimize speed))
   (gl:rotate 
    (ecase direction
      (:self 0)
@@ -267,16 +278,18 @@ If the card is already selected it will be removed from that list."
 
 (defun lay-down ()
   "Rotates so the cards will be drawn lying on the table"
+  (declare (optimize speed))
   (gl:rotate 270 1 0 0))
 
 (defun flip-cards ()
   "Rotates so the cards will be drawn in a way that the player
 would see the other face than before"
+  (declare (optimize speed))
   (gl:rotate 180 1 0 0))
 
 (defmethod draw-middle-stack ((module cards))
   "Draws the cards in the middle of the table"
-  (declare (optimize debug))
+  (declare (optimize speed))
   (with-pushed-matrix
     :modelview
     (let ((dy 0.01))
@@ -294,6 +307,7 @@ would see the other face than before"
 	(gl:translate 0 dy 0)))))
 
 (defmethod draw-tricks ((module cards) cards)
+  (declare (optimize speed))
   (with-pushed-matrix
     :modelview
     (lay-down)
@@ -306,6 +320,7 @@ would see the other face than before"
 
 (defmethod draw-last-trick ((module cards))
   "Draws the last trick next to the sending player"
+  (declare (optimize speed))
   (destructuring-bind (direction &rest cards) (last-trick module)
     (with-pushed-matrix
       :modelview
@@ -330,38 +345,44 @@ would see the other face than before"
 	  (gl:rotate -30 0 0 1)
 	  (gl:translate 0 dy 0))))))
 
+(defun draw-tricks-here (module direction cards)
+  (declare (optimize speed))
+  (with-pushed-matrix
+    :modelview
+    (rotate-to-player-view direction)
+    (gl:rotate 40 0 1 0)	; tricks next to cards
+    (gl:translate 0 0 (* 2.5 card-height))
+    (draw-tricks module cards))
+  (values))
+
+(defun draw-hand-here (module direction cards selection-name-fn)
+  (declare (optimize speed))
+  (with-pushed-matrix
+    :modelview
+    (rotate-to-player-view direction)
+    (gl:translate 0 (* 1/3 1.2 3.3 card-height) (* 1/3 1.2 3 card-height))
+    (gl:rotate -39 1 0 0) ; -49 1 0 0 would be perpendicular to viewer
+    (gl:translate 0 (* -1 card-height) 0)
+    (gl:rotate 10 0 1 0)
+    (draw-hand module cards selection-name-fn))
+  (values))
+
 (defmethod draw ((module cards))
   "Zeichnet die Karten"
-  (declare (optimize debug))
+  (declare (optimize speed))
   (draw-table)
   (gl:enable :texture-2d)
   (gl:enable :alpha-test)
   (gl:tex-env :texture-env :texture-env-mode :modulate)
   (gl:alpha-func :greater 0.1)
   (gl:color 1 1 1)
-  (flet ((draw-tricks-here (direction cards)
-	   (with-pushed-matrix
-	     :modelview
-	     (rotate-to-player-view direction)
-	     (gl:rotate 40 0 1 0)	; tricks next to cards
-	     (gl:translate 0 0 (* 2.5 card-height))
-	     (draw-tricks module cards)))
-	 (draw-hand-here (direction cards selection-name-fn)
-	   (with-pushed-matrix
-	     :modelview
-	     (rotate-to-player-view direction)
-	     (gl:translate 0 (* 1/3 1.2 3.3 card-height) (* 1/3 1.2 3 card-height))
-	     (gl:rotate -39 1 0 0) ; -49 1 0 0 would be perpendicular to viewer
-	     (gl:translate 0 (* -1 card-height) 0)
-	     (gl:rotate 10 0 1 0)
-	     (draw-hand module cards selection-name-fn))))
   ;; tricks
-  (map nil #'draw-tricks-here
+  (map nil (curry #'draw-tricks-here module)
        (list :left :right :self)
        (with-slots (own-tricks left-tricks right-tricks) module
 	 (list left-tricks right-tricks own-tricks)))
   ;; other players' cards
-  (map nil (rcurry #'draw-hand-here (constantly 9000))
+  (map nil (rcurry (curry #'draw-hand-here module) (constantly 9000))
        (list :left :right)
        (with-slots (left-cards right-cards) module
 	 (list left-cards right-cards)))
@@ -372,9 +393,9 @@ would see the other face than before"
     (draw-last-trick module))
   ;; own cards
   (with-selname 1000
-    (draw-hand-here :self (cards module) #'own-card-selname))
+    (draw-hand-here module :self (cards module) #'own-card-selname))
   (gl:disable :alpha-test)
-  (gl:disable :texture-2d)))
+  (gl:disable :texture-2d))
 
 ;; convenience functions
 
@@ -537,6 +558,7 @@ pushes the trick away (trick-push) afterwards"
 					 (with-slots (candidate-card) module
 					   (setf candidate-card card)))))))
     (:mouse-motion-event (:x x :y y)
+			 (declare (optimize speed))
 			 ;; save mouse pos
 			 (with-slots (last-mouse-pos) module
 			   (setf (aref last-mouse-pos 0) x

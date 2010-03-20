@@ -304,6 +304,7 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
 
 (defun render-non-agar-modules (modules agar-module)
   "Call #'draw on all modules except the agar module"
+  (declare (optimize speed))
   (matrix-mode :modelview
     (gl:load-identity))
   ;; view perspective
@@ -317,6 +318,7 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
     (draw module)))
 
 (defmethod render-everything ((ui opengl-ui) agar-module)
+  (declare (optimize speed))
   (gl:clear :color-buffer-bit :depth-buffer-bit)
   (if ag:*video-initialized*
       (ag:render
@@ -359,6 +361,7 @@ returns sorted hit-records."
   (setf (slot-value ui 'running-p) t)
   (unwind-protect
        (let ((agar-module (find-module 'agar ui)))
+	 (declare (optimize speed))
 	 (macrolet ((process-event ()
 		      `(dolist (module (modules ui))
 			 (handle-event module sdl-event))))
