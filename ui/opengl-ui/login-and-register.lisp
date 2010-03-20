@@ -206,15 +206,14 @@ enable register-button and autosize the window"
        (message-label (ag:label-new-string window-vbox "Warte auf Mitspieler..."))
        (player1-label (expanded-h (ag:new-polled-label window-vbox nil "1. Mitspieler: %s" name1-fp)))
        (player2-label (expanded-h (ag:new-polled-label window-vbox nil "2. Mitspieler: %s" name2-fp)))
-       (start-button (expanded-h (let ((btn (ag:button-new window-vbox nil "Starte die Runde")))
+       (start-button (expanded-h (let ((btn (ag:new-button window-vbox nil "Starte die Runde"
+							   (std-event-handler (request-game-start w)))))
 				   (prog1 btn (ag:disable-widget btn)))))
-       (leave-button (expanded-h (ag:button-new window-vbox nil "Die Runde verlassen")))
+       (leave-button (expanded-h (ag:new-button window-vbox nil "Die Runde verlassen"
+						(std-event-handler (leave w)))))
        (wait-label (expanded-h (ag:new-label (null-pointer) nil
 					     (format nil "Warte darauf, dass~%die Mitspieler auch starten")))))
     (ag:window-set-caption window "Mitspieler")
-    (ag:set-event start-button "button-pushed" (event-handler #'(lambda (event)
-								  (declare (ignore event))
-								  (request-game-start w))) "")
     (setf (player1-name w) free-name)
     (setf (player2-name w) free-name)))
 
@@ -229,12 +228,14 @@ and makes sure the wait-label is detached"
 (defmethod (setf player1-name) :after ((name string) (w await-game-start-window))
   "Updates the foreign string that is polled by player1-label"
   (with-slots (name1-fp name1-size) w
-    (lisp-string-to-foreign name name1-fp name1-size)))
+    (lisp-string-to-foreign name name1-fp name1-size))
+  (autosize w))
 
 (defmethod (setf player2-name) :after ((name string) (w await-game-start-window))
   "Updates the foreign string that is polled by player2-label"
   (with-slots (name2-fp name2-size) w
-    (lisp-string-to-foreign name name2-fp name2-size)))
+    (lisp-string-to-foreign name name2-fp name2-size))
+  (autosize w))
 
 (defmethod enable-start-button ((w await-game-start-window))
   (with-slots (start-button) w
@@ -281,6 +282,11 @@ and makes sure the wait-label is detached"
   (call-kernel-handler (ui (module w)) 'game-start)
   (with-slots (window-vbox wait-label) w
     (ensure-attached wait-label window-vbox)))
+
+(defmethod leave ((w await-game-start-window))
+  "Calls leave on login-and-register module and hides await-game-start-window"
+  (hide w)
+  (leave (module w)))
 
 
 ;; Module
@@ -332,6 +338,11 @@ and makes sure the wait-label is detached"
 
 (defmethod player-left ((module login-and-register) player-name)
   (remove-player player-name (await-game-start-window module)))
+
+(defmethod leave ((module login-and-register))
+  "Sends unregister to kernel and redisplays the register-window"
+  (call-kernel-handler (ui module) 'unregister)
+  (show (register-window module)))
 
 (defmethod game-starts ((module login-and-register))
   "Hides all login-and-register's windows"
