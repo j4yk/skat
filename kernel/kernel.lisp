@@ -84,7 +84,7 @@ Error Conditions: invalid-request-sender-error"
   "Holt alle vorliegenden Anfragen aus dem Kommunikationsobjekt heraus und ruft entsprechende Anfragehandler auf."
   (loop while (comm:has-request (comm kernel))
      do (multiple-value-bind (request-name sender request-args) (comm:get-request (comm kernel))
-	  (verbose 1 (format *debug-io* "~%processing ~a ~a from ~a" request-name request-args sender))
+	  (verbose 1 (format *debug-io* "~%kernel: processing ~a ~a from ~a" request-name request-args sender))
 	  (restart-case (apply (handler-fn request-name) kernel sender request-args)
 	    (retry () :report "Process the request again"
 		   (comm::prepend-request (comm kernel) sender request-name request-args))

@@ -15,7 +15,8 @@
 (defun raise-error-in-ui-handler (ui fn-name condition)
   "Signalisiert einen error-in-kernel-handler error."
   (restart-case (error 'error-in-ui-handler :error condition :handler-fn-name fn-name :ui ui)
-    (raise-inner-condition () (error condition))))
+    (raise-inner-condition () :report "raise the actual error condition"
+			   (error condition))))
 
 (defmacro defhandler (request-name (ui-class &rest parameters) &body body)
   "Definiert eine UI-Handlerfunktion für diese Anfrage."
