@@ -36,3 +36,9 @@
 			       (:host 'kern:host))
 	   ui-implementation comm-implementation
 	   kernel-initargs)))
+
+(defun start-host (login-data)
+  (start-skat :host 'ui:host-ui 'comm:xmpp-comm :login-data login-data))
+
+(defun start-gl-ui-player ()
+  (start-skat :player 'gl-ui:opengl-ui 'comm:xmpp-comm))
