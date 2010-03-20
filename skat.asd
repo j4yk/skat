@@ -93,5 +93,4 @@
   :depends-on (skat-core skat-xmpp-comm skat-opengl-ui)
   :components ((:file debugutils)
 	       (:module start
-			:depends-on (components)
 			:components ((:file start)))))
