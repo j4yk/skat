@@ -104,12 +104,7 @@ If the card is already selected it will be removed from that list."
 (defun add-texture (module name texture)
   "Adds a texture to (textures module). The texture will be freed when module is finalized."
   (setf (getf (textures module) name)
-	texture)
-  ;; automatically delete texture on module garbage collect
-  (trivial-garbage:finalize
-   module
-   #'(lambda ()
-       (gl:delete-textures (list texture)))))
+	texture))
 
 (defmethod load-textures ((module cards))
   "Lädt die Texturen"
@@ -626,3 +621,7 @@ pushes the trick away (trick-push) afterwards"
   (load-textures module)
   (create-display-lists module)
   (setup-timeouts module))
+
+(defmethod cleanup ((module cards))
+  (gl:delete-textures (loop for elm in (textures module)
+			 when (numberp elm) collect elm)))
