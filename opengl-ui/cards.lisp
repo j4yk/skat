@@ -181,8 +181,7 @@ If the card is already selected it will be removed from that list."
 
 (defun draw-card-here (module texture selection-name &key back-p selected-p)
   (declare (optimize speed)
-	   (cards module) (integer texture selection-name)
-	   ((or (eql t) (eql nil)) back-p selected-p))
+	   (cards module) (integer texture selection-name))
   (gl:bind-texture :texture-2d
 		   (cond ((and back-p (getf (textures module) :backside))
 			  (getf (textures module) :backside))
@@ -203,8 +202,7 @@ If the card is already selected it will be removed from that list."
 
 (defmethod draw-ui-card-here ((module cards) ui-card selname selected-p)
   (declare (optimize speed)
-	   (ui-card ui-card) (integer selname)
-	   ((or (eql t) (eql nil)) selected-p))
+	   (ui-card ui-card) (integer selname))
   (draw-card-here module
 		  (getf (textures module)
 			(card-to-texture-name (ui-card-card ui-card)))
