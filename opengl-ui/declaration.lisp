@@ -161,7 +161,7 @@ show an error dialog and don't close the send button window"
 
 (defmethod query-skat ((module game-declaration))
   "Displays the button to eventually send the two skat cards"
-  (let* ((window (ag:window-new :notitle :noborders :modal :keepabove))
+  (let* ((window (ag:window-new :notitle :noborders :keepabove))
 	 (btn (ag:new-button window nil
 			     "Wähle zwei Karten aus und klicke dann hier zum absenden"
 			     (std-event-handler
