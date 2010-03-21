@@ -22,6 +22,7 @@
 	   sort-cards
 	   suit
 	   rank
+	   suit-not-followed-error
 	   *game-point-levels*
 	   cut-away-game-point-levels))
   

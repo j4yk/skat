@@ -98,7 +98,11 @@ and presents the player the declaration dialog."
 
 (defmethod play-card ((ui opengl-ui) card)
   "Sendet eine Karte zum Spielen an den Kernel zurück"
-  (call-kernel-handler ui 'card card))
+  (handler-bind ((kern:suit-not-followed-error
+		  ;; continue (see cards.lisp: send-card)
+		  ;; effectively show the error
+		  #'continue))
+    (call-kernel-handler ui 'card card)))
 
 (defmethod show-last-trick ((ui opengl-ui))
   "Makes the cards module show the last trick"

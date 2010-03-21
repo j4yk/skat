@@ -108,7 +108,7 @@ If the card is already selected it will be removed from that list."
 	(setf (slot-value module 'selected-cards) (delete card cards :test #'equalp))
 	(push card (slot-value module 'selected-cards)))))
 
-(defmethod clear-selected-cards ((module cards))
+(define-delayable clear-selected-cards ((module cards))
   "Deselects all cards"
   (setf (slot-value module 'selected-cards) nil))
 
@@ -478,13 +478,22 @@ would see the other face than before"
       (with-slots (middle-stack) module
 	(setf middle-stack (nconc middle-stack (list (make-ui-card :from direction :card card)))))))
 
+(defmethod bad-card ((module cards) ui-card)
+  "Flashes a card"
+  (toggle-selected-card module ui-card)
+  (delay-clear-selected-cards 500 module))
+
 (defmethod send-card ((module cards) ui-card)
   "Sends the card to the kernel to play it, so also remove it from the hand and
 prohibit further reaction on clicks on the cards"
-  (setf (choose-card-p module) nil)
-  (remove-cards module (list ui-card))
-  (middle-stack-push module (ui-card-card ui-card) :self)
-  (play-card (ui module) (ui-card-card ui-card)))
+  (restart-case (progn
+		  (play-card (ui module) (ui-card-card ui-card))
+		  (setf (choose-card-p module) nil)
+		  (remove-cards module (list ui-card))
+		  (middle-stack-push module (ui-card-card ui-card) :self))
+    (continue (&optional condition) :report "Show the error but continue"
+	      (declare (ignore condition))
+	      (bad-card module ui-card))))
 
 (defmethod skat-in-the-middle ((module cards))
   "Places the two skat cards in the middle"
