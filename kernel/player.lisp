@@ -323,11 +323,11 @@ wenn der Benutzer eine Karte spielt."
 	  (error "Spieler besitzt diese Karte nicht! Karte nicht gesendet!"))
 	(when (last (current-trick player))
 	  ;; this card is just a supplement
-	  (unless (same-suit-p (last (current-trick player))
+	  (unless (same-suit-p (car (last (current-trick player)))
 			       card
 			       (car (game-declaration player)))
 	    ;; player didn't follow suit
-	    (when (find-if (rcurry (curry 'same-suit-p (last (current-trick player))) (car (game-declaration player)))
+	    (when (find-if (rcurry (curry 'same-suit-p (car (last (current-trick player)))) (car (game-declaration player)))
 			   (cards player))
 	      ;; there are possible cards however, signal an error
 	      (error 'suit-not-followed-error))))
