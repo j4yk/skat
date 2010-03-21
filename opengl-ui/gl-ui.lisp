@@ -221,6 +221,10 @@ Adds two cards and lets the player select two."
     (select-skat cards)
     (query-skat game-declaration)))
 
+(defhandler ui:declaration (opengl-ui declaration)
+  (with-modules (game-declaration players)
+    (announce-declaration game-declaration (player-name players ui:sender) declaration)))
+
 (defhandler choose-card (opengl-ui)
   "Host hat mitgeteilt, dass man am Stich ist."
   (with-modules (cards)

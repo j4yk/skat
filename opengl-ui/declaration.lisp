@@ -178,3 +178,6 @@ show an error dialog and don't close the send button window"
 (defmethod show-declarer ((module game-declaration) declarer-address)
   (ag:text-msg :info "~a ist der Alleinspieler dieses Spiels"
 	       (player-name (ui module) declarer-address)))
+
+(defmethod announce-declaration ((module game-declaration) declarer declaration)
+  (ag:text-msg :info "~a spielt ~a" declarer (declaration-text declaration)))
