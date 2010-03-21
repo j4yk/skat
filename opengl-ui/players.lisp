@@ -175,16 +175,21 @@
 
 (defmethod get-declarer-name ((module players))
   (with-slots (declarer-address) module
-    (player-name module declarer-address)))
+    (if (slot-boundp module 'declarer-address)
+	(player-name module declarer-address)
+	"")))
 
 ;; the following two methods must return their values with the same order of players
 
 (defmethod get-defenders-addresses ((module players))
   (with-slots (declarer-address own-address left-player-name right-player-name)
       module
-    (remove declarer-address
-	    (list own-address left-player-name right-player-name)
-	    :test #'equal)))
+    (if (slot-boundp module 'declarer-address)
+	(remove declarer-address
+		(list own-address left-player-name right-player-name)
+		:test #'equal)
+	;; gib einfach alle zurück, wenn es keinen declarer gibt
+	(list own-address left-player-name right-player-name))))
 
 (defmethod get-defenders-names ((module players))
   (with-slots (declarer-address own-address left-player-name right-player-name)
