@@ -362,7 +362,7 @@ wenn der Benutzer eine Karte spielt."
 (defhandler game-over () :any (player prompt)
   "Behandelt die Beendigung der Runde durch den Host."
   (unless (member (state player) '(start unregistered registration-pending))
-    (with-correct-sender sender (host player)
+    (with-correct-sender sender ((host player))
       (switch-to-game-over player prompt))))
 
 (defhandler cards-score (game-over) host (player declarer-score defenders-score)
