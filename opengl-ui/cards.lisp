@@ -46,8 +46,7 @@ and schedules the timeout with Agar"
 (eval-when (:compile-toplevel :load-toplevel)
   (defvar *delayed-methods* nil "The names of methods that use the delaying mechanism"))
 
-(defmacro define-delayed (name lambda-list delay &body body)
-  "Defines a method that should only be executed after a specific delay"
+(defun delay-methods (name lambda-list body)
   (let ((do-name (conc-symbols 'do- name))
 	(delay-name (conc-symbols 'delay- name))
 	(timeout-ident (to-keyword name))
@@ -57,14 +56,31 @@ and schedules the timeout with Agar"
     (pushnew name *delayed-methods*)
     (if (find-if (rcurry #'member '(&optional &key &rest)) args)
 	(error "Define-delayed cannot handle optional, key and rest arguments")
-	`(progn
-	   (defmethod ,delay-name ,(append (list ival-arg) lambda-list)
-	     ,(format nil "Schedules a call to ~a" do-name)
-	     (schedule-timeout ,module-param ,timeout-ident ,ival-arg ,@args))
-	   (defmethod ,name ,lambda-list
-	     ,(format nil "Schedules a call to ~a in ~a ticks" do-name delay)
-	     (,delay-name ,delay ,@args))
-	   (defmethod ,do-name ,lambda-list ,@body)))))
+	(values
+	 `(progn
+	    (defmethod ,delay-name ,(append (list ival-arg) lambda-list)
+	      ,(format nil "Schedules a call to ~a" do-name)
+	      (schedule-timeout ,module-param ,timeout-ident ,ival-arg ,@args))
+	    (defmethod ,do-name ,lambda-list ,@body))
+	 args do-name delay-name timeout-ident))))
+
+(defmacro define-delayable (name lambda-list &body body)
+  (multiple-value-bind (forms args do-name delay-name) (delay-methods name lambda-list body)
+    (declare (ignore delay-name))
+    (append forms (list `(defmethod ,name ,lambda-list
+			   ,(if (stringp (car body))
+				(car body)
+				(if (stringp (cadr body))
+				    (cadr body)
+				    nil))
+			   (,do-name ,@args))))))
+
+(defmacro define-delayed (name lambda-list delay &body body)
+  "Defines a method that should only be executed after a specific delay"
+  (multiple-value-bind (forms args do-name delay-name) (delay-methods name lambda-list body)
+    (append forms (list `(defmethod ,name ,lambda-list
+			   ,(format nil "Schedules a call to ~a in ~a ticks" do-name delay)
+			   (,delay-name ,delay ,@args))))))
 
 (let ((counter 1))
   (define-delayed delayed-test ((module cards)) 2000
