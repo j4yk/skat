@@ -131,6 +131,9 @@
 (defclass after-game (module)
   ((game-report-window)))
 
+(defmethod game-report-shown-p ((module after-game))
+  (slot-boundp module 'game-report-window))
+
 (defmethod show-game-report ((module after-game) prompt-p declarer defenders)
   (with-slots (game-report-window) module
     (setf game-report-window (make-instance 'game-report-window
@@ -139,6 +142,10 @@
 					    :declarer declarer
 					    :module module))
     (show game-report-window)))
+
+(defmethod game-over-again ((module after-game) prompt-p)
+  "Updates the enabled/disabled state of the next-game button"
+  (game-over-again (slot-value module 'game-report-window) prompt-p))
 
 (defmacro pass-through-to-slot (methodname slot-name class-name &rest arg-names)
   `(defmethod ,methodname ((module ,class-name) ,@arg-names)

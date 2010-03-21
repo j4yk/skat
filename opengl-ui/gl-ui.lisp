@@ -241,9 +241,11 @@ Adds two cards and lets the player select two."
   "Spiel ist/wurde beendet.
 prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
   (with-modules (after-game players)
-    (show-game-report after-game prompt
-		      (get-declarer-name players)
-		      (get-defenders-names players))))
+    (if (game-report-shown-p after-game)
+	(game-over-again after-game prompt)
+	(show-game-report after-game prompt
+			  (get-declarer-name players)
+			  (get-defenders-names players)))))
 
 (defhandler cards-score (opengl-ui declarer-score defenders-score)
   "Punkteauszählung vom Host"
