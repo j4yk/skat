@@ -75,9 +75,9 @@ and schedules the timeout with Agar"
       (incf counter)
       (ag:window-show win))))
 
-(defmethod remove-cards ((module cards) cards)
+(defmethod remove-cards ((module cards) ui-cards)
   "Deletes cards from the player's hand."
-  (dolist (card cards)
+  (dolist (card ui-cards)
     (setf (cards module) (delete card (cards module) :test #'equalp))))
 
 (defmethod toggle-selected-card ((module cards) card)

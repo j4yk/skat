@@ -87,7 +87,7 @@ STUB"
 	(error 'wrong-number-of-cards-error))
       (remove-cards cards skat)
       (end-choose-skat cards)		; cleanup
-      (call-kernel-handler ui 'skat skat) ; pass it on
+      (call-kernel-handler ui 'skat (mapcar #'ui-card-card skat)) ; pass it on
       (query-declaration ui nil))))	  ; processed the Skat, so no hand
 
 (defmethod play-hand ((ui opengl-ui))
