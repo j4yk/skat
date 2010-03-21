@@ -12,6 +12,8 @@
   `(when (>= *stub-comm-verbosity* ,min-level)
      ,@body))
 
+
+(kern:define-login-data stub-login-data)
 (kern:define-registration-data stub-registration-data (host-comm nil :type stub-comm))
 
 (defmethod host-address ((comm stub-comm) (data stub-registration-data))
@@ -30,7 +32,7 @@
 
 (defmethod start ((comm stub-comm))
   (verbose 1 (stub-comm-msg comm "started."))
-  (push-request comm comm 'login-parameters (list nil))
+  (push-request comm comm 'login-struct (list nil))
   (values))
 
 (defmethod login ((comm stub-comm) data)
