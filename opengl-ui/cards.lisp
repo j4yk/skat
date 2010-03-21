@@ -42,6 +42,7 @@ and schedules the timeout with Agar"
   (let ((timeout (getf (timeouts module) timeout-ident)))
     (unless (timeout-scheduled-p module timeout-ident)
       (ag:schedule-timeout (null-pointer) timeout ival))))
+
 (eval-when (:compile-toplevel :load-toplevel)
   (defvar *delayed-methods* nil "The names of methods that use the delaying mechanism"))
 
@@ -496,7 +497,7 @@ prohibit further reaction on clicks on the cards"
 			       (:left 'left-cards)
 			       (:right 'right-cards))))))
 
-(define-delayed trick-push ((module cards) direction) 2000
+(define-delayed trick-push ((module cards) direction) 1000
   "Pushes the cards from the middle stack to the tricks of the player"
   (hide-last-trick module)
   (with-slots (own-tricks left-tricks right-tricks middle-stack)
