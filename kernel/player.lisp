@@ -305,7 +305,9 @@ soll durch die UI aufgerufen werden, wenn Karten in den Skat gedrückt werden."
      DO (TURN-TABLE PLAYER))		; Tisch zu sich selbst drehen
   (CALL-UI 'CHOOSE-CARD PLAYER SENDER))	; und UI in die Spur schicken
 
-;(defhandler card ;; ... UI->Komm, richter-Spieler->UI, turn table nicht vergessen
+(define-condition suit-not-followed-error (error)
+  ()
+  (:report "Player did not follow suit of the first card"))
 
 (defhandler card (in-game play-cards) (ui current-player) (player card)
   "Behandelt eine gespielte Karte und soll von der UI aufgerufen werden,
@@ -319,9 +321,20 @@ wenn der Benutzer eine Karte spielt."
 	(unless (member card (cards player) :test #'equalp)
 	  ;; absichern, dass Spieler nur Karten spielen, die sie auf der Hand haben
 	  (error "Spieler besitzt diese Karte nicht! Karte nicht gesendet!"))
+	(when (last (current-trick player))
+	  ;; this card is just a supplement
+	  (unless (same-suit-p (last (current-trick player))
+			       card
+			       (car (game-declaration player)))
+	    ;; player didn't follow suit
+	    (when (find-if (rcurry (curry 'same-suit-p (last (current-trick player))) (car (game-declaration player)))
+			   (cards player))
+	      ;; there are possible cards however, signal an error
+	      (error 'suit-not-followed-error))))
 	(setf (cards player) (delete card (cards player) :test #'equalp))
 	(send-to-all-others player 'card card)) ; von UI
-      (call-ui 'card player sender card))    ; von draußen
+      ;; the card comes from somebody else
+      (call-ui 'card player sender card))
   (push card (current-trick player))	     ; Karte für den aktuellen Stich eintragen
   (turn-table player)		       ; nächster Spieler
   (if (< (length (current-trick player)) 3)
