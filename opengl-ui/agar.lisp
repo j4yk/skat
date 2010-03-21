@@ -91,6 +91,9 @@ and body as the function body (declarations are useless)."
 	 ,@body)
        (cffi:callback ,callback-name))))
 
+(defun modal-windows-visible-p ()
+  (> (ag:agar-list-count (ag:lmodal ag:*view*)) 0))
+
 (defun get-rid-of-window (win)
   "Hides and detaches the window"
   (ag:hide-window win)

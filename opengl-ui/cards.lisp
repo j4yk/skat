@@ -536,21 +536,22 @@ pushes the trick away (trick-push) afterwards"
   (case-event event
     (:mouse-button-down-event (:x x :y y)
 			      (hide-last-trick module)
-			      (cond ((select-p module)
-				     ;; select a card if the maximum number of selectable cards
-				     ;; has not yet been reached, if the card is already selected
-				     ;; unselect it
-				     (let ((card (select-card module x y)))
-				       (when card
-					 (unless (and (= (length (selected-cards module)) (n-max-select module))
-						      (not (member card (selected-cards module) :test #'equalp)))
-					   (toggle-selected-card module card)))))
-				    ((choose-card-p module)
-				     ;; remember a card that was clicked on
-				     (let ((card (select-card module x y)))
-				       (when card
-					 (with-slots (candidate-card) module
-					   (setf candidate-card card)))))))
+			      (unless (modal-windows-visible-p)
+				(cond ((select-p module)
+				       ;; select a card if the maximum number of selectable cards
+				       ;; has not yet been reached, if the card is already selected
+				       ;; unselect it
+				       (let ((card (select-card module x y)))
+					 (when card
+					   (unless (and (= (length (selected-cards module)) (n-max-select module))
+							(not (member card (selected-cards module) :test #'equalp)))
+					     (toggle-selected-card module card)))))
+				      ((choose-card-p module)
+				       ;; remember a card that was clicked on
+				       (let ((card (select-card module x y)))
+					 (when card
+					   (with-slots (candidate-card) module
+					   (setf candidate-card card))))))))
     (:mouse-motion-event (:x x :y y)
 			 (declare (optimize speed))
 			 ;; save mouse pos
@@ -558,17 +559,18 @@ pushes the trick away (trick-push) afterwards"
 			   (setf (aref last-mouse-pos 0) x
 				 (aref last-mouse-pos 1) y)))
     (:mouse-button-up-event (:x x :y y)
-			    (cond ((choose-card-p module)
-				   ;; if a clicked card is still the same
-				   ;; as the one where the click began then send it
-				   ;; else discard that card
-				   (let ((card (select-card module x y)))
-				     (if card
-					 (with-slots (candidate-card) module
-					   (if (equalp card candidate-card)
-					       (send-card module card)
-					       (slot-makunbound module 'candidate-card)))
-					 (slot-makunbound module 'candidate-card))))))))
+			    (unless (modal-windows-visible-p)
+			      (cond ((choose-card-p module)
+				     ;; if a clicked card is still the same
+				     ;; as the one where the click began then send it
+				     ;; else discard that card
+				     (let ((card (select-card module x y)))
+				       (if card
+					   (with-slots (candidate-card) module
+					     (if (equalp card candidate-card)
+						 (send-card module card)
+						 (slot-makunbound module 'candidate-card)))
+					   (slot-makunbound module 'candidate-card)))))))))
 
 (defmethod timeout-callback ((module cards) do-method timeout-ident)
   (declare (optimize debug))

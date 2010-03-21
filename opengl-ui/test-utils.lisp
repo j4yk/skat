@@ -45,6 +45,7 @@
 (defun setup-ui ()
   (unless *ui*
     (setq *ui* (make-instance 'opengl-ui))
+    (start *UI*)
     (unless (find-module 'agar *ui*)
       (insert-module (make-instance 'agar :ui *ui*) *ui*)))
   *ui*)
