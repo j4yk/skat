@@ -501,11 +501,11 @@ prohibit further reaction on clicks on the cards"
   (hide-last-trick module)
   (with-slots (own-tricks left-tricks right-tricks middle-stack)
       module
+    ;; remember this trick as the latest trick
+    (setf (last-trick module) (cons direction (mapcar #'copy-ui-card middle-stack)))
     ;; flip the cards in the middle
     (dolist (ui-card middle-stack)
       (setf (ui-card-covered-p ui-card) t))
-    ;; remember this trick as the latest trick
-    (setf (last-trick module) (cons direction middle-stack))
     ;; push the trick cards to trick stack
     (ecase direction
       (:self (setf own-tricks (nconc own-tricks middle-stack)))
