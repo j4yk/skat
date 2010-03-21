@@ -102,8 +102,12 @@ identische Kartenobjekte zu erzeugen."
 Trümpfe gelten als eigene Farbe."
   (if (or (eq (suit card1) game)
 	  (and (not (eq game :null)) (eq (rank card1) :jack)))
+      ;; card1 is trump suit
       (or (eq (suit card2) game) (eq (rank card2) :jack))
-      (eq (suit card1) (suit card2))))
+      ;; no trump suit
+      (and (eq (suit card1) (suit card2))
+	   ;; jack would be trump unless it's a null game
+	   (or (eq game :null) (not (eq (rank card2) :jack))))))
 
 (deftest "same-suit-p für Bube und Trumpfkarte" :category "Cards"
 	 :input-form (values #!DA #!HJ :diamonds)
