@@ -87,7 +87,7 @@ Error Conditions: invalid-request-sender-error"
       (push (list request-name sender request-args tries)
 	    (deferred-requests kernel))
       (setf (cdr (last (deferred-requests kernel)))
-	    (list request-name sender request-args tries))))
+	    (list (list request-name sender request-args tries)))))
 
 (defmethod get-deferred-request ((kernel kernel))
   "Pops a request from (deferred-requests kernel) and returns it with (values-list)"
@@ -105,19 +105,25 @@ Error Conditions: invalid-request-sender-error"
 		  ;; don't get the deferred request instantly again
 		  (progn (setf defer nil) (comm:get-request (comm kernel)))
 		  ;; get deferred ones first, then freshly arrived
-		  (or (get-deferred-request kernel) (comm:get-request (comm kernel))))
+		  (let ((r (multiple-value-list (get-deferred-request kernel))))
+		    (if r
+			(values-list r)
+			(comm:get-request (comm kernel)))))
 	    (verbose 1 (format *debug-io* "~%kernel: processing ~a ~a from ~a, try ~a"
 			       request-name request-args sender (or tries 1)))
-	    (when (> (or tries 1) 5)
-	      (error "Request ~a ~a from ~a would be handled for the sixth time now!"
-		     request-name request-args sender))
-	    (restart-case (apply (handler-fn request-name) kernel sender request-args)
-	      (retry () :report "Process the request again"
-		     (comm::prepend-request (comm kernel) sender request-name request-args))
-	      (retry-later () :report "Process the request again after the next request has been processed"
-			   (defer-request kernel request-name sender request-args (if tries (1+ tries) 1))
-			   (setf defer t))
-	      (continue () :report "Skip this request"))))))
+	    (restart-case (when (> (or tries 1) 5)
+			    (error "Request ~a ~a from ~a signalled an error already ~a times!"
+				   request-name request-args sender (1- tries)))
+	      (retry () :report "Call the kernel handler again anyway"))
+	    (unless (null request-name)
+	      ;; call the handler function and provide some restarts
+	      (restart-case (apply (handler-fn request-name) kernel sender request-args)
+		(retry () :report "Call the kernel handler again immediately"
+		       (comm::prepend-request (comm kernel) sender request-name request-args))
+		(retry-later () :report "Call the kernel handler again after another request has been processed"
+			     (defer-request kernel request-name sender request-args (if tries (1+ tries) 1))
+			     (setf defer t))
+		(continue () :report "Skip this request")))))))
 
 (define-condition invalid-kernel-state-error (error)
   ((kernel-class :accessor kernel-class :initarg :kernel-class)
