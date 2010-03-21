@@ -180,8 +180,8 @@ Hands the cards over to the cards module."
     (listen-to module bidder)))
 
 (defhandler ui:bid (opengl-ui value)
-  (let ((module (find-module 'bidding ui)))
-    (bid-received module ui:sender value)))
+  (with-modules (bidding)
+    (bid-received bidding ui:sender value)))
 
 (defhandler ui:join (opengl-ui value)
   (let ((module (find-module 'bidding ui)))

@@ -278,9 +278,19 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
 		   (car (game-point-levels module)))))
 
 (defmethod pass-received ((module bidding) sender-address value)
-  (pass-received (if (equal sender-address (bidder module))
-		     (bidder-window module)
-		     (listener-window module)) sender-address value))
+  ;; 1. case: player is bidder: impossible
+  ;; 2. case: sender is bidder: pass bidder window
+  ;; 3. case: third is bidder: pass listener window
+  ;; 4. case: player does not yet know the bidder (i. e. the first bidder passed instantly)
+  (if (slot-boundp module 'bidder)
+      (pass-received (if (equal sender-address (bidder module))
+			 (bidder-window module)
+			 (listener-window module)) sender-address value)
+      (progn
+	;; recognize him as the bidder and give him a bidder window
+	(bid-received module sender-address 0)
+	;; and try again now
+	(pass-received module sender-address value))))
 
 (defmethod listen-to ((module bidding) bidder-address)
   "Hide listener window and initialize own-listener-window"
@@ -296,6 +306,7 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
 (defmethod start-bidding ((module bidding) listener-address min-value)
   "Show own bidding window"
   (setf (bidder-p module) t
+	(bidder module) t
 	(game-point-levels module)
 	(kern:cut-away-game-point-levels min-value (game-point-levels module)))
   (if (equal listener-address (left-player module))
