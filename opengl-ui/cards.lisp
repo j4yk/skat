@@ -22,7 +22,8 @@
 		   :documentation "Function calls to be done if some
 		   timeouts have passed.")
    (timeouts :accessor timeouts)
-   (last-mouse-pos :accessor last-mouse-pos :initform #(0 0) :documentation "Saves the last known mouse position"))
+   (last-mouse-pos :accessor last-mouse-pos :initform #(0 0) :type (vector integer)
+		   :documentation "Saves the last known mouse position"))
   (:documentation "Module zum Zeichnen der Karten und zum Verarbeiten kartenspezifischer Aktionen"))
 
 (defmacro queued-args (module timeout-ident)
@@ -250,9 +251,9 @@ If the card is already selected it will be removed from that list."
 		     ;; translations
 		     (delta-x (* rot-radius (sin (the (float 0.0 4.0) zrot-angle-rad))))
 		     (delta-y (- (* rot-radius (- 1 (cos (the (float 0.0 4.0) zrot-angle-rad))))))
-		     (delta-z (+ (* (float n) dz) (- bend-radius (sqrt (- (* bend-radius bend-radius) (* delta-x delta-x))))))
+		     (delta-z (+ (* (float n) dz) (- bend-radius (sqrt (abs (- (* bend-radius bend-radius) (* delta-x delta-x)))))))
 		     ;; rotation angle for bending
-		     (bend-rot-angle (- (* (/ (acos (/ delta-x bend-radius)) pi) 180) 90)))
+		     (bend-rot-angle (- (* (/ (the float (acos (/ delta-x bend-radius))) pi) 180) 90)))
 		(gl:translate delta-x delta-y delta-z)
 		(gl:rotate bend-rot-angle 0 1 0) ; bend rotate in-place
 		(gl:rotate zrot-angle 0 0 1)) ; fan rotate in-place
@@ -581,8 +582,8 @@ pushes the trick away (trick-push) afterwards"
 			 (declare (optimize speed))
 			 ;; save mouse pos
 			 (with-slots (last-mouse-pos) module
-			   (setf (aref last-mouse-pos 0) x
-				 (aref last-mouse-pos 1) y)))
+			   (setf (aref (the (simple-array integer) last-mouse-pos) 0) x
+				 (aref (the (simple-array integer) last-mouse-pos) 1) y)))
     (:mouse-button-up-event (:x x :y y)
 			    (unless (modal-windows-visible-p)
 			      (cond ((choose-card-p module)
