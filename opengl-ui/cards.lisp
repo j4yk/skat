@@ -237,7 +237,7 @@ If the card is already selected it will be removed from that list."
   (with-pushed-matrix :modelview
     (let ((ncards (length cards))
 	  (dzrot (float (/ 90 8)))		; 8 cards make up 90°
-	  (dz 0.1))
+	  (dz 0.15))
       (loop
 	 for n from 1 to ncards
 	 and card in cards
