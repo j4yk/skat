@@ -94,6 +94,16 @@
 (defmethod own-address ((module players) address)
   (let*-slots module ((own-address address))))
 
+(defmethod knows-declarer-p ((module players))
+  (slot-boundp module 'declarer-address))
+
+(defmethod get-own-address ((module players))
+  (slot-value module 'own-address))
+
+(defmethod get-playmates-addresses ((module players))
+  (with-slots (left-player-name right-player-name) module
+    (list left-player-name right-player-name)))  
+
 (defmethod introduce-playmates ((module players) name-left name-right)
   "Remember their names"
   (let*-slots module

@@ -65,6 +65,12 @@ STUB"
   (with-modules (players)
     (player-name players player-address)))
 
+(defmethod send-bid ((ui opengl-ui) value)
+  "Sends a bit request to the kernel and updates the player info window"
+  (call-kernel-handler ui 'bid value)
+  (with-modules (players)
+    (update-bid-value players (get-own-address players) value)))
+
 (defmethod take-skat ((ui opengl-ui))
   "Send hand-decision to kernel, taking the skat."
   (call-kernel-handler ui 'hand-decision nil))
@@ -85,8 +91,8 @@ STUB"
     (let ((skat (selected-cards cards)))
       (unless (= 2 (length skat))
 	(error 'wrong-number-of-cards-error))
-      (remove-cards cards skat)
       (end-choose-skat cards)		; cleanup
+      (remove-cards cards skat)
       (call-kernel-handler ui 'skat (mapcar #'ui-card-card skat)) ; pass it on
       (query-declaration ui nil))))	  ; processed the Skat, so no hand
 
@@ -121,10 +127,12 @@ and resorts cards when appropriate"
 
 (defmethod leave ((ui opengl-ui))
   "Leave the table and your playmates and send unregister to kernel"
-  (with-modules (players cards login-and-register)
+  (with-modules (players cards login-and-register general-buttons bidding)
     (call-kernel-handler ui 'unregister)
+    (declarer bidding nil)		; hide bidding windows
     (leave players)
     (leave cards)
+    (hide general-buttons)
     (query-registration login-and-register)))
 
 ;; request handlers
@@ -264,12 +272,17 @@ Adds two cards and lets the player select two."
 (defhandler game-over (opengl-ui prompt)
   "Spiel ist/wurde beendet.
 prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
-  (with-modules (after-game players)
+  (with-modules (after-game players general-buttons)
+    (no-trick-available general-buttons)
     (if (game-report-shown-p after-game)
 	(game-over-again after-game prompt)
 	(show-game-report after-game prompt
-			  (get-declarer-name players)
-			  (get-defenders-names players)))))
+			  (if (knows-declarer-p players)
+			      (get-declarer-name players)
+			      (get-own-address players))
+			  (if (knows-declarer-p players)
+			      (get-defenders-names players)
+			      (get-playmates-addresses players))))))
 
 (defhandler cards-score (opengl-ui declarer-score defenders-score)
   "Punkteauszählung vom Host"
@@ -280,7 +293,7 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
   "Spielergebnis vom Host"
   (with-modules (after-game)
     (show-declaration after-game declaration won)
-    (show-score-difference after-game score)))
+    (show-score-difference after-game (* (if (not won) -1 1) score))))
 
 (defhandler score-table (opengl-ui player1-address player1-score
 				   player2-address player2-score
@@ -292,8 +305,12 @@ prompt gibt an, ob nach einem neuen Spiel gefragt werden soll"
 		   player3-address player3-score)
     ;; dispatch the addresses into roles and pass the scores
     ;; in correct order to after-game module
-    (let ((decl-addr (declarer-address players))
-	  (defenders-addrs (get-defenders-addresses players))
+    (let ((decl-addr (if (knows-declarer-p players)
+			 (declarer-address players)
+			 (get-own-address players)))
+	  (defenders-addrs (if (knows-declarer-p players)
+			       (get-defenders-addresses players)
+			       (get-playmates-addresses players)))
 	  (addrs (list player1-address player2-address player3-address))
 	  (scores (list player1-score player2-score player3-score)))
       (show-score-table after-game

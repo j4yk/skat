@@ -24,6 +24,10 @@
   (with-slots (show-last-trick-btn) w
     (ag:enable-widget show-last-trick-btn)))
 
+(defmethod no-trick-available ((w general-buttons-window))
+  (with-slots (show-last-trick-btn) w
+    (ag:disable-widget show-last-trick-btn)))
+
 (defclass general-buttons (module)
   ((window :accessor window)))
 
@@ -45,6 +49,9 @@
   (hide (window module))
   (leave (ui module)))
 
+(defmethod hide ((module general-buttons))
+  (hide (window module)))
+
 (defmethod leave-requested ((module general-buttons))
   "Asks with a dialog whether the player is sure"
   (ag:prompt-options "Willst du die Runde wirklich verlassen?"
@@ -64,3 +71,6 @@
 (defmethod trick-available ((module general-buttons))
   "Enables the show-last-trick button"
   (trick-available (window module)))
+
+(defmethod no-trick-available ((module general-buttons))
+  (no-trick-available (window module)))
