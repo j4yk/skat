@@ -367,13 +367,17 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 	(push current-trick tricks)
 	;; Platz machen für den nächsten Stich
 	(slot-makunbound host 'current-trick)
-	(if (= 10 (length tricks))	; war das der letzte Stich?
-	    (switch-to-game-over host t) ; dann beende das Spiel
-	    ;; nein? dann sage dem Stichsieger, dass er anspielen möge
-	    ;; und schiebe ihn an die Tischfront
-	    (progn
-	      (turn-table-to host trick-winner)
-	      (comm:send (comm host) trick-winner 'choose-card)))))))
+	(if (and (eq (car (declarer-declaration host)) :null)
+		 (funcall (address-compare-function host) trick-winner (current-declarer host)))
+	    ;; null declaring player got the trick => lost
+	    (switch-to-game-over host t)
+	    (if (= 10 (length tricks))	; war das der letzte Stich?
+		(switch-to-game-over host t) ; dann beende das Spiel
+		;; nein? dann sage dem Stichsieger, dass er anspielen möge
+		;; und schiebe ihn an die Tischfront
+		(progn
+		  (turn-table-to host trick-winner)
+		  (comm:send (comm host) trick-winner 'choose-card))))))))
 
 ;; state: game-over. Das Spiel ist vorbei
 
