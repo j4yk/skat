@@ -346,4 +346,9 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
   (mapcar #'hide
 	  (mapcar (curry #'slot-value module)
 		  (list 'bidder-window 'listener-window 'own-bidder-window)))
+  ;; reset
+  (setf (bidder-p module) nil
+	(listener-p module) nil)
+  (slot-makunbound module 'bidder)
+  (slot-makunbound module 'listener)
   (detach-own-listener-window module))
