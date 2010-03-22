@@ -126,7 +126,8 @@
   (slot-makunbound module 'declarer-address)
   ;; reset the role displays
   (mapcar #'(lambda (slot)
-	      (setf (role (slot-value module slot)) ""))
+	      (setf (role (slot-value module slot)) "")
+	      (setf (additional-info (slot-value module slot)) ""))
 	  (list 'left-player-window 'right-player-window
 		'own-player-window))
   (values))
@@ -206,6 +207,18 @@
 					(:left 'left-player-window)
 					(:right 'right-player-window))))
 	    score))))
+
+(defmethod enter-declaration ((module players) declarer-address declaration)
+  "Shows the declaration in the player's info window"
+  (with-slots (own-address left-player-name right-player-name) module
+    (setf (additional-info
+	   (slot-value module (cond ((equal declarer-address own-address)
+				     'own-player-window)
+				    ((equal declarer-address left-player-name)
+				     'left-player-window)
+				    ((equal declarer-address right-player-name)
+				     'right-player-window))))
+	  (short-declaration-text declaration))))
 
 (defmethod leave ((module players))
   "Removes the player info windows and the saved player data"

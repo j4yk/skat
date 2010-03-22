@@ -65,9 +65,9 @@
 				     (:file error-handling :depends-on (module agar))
 				     (:file login-and-register :depends-on (module agar))
 				     (:file bidding :depends-on (module agar))
-				     (:file players :depends-on (module agar))
 				     (:file declaration :depends-on (module agar))
-				     (:file after-game :depends-on (module agar))
+				     (:file players :depends-on (module agar declaration))
+				     (:file after-game :depends-on (module agar declaration))
 				     (:file cards :depends-on (gfx-utils selection
 									 gl-ui-utils agar))
 				     (:file general-buttons :depends-on (module agar))

@@ -1,42 +1,5 @@
 (in-package gl-ui)
 
-(defun declaration-atom-text (atom)
-  (ecase atom
-    (:with "mit") (:without "ohne") (1 "1") (2 "2") (3 "3") (4 "4")
-    (:diamonds "Karo") (:hearts "Herz") (:spades "Pik") (:clubs "Kreuz")
-    (:grand "Grand") (:hand "Hand") (:ouvert "Ouvert")
-    (:declared-schneider "Schneider angesagt") (:played-schneider "Schneider gespielt")
-    (:declared-schwarz "Schwarz angesagt") (:played-schwarz "Schwarz gespielt")))
-
-(defun find-if-in-set (set sequence)
-  (find-if (rcurry #'member set) sequence))
-
-(defun first-declaration-part (declaration)
-  (delete nil 
-	  (mapcar (rcurry #'find-if-in-set declaration)
-		  (list '(:diamods :hearts :spades :clubs :grand :null) '(:hand)
-			'(:with :without) '(1 2 3 4)))
-	  :count 4))
-
-(defun schneider-declaration-part (declaration)
-  (delete nil
-	  (mapcar (rcurry #'find-if-in-set declaration)
-		  (list '(:declared-schneider) '(:played-schneider)))
-	  :count 2))
-
-(defun schwarz-declaration-part (declaration)
-  (delete nil
-	  (mapcar (rcurry #'find-if-in-set declaration)
-		  (list '(:declared-schwarz) '(:played-schwarz)))
-	  :count 2))
-
-(defun declaration-text (declaration)
-  (format nil "~a~%~a~%~a~%~a"
-	  (format nil "~{~a ~}" (mapcar #'declaration-atom-text (first-declaration-part declaration)))
-	  (format nil "~{~a ~}" (mapcar #'declaration-atom-text (schneider-declaration-part declaration)))
-	  (format nil "~{~a ~}" (mapcar #'declaration-atom-text (schwarz-declaration-part declaration)))
-	  (if (find :ouvert declaration) (declaration-atom-text :ouvert) "")))
-
 (defclass game-report-window (agar-window)
   ((declarer :initarg :declarer)
    (defenders :initarg :defenders)
