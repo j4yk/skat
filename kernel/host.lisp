@@ -398,7 +398,38 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 		     (second registered-players)
 		     (gethash (second registered-players) score-table)
 		     (third registered-players)
-		     (gethash (third registered-players) score-table))))		     
+		     (gethash (third registered-players) score-table))))
+
+(defun calculate-game-result-null (tricks declarer address-equal-fn more-declarations)
+  "Returns (values declaration won-p score) for a null game"
+  (let ((won (null (find-if (lambda (trick)
+			      (funcall address-equal-fn
+				       (trick-winner trick :null)
+				       declarer)) tricks))))
+    (let ((game-points (* (if (not won) 2 1)
+			  (if (member :hand more-declarations)
+			      (if (member :ouvert more-declarations)
+				  59		; null hand ouvert
+				  35)		; null hand
+			      (if (member :ouvert more-declarations)
+				  46		; null ouvert
+				  23)))))	; null
+      (values (cons :null more-declarations) won game-points))))
+
+(defun calculate-game-result-standard (declarer-score defenders-score declaration flush-run-value)
+  (let ((won (if (member :declared-schwarz declaration)
+		 (= 0 defenders-score) ; schwarz
+		 (if (member :declared-schneider declaration)
+		     (>= declarer-score 90) ; schneider
+		     (> declarer-score 60))))) ; default
+    ;; add played-schneider and played-schwarz
+    (when (>= (if won declarer-score defenders-score) 90)
+      (push :played-schneider (cdr declaration))
+      (when (= (if won declarer-score defenders-score) 120)
+	(push :played-schwarz (cdr declaration))))
+    (let ((game-points (* (if (not won) 2 1)
+			  (game-points declaration flush-run-value))))
+      (values declaration won game-points))))
 
 (define-state-switch-function game-over (host prompt &optional just-send-game-over)
   "Spiel beenden und auswerten."
@@ -406,31 +437,32 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   (setf (want-game-start host) nil) ; setze die Liste der Spielwilligen zurück
   (slot-makunbound host 'current-trick)			; aufräumen
   (unless just-send-game-over
-    (multiple-value-bind (declarer-score defenders-score) ; Augen auszählen
-	(count-card-points (tricks host) (current-declarer host) (address-compare-function host))
-      (let ((declarer-score (apply #'+ declarer-score (mapcar #'card-points (skat host))))) ; Augen im Skat nicht vergessen
-	(send-to-players host 'cards-score declarer-score defenders-score) ; und verschicken
-	;; nun die Augen auswerten...
-	(with-slots (jacks declaration current-declarer score-table) host
-	  (let ((won (> declarer-score 60))) ; mind. 61 Augen zum Gewinnen
-	    (if won
-		(progn
-		  (when (>= declarer-score 90) ; Schneider
-		    (setf declaration (nconc declaration (list :played-schneider)))
-		    (when (= declarer-score 120) ; Schwarz
-		      (setf declaration (nconc declaration (list :played-schwarz)))))
-		  (let ((game-points (game-points declaration (flush-run-value host))))
-		    (send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
-		    (incf (gethash current-declarer score-table) game-points)))
-		(progn
-		  (when (<= declarer-score 30) ; Schneider
-		    (setf declaration (nconc declaration (list :played-schneider)))
-		    (when (= declarer-score 0) ; Schwarz
-		      (setf declaration (nconc declaration (list :played-schwarz)))))
-		  (let ((game-points (* 2 (game-points declaration (flush-run-value host)))))
-		    (send-to-players host 'game-result (append (jacks-flush-run jacks) declaration) won game-points)
-		    (decf (gethash current-declarer score-table) game-points)))))))
-      (send-score-table host))))
+    (let ((null-p (eq (car (declarer-declaration host)) :null)))
+      (multiple-value-bind (declarer-score defenders-score)
+	  (count-card-points (tricks host) (current-declarer host) (address-compare-function host))
+	(unless null-p
+	  ;; don't forget the points in the skat
+	  (incf declarer-score (reduce #'+ (mapcar #'card-points (skat host)))))
+	(send-to-players host 'cards-score declarer-score defenders-score)
+	(multiple-value-bind (declaration won-p game-points)
+	    (if null-p
+		(calculate-game-result-null (tricks host)
+					    (current-declarer host)
+					    (address-compare-function host)
+					    (cdr (declarer-declaration host)))
+		(calculate-game-result-standard declarer-score defenders-score
+						(declarer-declaration host)
+						(flush-run-value host)))
+	  (send-to-players host
+			   'game-result
+			   (append (if null-p nil (jacks-flush-run (jacks host)))
+				   ;; prepend the flush run to the declaration
+				   declaration)
+			   won-p game-points)
+	  (if won-p
+	      (incf (gethash (current-declarer host) (score-table host)) game-points)
+	      (decf (gethash (current-declarer host) (score-table host)) game-points))))))
+  (send-score-table host))
 
 (defhandler game-start (registration game-over) :any (host)
   "Behandelt den Wunsch eines Spielers nach einem weiteren Spiel."
