@@ -91,6 +91,13 @@
       (ag:size-hint-label player1-diff-label 0 text)))
   (autosize w))
 
+(defmethod game-over-again ((w game-report-window) prompt-p)
+  "Updates the enabled/disabled state of the next-game button"
+  (with-slots (next-game-btn) w
+    (if prompt-p
+	(ag:enable-widget next-game-btn)
+	(ag:disable-widget next-game-btn))))
+
 (defclass after-game (module)
   ((game-report-window)))
 
