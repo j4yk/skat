@@ -66,10 +66,10 @@
 	     (otherwise		; schneider, schwarz, ouvert
 	      ;; always include the lower ones
 	      (case selected-decls
-		(:ouvert (list :schneider :schwarz :ouvert))
-		       (:schwarz (list :schneider :schwarz))
-		       (:schneider (list :schneider))
-		       (otherwise nil))))))) ; don't append :hand a second time
+		(:ouvert (list :declared-schneider :declared-schwarz :ouvert))
+		(:schwarz (list :declared-schneider :declared-schwarz))
+		(:schneider (list :declared-schneider))
+		(otherwise nil))))))) ; don't append :hand a second time
 
 (defmethod send-it ((w select-declaration-window))
   "Hides the window and sends the declaration to the kernel"
