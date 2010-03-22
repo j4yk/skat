@@ -5,7 +5,9 @@
 			:hostname "draugr.de" :domain ""
 			:resource resource :mechanism :sasl-plain))
 
+(in-package kern)
+
 (defun test-host-login-data ()
-  (make-xmpp-login-data :username "skat" :password "skat"
-			:hostname "draugr.de" :domain ""
-			:resource "host" :mechanism :sasl-plain))
+  (comm::make-xmpp-login-data :username "skat" :password "skat"
+			      :hostname "draugr.de" :domain ""
+			      :resource "host" :mechanism :sasl-plain))
