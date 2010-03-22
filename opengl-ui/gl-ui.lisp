@@ -96,6 +96,16 @@ and presents the player the declaration dialog."
   (call-kernel-handler ui 'hand-decision t)
   (query-declaration ui t))
 
+(defmethod send-declaration ((ui opengl-ui) declaration)
+  "Sends the declaration to the kernel, sets own declaration text
+and resorts cards when appropriate"
+  (call-kernel-handler ui 'declaration declaration)
+  (with-modules (cards players)
+    ;; enter own declaration
+    (enter-declaration players (get-own-address players) declaration)
+    (when (eq (car declaration) :null)
+      (sort-cards-for-null cards))))
+
 (defmethod play-card ((ui opengl-ui) card)
   "Sendet eine Karte zum Spielen an den Kernel zurück"
   (handler-bind ((kern:suit-not-followed-error
@@ -184,16 +194,18 @@ Hands the cards over to the cards module."
     (listen-to module bidder)))
 
 (defhandler ui:bid (opengl-ui value)
-  (with-modules (bidding)
-    (bid-received bidding ui:sender value)))
+  (with-modules (bidding players)
+    (bid-received bidding ui:sender value)
+    (update-bid-value players ui:sender value)))
 
 (defhandler ui:join (opengl-ui value)
   (let ((module (find-module 'bidding ui)))
     (join-received module ui:sender value)))
 
-(defhandler ui:reply-to-bid (opengl-ui value)
-  (let ((module (find-module 'bidding ui)))
-    (query-join module value)))
+(defhandler reply-to-bid (opengl-ui value)
+  (with-modules (players bidding)
+    (update-bid-value players ui:sender value)
+    (query-join bidding value)))
 
 (defhandler ui:pass (opengl-ui value)
   (let ((module (find-module 'bidding ui)))
@@ -225,9 +237,13 @@ Adds two cards and lets the player select two."
     (select-skat cards)
     (query-skat game-declaration)))
 
-(defhandler ui:declaration (opengl-ui declaration)
-  (with-modules (game-declaration players)
-    (announce-declaration game-declaration (player-name players ui:sender) declaration)))
+(defhandler declaration (opengl-ui declaration)
+  (with-modules (game-declaration players cards)
+    (announce-declaration game-declaration (player-name players ui:sender) declaration)
+    (enter-declaration players ui:sender declaration)
+    (maybe-remove-other-players-skat cards)
+    (when (eq (car declaration) :null)
+      (sort-cards-for-null cards))))
 
 (defhandler choose-card (opengl-ui)
   "Host hat mitgeteilt, dass man am Stich ist."

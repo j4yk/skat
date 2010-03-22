@@ -128,8 +128,7 @@
 (defmethod send-it ((w select-declaration-window))
   "Hides the window and sends the declaration to the kernel"
   (hide w)
-  (call-kernel-handler
-   (ui (module w)) 'declaration (declaration-list w)))
+  (send-declaration (ui (module w)) (declaration-list w)))
 
 (defmethod initialize-instance :after ((w select-declaration-window) &key)
   "Instanciates all possible widgets for the window, including the

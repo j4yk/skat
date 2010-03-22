@@ -126,11 +126,21 @@
   (slot-makunbound module 'declarer-address)
   ;; reset the role displays
   (mapcar #'(lambda (slot)
+	      (setf (bid-value (slot-value module slot)) 0)
 	      (setf (role (slot-value module slot)) "")
 	      (setf (additional-info (slot-value module slot)) ""))
 	  (list 'left-player-window 'right-player-window
 		'own-player-window))
   (values))
+
+(defmethod update-bid-value ((module players) player-address value)
+  "Updates the player info window label for bidding values"
+  (setf (bid-value (slot-value module (cond ((equal player-address (slot-value module 'own-address))
+					     'own-player-window)
+					    ((equal player-address (slot-value module 'left-player-name))
+					     'left-player-window)
+					    ((equal player-address (slot-value module 'right-player-name))
+					     'right-player-window)))) value))
 
 (defmethod declarer ((module players) declarer-address)
   (with-slots (own-address left-player-name right-player-name
