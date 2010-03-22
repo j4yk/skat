@@ -123,7 +123,8 @@ Error Conditions: invalid-request-sender-error"
 		(retry-later () :report "Call the kernel handler again after another request has been processed"
 			     (defer-request kernel request-name sender request-args (if tries (1+ tries) 1))
 			     (setf defer t))
-		(continue () :report "Skip this request")))))))
+		(skip-request () :report "Skip this request")
+		(continue () :report "Skip this request (equal to skip-request)")))))))
 
 (define-condition invalid-kernel-state-error (error)
   ((kernel-class :accessor kernel-class :initarg :kernel-class)

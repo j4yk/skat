@@ -397,7 +397,10 @@ returns sorted hit-records."
 					      ;; if the requests are not in the right order
 					      ;; defer the ones that do not fit
 					      (kern:request-state-mismatch
-					       #'(lambda (condition) (invoke-restart 'kern:retry-later))))
+					       #'(lambda (condition)
+						   (if (eq (kern::state condition) 'kern::unregistered)
+						       (invoke-restart 'kern::skip-request)
+						       (invoke-restart 'kern:retry-later)))))
 				 (handle-swank-requests)
 				 (when (slot-boundp ui 'kernel)
 				   ;; let the kernel work
