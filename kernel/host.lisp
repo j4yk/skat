@@ -33,10 +33,12 @@
 
 (defun shuffle (list)
   "Gibt die Liste mit weitesgehend zufällig veränderter Reihenfolge der Elemente zurück."
-  (if (null list)
-      nil
-      (let ((card (nth (random (length list)) list)))
-	(cons card (shuffle (remove card list :count 1))))))
+  (let ((random-state (make-random-state t)))
+    (do* ((list list (remove card list :count 1))
+	  (result nil (push card result))
+	  (card (nth (random (length list) random-state) list)
+		(if (null list) nil (nth (random (length list) random-state) list))))
+	 ((null list) result))))
 
 (deftest "shuffle-test" :category "Host"
 	 :test-fn #'(lambda ()
