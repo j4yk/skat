@@ -96,9 +96,9 @@
   (let*-slots w
       ((selected-bid-value-fv (make-foreign-variable :ptr (alloc-finalized w :pointer)))
        (window (ag:window-new :noborders :notitle))
-       (client-hbox (ag:hbox-new window))
+       (client-hbox (expanded (ag:hbox-new window)))
        (bid-value-ucombo
-       	(expanded (ag:new-polled-ucombo client-hbox nil
+       	(expanded-v (ag:new-polled-ucombo client-hbox nil
 					(lambda-event-handler event
 					  (let ((tlist (ag:event-self event)))
 					    (fill-tlist-with-game-point-levels
@@ -111,14 +111,8 @@
 				      (lambda-event-handler event
 					(declare (ignore event))
 					(pass w)) "")))
-    (ag:button-text (ag:ucombo-button bid-value-ucombo) "XXXX")
     (ag:window-set-caption window "Reizwert ansagen")
-    ;; insert a dummy label to make the window a little bit bigger by default
-    (let ((dummy-label (ag:label-new-string client-hbox "XXX")))
-      (ag:hide-widget dummy-label))
-    (ag:set-event bid-value-ucombo "ucombo-selected" (lambda-event-handler event
-						       (declare (ignore event))
-						       (ag:window-update window)) "")
+    (ag:set-button-padding (ag:ucombo-button bid-value-ucombo) 10 10 -1 -1)
     ;; bind the pointer of the selected tlist item to selected-bid-value-fv
     ;; #'fill-tlist-with-game-point-levels will store the actual integer
     ;; typecasted as a pointer in each tlist-item
@@ -131,7 +125,9 @@
 
 (defmethod (setf selected-bid-value) (value (w own-bidder-window))
   (with-slots (bid-value-ucombo) w
+    ;; update the Tlist
     (ag:post-event (null-pointer) (ag:ucombo-list bid-value-ucombo) "tlist-poll" "")
+    ;; select the wanted item
     (ag:tlist-select-ptr (ag:ucombo-list bid-value-ucombo) (cffi:make-pointer value))))
 
 (defmethod bid ((w own-bidder-window))
@@ -162,7 +158,7 @@
 					 :size (cffi:with-foreign-string ((p size) bidder)
 						 size)))
        (bid-value-fv (make-foreign-variable :ptr (alloc-finalized w :int)))
-       (window (ag:window-new :nobuttons))
+       (window (ag:window-new :nobuttons :notitle))
        (client-hbox (expanded (ag:hbox-new window)))
        (text-label (expanded (ag:new-polled-label client-hbox nil "%s reizt %i"
 						  (foreign-variable-ptr bidder-fv)
@@ -307,17 +303,19 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
   "Show own bidding window"
   (setf (bidder-p module) t
 	(bidder module) t
+	(listener module) listener-address
 	(game-point-levels module)
 	(kern:cut-away-game-point-levels min-value (game-point-levels module)))
-  (if (equal listener-address (left-player module))
-      (move-left (listener-window module))
-      (move-right (listener-window module)))
   (start-bidding (own-bidder-window module) listener-address min-value))
 
 (defmethod send-bid ((module bidding) value)
   "Sends a bid request to the kernel"
   (hide (own-bidder-window module))
-  (call-kernel-handler (ui module) 'bid value)
+  (send-bid (ui module) value)
+  ;; update listener window
+  (if (equal (listener module) (left-player module))
+      (move-left (listener-window module))
+      (move-right (listener-window module)))
   (bid-sent (listener-window module)))
 
 (defmethod send-join ((module bidding) value)
