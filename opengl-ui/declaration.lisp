@@ -154,10 +154,10 @@ ones that aren't initially shown"
 	   (ag:new-label (null-pointer) nil
 			 none-possible-text)))
 	 (null-add-radio (expanded-v (ag:new-radio-int (null-pointer) nil
-						       (list "Normal" "Ouvert")
+						       (list "Normal")
 						       (foreign-variable-ptr null-add-fv))))
 	 (suit-add-radio (expanded-v (ag:new-radio-int (null-pointer) nil
-						       (list "Hand" "Schneider" "Schwarz" "Ouvert")
+						       (list "Hand" "Schneider" "Schwarz")
 						       (foreign-variable-ptr suit-add-fv))))
 	 (declare-btn
 	  (expanded-h
