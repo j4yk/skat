@@ -265,9 +265,10 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 
 (defhandler pass (bidding-1 bidding-2 bidding-3) (current-listener current-bidder) (host value)
   "Behandelt das Passen eines Mitspielers bei einem Reizwert."
-  (player-case sender
-    (current-listener			; listener passes => next bid must be higher
-     (setf (bidding-values host) (cdr (bidding-values host)))))
+  (when (slot-boundp host 'current-listener)
+    (player-case sender
+      (current-listener			; listener passes => next bid must be higher
+       (setf (bidding-values host) (cdr (bidding-values host))))))
   (ecase (state host)
     (bidding-1				; erster Pass
      (player-case sender
