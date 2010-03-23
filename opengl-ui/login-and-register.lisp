@@ -32,7 +32,7 @@
 						(format nil "Anscheinend braucht der Server~%lange für eine Antwort"))))
        (cancel-button (expanded-h (ag:new-button (null-pointer) nil "Abbrechen"
 						 (std-event-handler (cancel-login
-						 login-window))))))
+								     login-window t))))))
     (ag:window-set-caption window "Beim XMPP-Server einlogen")
     ;; initialize the timeout for login
     (ag:set-timeout wait-timeout (lambda-timeout-callback (obj ival arg)
@@ -41,10 +41,12 @@
 				   0) ; don't reschedule
 		    (null-pointer) nil)))
 
-(defmethod cancel-login ((login-window login-window))
+(defmethod cancel-login ((login-window login-window) send-unregister-p)
   "Hide the wait- and timeout-label and the cancel-button,
 enable the login-button and autosize the window"
   (with-slots (wait-label timeout-label cancel-button login-button window) login-window
+    (when send-unregister-p
+      (call-kernel-handler (ui (module login-window)) 'unregister))
     (mapcar (rcurry #'ensure-detached window)
 	    (list wait-label timeout-label cancel-button))
     (ag:enable-widget login-button)
@@ -53,7 +55,7 @@ enable the login-button and autosize the window"
 (defmethod show :before ((login-window login-window))
   "Make sure the wait- and timeout-labels are detached"
   ;; this is just like cancelling the login
-  (cancel-login login-window))
+  (cancel-login login-window nil))
 
 (defmethod send-login-data ((login-window login-window))
   (with-slots (window username-textbox server-hostname-textbox server-domain-textbox
