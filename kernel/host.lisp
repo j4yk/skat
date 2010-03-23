@@ -254,11 +254,13 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   `(cond
      ,@(loop for case in cases
 	  collect `((funcall (address-compare-function host) ,player (,(car case) host))
-		    ,@(cdr case)))
-     (t (error 'invalid-sender))))
+		    ,@(cdr case)))))
 
 (defhandler pass (bidding-1 bidding-2 bidding-3) (current-listener current-bidder) (host value)
   "Behandelt das Passen eines Mitspielers bei einem Reizwert."
+  (player-case sender
+    (current-listener			; listener passes => next bid must be higher
+     (setf (bidding-values host) (cdr (bidding-values host)))))
   (ecase (state host)
     (bidding-1				; erster Pass
      (player-case sender
@@ -283,7 +285,7 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
 	    ;; es hat schon jemand etwas gereizt und nicht gepasst, derjenige spielt
 	    (switch-to-declarer-found host)))))
     (bidding-3				; dritter Pass => Ramsch
-     (switch-to-game-over host t t))))	; solange bis Ramschen implementiert ist
+     (switch-to-game-over host t t))))	; sofern Ramschen irgendwann implementiert ist
 	  
 ;; state: declarer-found. Warte auf hand-decision.
 
