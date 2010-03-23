@@ -183,7 +183,7 @@ Beendet die XMPP-Verbindung."
 Sonst wird received-other-content signalisiert.
 note: this is executed in another thread!"
   (let ((read-message (handler-case (read-from-string (xmpp:body message))
-			(end-of-file () 'malformed)))
+			(error () :unprocessable)))
 	(sender (xmpp:from message)))
     (format *debug-io* "~%~a handles message from ~a: ~a" (address (comm-object connection))
 	    (xmpp:from message) (xmpp:body message))
