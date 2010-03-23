@@ -36,6 +36,7 @@ and calls the next method"
 (defun interactive-read-xmpp-login-data ()
   (macrolet ((query (prompt)
 	       `(progn (format *standard-output* "~a: " ,prompt)
+		       (force-output)
 		       (read-line *standard-input*))))
     (make-xmpp-login-data :username (query "Jabber-Benutzername")
 			  :hostname (query "Serveradresse")
