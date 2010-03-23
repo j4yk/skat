@@ -60,19 +60,39 @@ enable the login-button and autosize the window"
 		      resource-textbox password-textbox wait-label login-button
 		      wait-timeout)
       login-window
-    (call-kernel-handler (ui (module login-window)) 'login-data
-			 (comm::make-xmpp-login-data
-			  :username (ag:text username-textbox)
-			  :hostname (ag:text server-hostname-textbox)
-			  :domain (ag:text server-domain-textbox)
-			  :resource (ag:text resource-textbox)
-			  :password (ag:text password-textbox)
-			  :mechanism :sasl-plain))
-    (ensure-attached wait-label window)
-    ;; start the timer
-    (ag:schedule-timeout (null-pointer) wait-timeout (* 10 1000)) ; 10 Sekunden
-    (autosize login-window)
-    (ag:disable-widget login-button)))
+    (restart-case
+	(handler-bind ((comm:login-unsuccessful (curry #'invoke-restart 'continue)))
+	  (progn
+	    (ensure-attached wait-label window)
+	    ;; start the timer
+	    (ag:schedule-timeout (null-pointer) wait-timeout (* 10 1000)) ; 10 Sekunden
+	    (autosize login-window)
+	    (ag:disable-widget login-button)
+	    (call-kernel-handler (ui (module login-window)) 'login-data
+				 (comm::make-xmpp-login-data
+				  :username (ag:text username-textbox)
+				  :hostname (ag:text server-hostname-textbox)
+				  :domain (ag:text server-domain-textbox)
+				  :resource (ag:text resource-textbox)
+				  :password (ag:text password-textbox)
+				  :mechanism :sasl-plain))))
+      (continue (&optional condition)
+	:report "Show Login error and proceed"
+	(ag:delete-timeout (null-pointer) wait-timeout)
+	(ag:text-msg
+	 :error "Fehler beim Einloggen: ~{~a ~}"
+	 (if condition
+	     (typecase (comm:additional-information condition)
+	       (xmpp:xml-element
+		(let ((failure-element (comm:additional-information condition)))
+		  (loop for elm in (xmpp:elements failure-element)
+		     collect (xmpp:name elm))))
+	       (t (list "Unbekannter Fehler")))
+	     (list "Unbekannter Fehler")))
+	(ensure-detached wait-label window)
+	(autosize login-window)
+	(ag:enable-widget login-button)))))
+
 
 (defmethod login-timed-out ((login-window login-window))
   (with-slots (timeout-label cancel-button window) login-window

@@ -79,7 +79,8 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
      (unless (null (thread-commands comm))
        (let ((command (bt:with-lock-held ((lock comm))
 			(pop (thread-commands comm)))))
-	 (eval command)))))
+	 (when (eq (eval command) :return)
+	   (return))))))
 
 (defmacro append-to-thread-commands (comm &rest forms)
   `(setf (thread-commands ,comm)
@@ -87,18 +88,24 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
 		(list ,@forms))))
 
 (defun do-login (comm hostname domain username resource password mechanism)
-  ;; Verbindung herstellen und bei connection speichern
+  ;; Verbindung herstellen
   (let ((conn (connect hostname domain)))
     (if (and (typep conn 'xmpp-skat-connection) (xmpp:connectedp conn))
 	(progn
+	  ;; save connection
 	  (setf (connection comm) conn)
 	  ;; Rückverweis im Verbindungsobjekt setzen (wichtig für xmpp:handle)
 	  (setf (comm-object (connection comm)) comm)
 	  ;; einloggen
 	  (setf (login-result comm) (xmpp:auth (connection comm) username password resource :mechanism mechanism)))
-	(setf (login-result comm) conn)))
+	(setf (login-result comm) conn))
+    ;; close connection if failed
+    (unless (eq (login-result comm) :authentication-successful)
+      (when (xmpp:connectedp conn)
+	(xmpp:disconnect conn)
+	(slot-makunbound comm 'connection))))
   ;; fertig
-  (bt:condition-notify (login-done comm)))	
+  (bt:condition-notify (login-done comm)))
 
 (defmethod login ((comm xmpp-comm) data)
   "Stellt die XMPP-Verbindung zum Server her und loggt sich dort mit den bereitgestellten Daten ein."
@@ -123,7 +130,7 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
       (bt:condition-wait (login-done comm) (lock comm))
       ;; the other thread bound login-result, check that
       (unless (eq (login-result comm) :authentication-successful)
-	(append-to-thread-commands comm `(return)) ; end the other thread
+	(append-to-thread-commands comm `(values :return)) ; end the other thread
 	(error 'login-unsuccessful :additional-information (login-result comm)))
       ;; der Vollständigkeit halber die Ressource merken, der Rest steckt in Connection
       (setf (resource comm) resource

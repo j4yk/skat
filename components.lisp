@@ -57,5 +57,9 @@
 	   stop  ; gibt ihm das Signal, die Arbeit einzustellen
 	   received-other-content ; Condition für den Fall, dass Daten empfangen wurden, die nicht als Anfragen interpretiert werden konnten
 	   address-compare-function ; Slot-Accessor für die Adressenvergleichende Funktion
+	   ;; login-unsuccessful error
+	   login-unsuccessful
+	   additional-information
+	   ;; comm implementations
 	   stub-comm
 	   xmpp-comm))
