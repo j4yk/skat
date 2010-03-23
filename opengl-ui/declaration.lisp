@@ -9,12 +9,15 @@
     (:declared-schwarz "Schwarz angesagt") (:played-schwarz "Schwarz gespielt")))
 
 (defun find-if-in-set (set sequence)
+  "Returns t if one element of set is in sequence"
   (find-if (rcurry #'member set) sequence))
 
 (defun first-declaration-part (declaration)
-  (delete nil 
+  (delete nil
+	  ;; select one of each in the lists, turn the rest nil
 	  (mapcar (rcurry #'find-if-in-set declaration)
-		  (list '(:diamods :hearts :spades :clubs :grand :null) '(:hand)
+		  (list '(:diamonds :hearts :spades :clubs :grand :null)
+			'(:hand)
 			'(:with :without) '(1 2 3 4)))
 	  :count 4))
 
