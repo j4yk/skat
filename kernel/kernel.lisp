@@ -118,8 +118,13 @@ Error Conditions: invalid-request-sender-error"
 	    (unless (null request-name)
 	      ;; call the handler function and provide some restarts
 	      (restart-case
-		  (handler-bind ((handler-not-defined-error (curry #'invoke-restart 'skip-request)))
-		    (apply (handler-fn request-name) kernel sender request-args))
+		  (let ((handler (handler-fn request-name)))
+		    ;; if no such function exists, ignore this request or whatever it is
+		    (when handler
+		      ;; if handler is not implemented for this kernel, ignore it
+		      (handler-bind ((handler-not-defined-error (curry #'invoke-restart 'skip-request))
+				     (invalid-request-sender-error (curry #'invoke-restart 'skip-request)))
+			(apply handler kernel sender request-args))))
 		(retry (&optional condition)
 		  :report "Call the kernel handler again immediately"
 		  (declare (ignore condition))
