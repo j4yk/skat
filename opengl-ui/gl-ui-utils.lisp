@@ -5,11 +5,12 @@
      (continue () t)))
 
 (defun handle-swank-requests ()
+  #+debug
   (restartable			; SLIME-Sachen ausführen
-   (let ((connection
-	  (or swank::*emacs-connection* (swank::default-connection))))
-     (when (and connection) ;(not (eql swank:*communication-style* :spawn)))
-       (swank::handle-requests connection t)))))
+    (let ((connection
+	   (or swank::*emacs-connection* (swank::default-connection))))
+      (when (and connection) ;(not (eql swank:*communication-style* :spawn)))
+	(swank::handle-requests connection t)))))
 
 (defmacro case-event (sdl-event &body events)
   "Führt verschiedene Blöcke aus, abhängig vom Typ des Events.
