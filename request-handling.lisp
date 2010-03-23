@@ -17,6 +17,13 @@
   ;; paketbereinigt durch to-keyword
   (push (cons (to-keyword request-name) fn) *request-handlers*))
 
+(define-condition handler-not-defined-error (error)
+  ((kernel :accessor kernel :initarg :kernel)
+   (request-name :accessor request-name :initarg :request-name))
+  (:report (lambda (condition stream)
+	     (format stream "~a is not implemented for kernel class ~a"
+		     (request-name condition) (class-of (kernel condition))))))
+
 (define-condition request-state-mismatch (error)
   ((state :accessor state :initarg :state)
    (request-name :accessor request-name :initarg :request-name)
@@ -79,19 +86,27 @@ body:         forms des handlers"
 				      `(with-correct-sender sender ,allowed-senders-forms
 					 ,@forms)))))
       `(prog1
-	   ;; handler function definieren
-	   (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) sender ,@request-args)
-	     ,(or docstring (format nil "Handler Funktion für Request ~a" request-name))
-	     ,declarations
-	     (restart-case 
-		 ,(if (null states) ; states = () bedeutet, Handler gilt immer
-		      encapsulated-body
-		      `(if (member (state ,kernel-class-and-varname) '(,@states)) ; vorher state abfragen
-			   ,encapsulated-body
-			   (error 'request-state-mismatch :state (state ,kernel-class-and-varname) 
-				  :request-name ',request-name :request-args ,@request-args)))
-	       (retry () :report "call the kernel handler again"
-		      (,handler-fn-name ,kernel-class-and-varname sender ,@request-args))))
+	   (progn
+	     (unless (fboundp ',handler-fn-name)
+	       (defgeneric ,handler-fn-name (kernel sender ,@request-args))
+	       ;; have a special error raised if the handler is undefined
+	       (defmethod no-applicable-method ((handler (eql #',handler-fn-name)) &rest args)
+		 (error 'handler-not-defined-error
+			:kernel (car args)
+			:request-name ',request-name)))
+	     ;; handler function definieren
+	     (defmethod ,handler-fn-name ((,kernel-class-and-varname ,kernel-class-and-varname) sender ,@request-args)
+	       ,(or docstring (format nil "Handler Funktion für Request ~a" request-name))
+	       ,declarations
+	       (restart-case 
+		   ,(if (null states) ; states = () bedeutet, Handler gilt immer
+			encapsulated-body
+			`(if (member (state ,kernel-class-and-varname) '(,@states)) ; vorher state abfragen
+			     ,encapsulated-body
+			     (error 'request-state-mismatch :state (state ,kernel-class-and-varname) 
+				    :request-name ',request-name :request-args ,@request-args)))
+		 (retry () :report "call the kernel handler again"
+			(,handler-fn-name ,kernel-class-and-varname sender ,@request-args)))))
 	 ;; handler function registrieren
 	 (register-handler-fn ',request-name #',handler-fn-name)))))
 

@@ -117,13 +117,16 @@ Error Conditions: invalid-request-sender-error"
 	      (retry () :report "Call the kernel handler again anyway"))
 	    (unless (null request-name)
 	      ;; call the handler function and provide some restarts
-	      (restart-case (apply (handler-fn request-name) kernel sender request-args)
+	      (restart-case
+		  (handler-bind ((handler-not-defined-error (curry #'invoke-restart 'skip-request)))
+		    (apply (handler-fn request-name) kernel sender request-args))
 		(retry () :report "Call the kernel handler again immediately"
 		       (comm::prepend-request (comm kernel) sender request-name request-args))
 		(retry-later () :report "Call the kernel handler again after another request has been processed"
 			     (defer-request kernel request-name sender request-args (if tries (1+ tries) 1))
 			     (setf defer t))
-		(skip-request () :report "Skip this request")
+		(skip-request (&optional condition) :report "Skip this request"
+			      (declare (ignore condition)))
 		(continue () :report "Skip this request (equal to skip-request)")))))))
 
 (define-condition invalid-kernel-state-error (error)
