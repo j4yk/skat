@@ -71,7 +71,10 @@
 (defmethod receive-requests ((host host))
   "Entschärft invalid-request-sender-error, indem immer Gemecker zurückgeschickt wird.
 Always invoke continue restart on errors"
-  (handler-bind ((error #'continue-after-unknown-error))
+  (handler-bind ((error (lambda (condition)
+			  (if (typep condition 'comm:login-unsuccessful)
+			      (error condition)
+			      #'continue-after-unknown-error))))
     (call-next-method)))
 
 (define-state-switch-function registration (host reset-registered-players-p)
