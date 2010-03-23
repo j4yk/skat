@@ -76,6 +76,7 @@
 In diesem Zustand werden Registrierungsanfragen aufgenommen."
   (when reset-registered-players-p	; Spielerliste zurücksetzen, wenn gewünscht
     (setf (registered-players host) nil)
+    (slot-makunbound host 'score-table)	; delete the score table
     (slot-makunbound host 'dealers))	; löse die Tischrunde auf, wenn es schon eine gab
   (setf (want-game-start host) nil))	; alle Registrierte müssen auf Start drücken)
 
