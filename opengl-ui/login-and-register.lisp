@@ -236,6 +236,9 @@ enable register-button and autosize the window"
        (wait-label (expanded-h (ag:new-label (null-pointer) nil
 					     (format nil "Warte darauf, dass~%die Mitspieler auch starten")))))
     (ag:window-set-caption window "Mitspieler")
+    ;; make the labels a bit larger
+    (ag:size-hint-label player1-label 0 "1. Mitspieler: skat@draugr.de/skatXXXXX")
+    (ag:size-hint-label player2-label 0 "2. Mitspieler: skat@draugr.de/skatXXXXX")
     (setf (player1-name w) free-name)
     (setf (player2-name w) free-name)))
 
@@ -278,7 +281,8 @@ and makes sure the wait-label is detached"
 		    (player2-name w) name)
 	    ;; wenn der zweite Spieler dazukam, kann das Spiel gestartet werden
 	    (enable-start-button w))
-	  (error "Only two players can be added to await-game-start-window"))))
+	  (error "Only two players can be added to await-game-start-window")))
+  (autosize w))
 
 (defmethod remove-player (name (w await-game-start-window))
   "Streicht einen Mitspieler aus der Liste und lässt ggf. den vorher zweiten Mitspieler aufrutschen"
@@ -297,7 +301,8 @@ and makes sure the wait-label is detached"
 		  (player2-name w) free-name)
 	    (disable-start-button w))
 	  (warn "~s: ~a was not in the list of possible participators and thus has not been deleted"
-		(class-name (class-of w)) name))))
+		(class-name (class-of w)) name)))
+  (autosize w))
 
 (defmethod request-game-start ((w await-game-start-window))
   "Sends kernel a game-start request"
