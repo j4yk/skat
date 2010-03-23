@@ -321,7 +321,7 @@ the numerical value of that game point level (i. e. it is not really a pointer!)
 (defmethod send-join ((module bidding) value)
   "Sends a join request to the kernel"
   (hide (own-listener-window module))
-  (call-kernel-handler (ui module) 'join value))
+  (send-join (ui module) value))
 
 (defmethod detach-own-listener-window ((module bidding))
   (when (slot-boundp module 'own-listener-window)

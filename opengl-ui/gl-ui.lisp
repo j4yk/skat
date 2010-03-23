@@ -71,6 +71,13 @@ STUB"
   (with-modules (players)
     (update-bid-value players (get-own-address players) value)))
 
+(defmethod send-join ((ui opengl-ui) value)
+  "Sends the join to the kernel and updates the bid value in the
+own player info window"
+  (call-kernel-handler ui 'join value)
+  (with-modules (players)
+    (update-bid-value players (get-own-address players) value)) )
+
 (defmethod take-skat ((ui opengl-ui))
   "Send hand-decision to kernel, taking the skat."
   (call-kernel-handler ui 'hand-decision nil))
@@ -207,8 +214,9 @@ Hands the cards over to the cards module."
     (update-bid-value players ui:sender value)))
 
 (defhandler ui:join (opengl-ui value)
-  (let ((module (find-module 'bidding ui)))
-    (join-received module ui:sender value)))
+  (with-modules (players bidding)
+    (update-bid-value players ui:sender value)
+    (join-received bidding ui:sender value)))
 
 (defhandler reply-to-bid (opengl-ui value)
   (with-modules (players bidding)
