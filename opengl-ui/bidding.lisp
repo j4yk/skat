@@ -139,7 +139,8 @@
 (defmethod start-bidding ((w own-bidder-window) listener min-value)
   (declare (ignore listener))
   (setf (selected-bid-value w) min-value)
-  (show w))
+  (show w)
+  (autosize w))
 
 ;; query join window
 
