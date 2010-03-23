@@ -63,15 +63,15 @@
   "Setzt die verbliebenen Reizwerte auf den Anfangszustand (also alle Werte ab 18) zurück."
   (setf (bidding-values host) (cut-away-game-point-levels 18)))
 
+(defun continue-after-unknown-error (condition)
+  (let ((*print-escape* nil))
+    (warn "continuing after error: ~a" condition)
+    (invoke-restart 'continue condition)))
+
 (defmethod receive-requests ((host host))
   "Entschärft invalid-request-sender-error, indem immer Gemecker zurückgeschickt wird.
 Always invoke continue restart on errors"
-  (handler-bind ((invalid-request-sender-error
-		  #'(lambda (condition)
-		      (comm:send (comm host) (sender condition) 'message
-				 (format nil "You are not allowed to send me ~a" (request-name condition)))
-		      (invoke-restart 'continue condition)))
-		 (error (curry #'invoke-restart 'continue)))
+  (handler-bind ((error #'continue-after-unknown-error))
     (call-next-method)))
 
 (define-state-switch-function registration (host reset-registered-players-p)
@@ -95,7 +95,11 @@ Beim Host müssen die Login-Daten schon beim Initialisieren übergeben worden se
   (if (slot-boundp host 'login-data)
       (progn
 	;; der Kommunikation die vorgegebenen Daten geben
-	(comm:login (comm host) (slot-value host 'login-data))
+	(restart-case 
+	    (comm:login (comm host) (slot-value host 'login-data))
+	  (retry (login-data) :report "Retry with other login-data"
+		 (setf (slot-value host 'login-data) login-data)
+		 (login-struct-handler host sender struct-classname)))
 	(switch-to-registration host t))
       (error 'no-login-data-supplied-error :host host)))
 

@@ -96,6 +96,17 @@ Error Conditions: invalid-request-sender-error"
 (defmethod has-deferred-request-p ((kernel kernel))
   (not (null (deferred-requests kernel))))
 
+(defun skip-request-restart (request-name sender)
+  (warn "skipped request ~a from ~a" request-name sender))
+
+(defun skip-not-defined-request (request-name sender)
+  (warn "skipping unknown request ~a from ~a" request-name sender)
+  (invoke-restart 'skip-request))
+
+(defun skip-request-from-invalid-sender (request-name sender)
+  (warn "skipping not allowed request ~a from ~a" request-name sender)
+  (invoke-restart 'skip-request))
+
 (defmethod receive-requests ((kernel kernel))
   "Holt alle vorliegenden Anfragen aus dem Kommunikationsobjekt heraus und ruft entsprechende Anfragehandler auf."
   (let ((defer nil))
@@ -122,8 +133,8 @@ Error Conditions: invalid-request-sender-error"
 		    ;; if no such function exists, ignore this request or whatever it is
 		    (when handler
 		      ;; if handler is not implemented for this kernel, ignore it
-		      (handler-bind ((handler-not-defined-error (curry #'invoke-restart 'skip-request))
-				     (invalid-request-sender-error (curry #'invoke-restart 'skip-request)))
+		      (handler-bind ((handler-not-defined-error (lambda () (skip-not-defined-request request-name sender)))
+				     (invalid-request-sender-error (lambda () (skip-request-from-invalid-sender request-name sender))))
 			(apply handler kernel sender request-args))))
 		(retry (&optional condition)
 		  :report "Call the kernel handler again immediately"
@@ -135,10 +146,12 @@ Error Conditions: invalid-request-sender-error"
 		  (defer-request kernel request-name sender request-args (if tries (1+ tries) 1))
 		  (setf defer t))
 		(skip-request (&optional condition) :report "Skip this request"
-			      (declare (ignore condition)))
+			      (declare (ignore condition))
+			      (skip-request-restart request-name sender))
 		(continue (&optional condition)
 		  :report "Skip this request (equal to skip-request)"
-		  (declare (ignore condition)))))))))
+		  (declare (ignore condition))
+		  (skip-request-restart request-name sender))))))))
 
 (define-condition invalid-kernel-state-error (error)
   ((kernel-class :accessor kernel-class :initarg :kernel-class)
