@@ -17,7 +17,7 @@
 (defmethod initialize-instance :after ((login-window login-window) &key)
   "Creates the Agar Window"
   (let*-slots login-window
-      ((window (agar:window-new :modal :noclose))
+      ((window (agar:window-new :noclose))
        (username-textbox (ag:textbox-new window :label-text "Benutzername: "))
        (server-hostname-textbox (ag:textbox-new window :label-text "Serveraddresse: "))
        (server-domain-textbox (ag:textbox-new window :label-text "Serverdomäne (optional): "))
@@ -124,7 +124,7 @@ enable the login-button and autosize the window"
 (defmethod initialize-instance :after ((register-window register-window) &key)
   "Initilializes the register window by creating the widgets etc."
   (let*-slots register-window
-      ((window (ag:window-new :modal :noclose :nominimize))
+      ((window (ag:window-new :noclose :nominimize))
        (upper-hbox (expanded-h (ag:hbox-new window)))
        (failure-notice-label
 	(expanded-h (ag:new-label (cffi:null-pointer) nil

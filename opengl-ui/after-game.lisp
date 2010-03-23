@@ -29,7 +29,7 @@
     (let*-slots w
 	((declarer-name-fv (make-foreign-variable :ptr (foreign-string-alloc declarer)
 						  :size (foreign-string-size declarer)))
-	 (window (ag:window-new))
+	 (window (ag:window-new :noclose))
 	 (card-points-hbox (expanded-h (ag:hbox-new window)))
 	 (hbox-lvbox (ag:vbox-new card-points-hbox))
 	 (hbox-rvbox (ag:vbox-new card-points-hbox))

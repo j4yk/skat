@@ -141,7 +141,7 @@ ones that aren't initially shown"
 	((suit-fv (make-foreign-variable :ptr (alloc-finalized w 'suit)))
 	 (null-add-fv (make-foreign-variable :ptr (alloc-finalized w 'null-add)))
 	 (suit-add-fv (make-foreign-variable :ptr (alloc-finalized w 'suit-add)))
-	 (window (ag:window-new :modal :nobuttons :nohresize :novresize))
+	 (window (ag:window-new :nobuttons :nohresize :novresize))
 	 (client-vbox (expanded (ag:vbox-new window)))
 	 (client-hbox (expanded (ag:hbox-new client-vbox)))
 	 (left-vbox (expanded-v (ag:vbox-new client-hbox)))
