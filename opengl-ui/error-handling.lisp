@@ -11,3 +11,10 @@ and subsequently calls the last available continue restart"
 	       (let ((*print-escape* nil))
 		 (with-output-to-string (s) (print-object (kern::inner-condition condition) s))))
   (continue))
+
+(defmethod handle-error ((module error-handling) condition)
+  (ag:text-msg :error "Folgender Fehler ist Aufgetreten:~%~a~%~
+Das Programm wird weiterhin ausgeführt, funktioniert jedoch~%~
+unter Umständen nicht mehr wie erwartet.  Es wird empfohlen~%~
+das Spiel zu schließen und neu zu starten.")
+  (continue))

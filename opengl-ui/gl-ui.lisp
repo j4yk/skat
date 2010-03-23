@@ -417,48 +417,52 @@ returns sorted hit-records."
 		      `(dolist (module (modules ui))
 			 (handle-event module sdl-event))))
 	   (labels ((main-loop ()
-		      (sdl:with-events (:poll sdl-event)
-			(:quit-event ()
-				     (call-kernel-handler ui 'unregister)
-				     t)
-			(:active-event () (process-event))
-			(:key-down-event () (process-event))
-			(:key-up-event () (process-event))
-			(:mouse-motion-event () (process-event))
-			(:mouse-button-down-event () (process-event))
-			(:mouse-button-up-event () (process-event))
-			(:video-resize-event (:w w :h h)
-					     (init-gl w h)
-					     (process-event))
-			(:video-expose-event () (process-event))
-			(:sys-wm-event () (process-event))
-			(:user-event () (process-event))
-			(:idle ()
-			       (handler-bind (;(kern::error-in-handler
-					      ; (curry #'handle-error-in-ui-handler
-						;      (find-module 'error-handling ui)))
-					      ;; if the requests are not in the right order
-					      ;; defer the ones that do not fit
-					      (kern:request-state-mismatch
-					       #'(lambda (condition)
-						   (if (eq (kern::state condition) 'kern::unregistered)
-						       (invoke-restart 'kern::skip-request)
-						       (invoke-restart 'kern:retry-later)))))
-				 (handle-swank-requests)
-				 (when (slot-boundp ui 'kernel)
-				   ;; let the kernel work
-				   (kernel:receive-requests (kernel ui))))
-			       ;; draw
-			       (render-everything ui agar-module)
-			       (with-slots (last-selection) ui
-				 ;; invalidate last selection
-				 (setf last-selection nil))
-			       (sleep 0.1))))
-		    (continuable-main-loop ()
-		      (restart-case (main-loop)
-			(continue () :report "Continue gl-ui main loop" (continuable-main-loop))
-			(abort () :report "terminate GL-UI main loop"
-			       (leave ui)
-			       (format t "~%main loop has been terminated")))))
-	     (continuable-main-loop))))
+		      (handler-bind ((error (curry #'handle-error (find-module 'error-handling ui))))
+			(sdl:with-events (:poll sdl-event)
+			  (:quit-event ()
+				       (call-kernel-handler ui 'unregister)
+				       t)
+			  (:active-event () (process-event))
+			  (:key-down-event () (process-event))
+			  (:key-up-event () (process-event))
+			  (:mouse-motion-event () (process-event))
+			  (:mouse-button-down-event () (process-event))
+			  (:mouse-button-up-event () (process-event))
+			  (:video-resize-event (:w w :h h)
+					       (init-gl w h)
+					       (process-event))
+			  (:video-expose-event () (process-event))
+			  (:sys-wm-event () (process-event))
+			  (:user-event () (process-event))
+			  (:idle ()
+				 (handler-bind (;(kern::error-in-handler
+					; (curry #'handle-error-in-ui-handler
+					;      (find-module 'error-handling ui)))
+						;; if the requests are not in the right order
+						;; defer the ones that do not fit
+						(kern:request-state-mismatch
+						 #'(lambda (condition)
+						     (if (eq (kern::state condition) 'kern::unregistered)
+							 (invoke-restart 'kern::skip-request)
+							 (invoke-restart 'kern:retry-later)))))
+				   (handle-swank-requests)
+				   (when (slot-boundp ui 'kernel)
+				     ;; let the kernel work
+				     (kernel:receive-requests (kernel ui))))
+				 ;; draw
+				 (render-everything ui agar-module)
+				 (with-slots (last-selection) ui
+				   ;; invalidate last selection
+				   (setf last-selection nil))
+				 (sleep 0.1)))))
+		      (continuable-main-loop ()
+					     (restart-case (main-loop)
+					       (continue ()
+						 :report "Continue gl-ui main loop"
+						 (continuable-main-loop))
+					       (abort ()
+						 :report "terminate GL-UI main loop"
+						 (leave ui)
+						 (format t "~%main loop has been terminated")))))
+		    (continuable-main-loop))))
     (setf (slot-value ui 'running-p) nil)))
