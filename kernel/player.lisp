@@ -126,7 +126,8 @@ Weist comm an sich mit den Daten bei einem Host zu registrieren."
 (DEFHANDLER UNREGISTER () ui (PLAYER)
   "Soll von der UI aufgerufen werden, wenn der Spieler eine Loslösung
 vom Host wünscht."
-  (SKAT-COMMUNICATION:SEND (COMM PLAYER) (HOST PLAYER) 'UNREGISTER)
+  (when (slot-boundp player 'host)
+    (SKAT-COMMUNICATION:SEND (COMM PLAYER) (HOST PLAYER) 'UNREGISTER))
   (switch-to-unregistered player))
 
 (DEFHANDLER PLAYMATES (REGISTRATION-SUCCEEDED) host (PLAYER LEFT RIGHT)
