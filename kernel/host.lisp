@@ -64,11 +64,14 @@
   (setf (bidding-values host) (cut-away-game-point-levels 18)))
 
 (defmethod receive-requests ((host host))
-  "Entschärft invalid-request-sender-error, indem immer Gemecker zurückgeschickt wird."
+  "Entschärft invalid-request-sender-error, indem immer Gemecker zurückgeschickt wird.
+Always invoke continue restart on errors"
   (handler-bind ((invalid-request-sender-error
 		  #'(lambda (condition)
 		      (comm:send (comm host) (sender condition) 'message
-				 (format nil "You are not allowed to send me ~a" (request-name condition))))))
+				 (format nil "You are not allowed to send me ~a" (request-name condition)))
+		      (invoke-restart 'continue condition)))
+		 (error (curry #'invoke-restart 'continue)))
     (call-next-method)))
 
 (define-state-switch-function registration (host reset-registered-players-p)
@@ -481,4 +484,3 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   (if (null (set-difference (registered-players host) (want-game-start host)
 			    :test (address-compare-function host)))
       (switch-to-bidding-1 host)))    ; wenn alle Spieler fertig sind, Reizen starten
-
