@@ -18,10 +18,10 @@
   "Creates the Agar Window"
   (let*-slots login-window
       ((window (agar:window-new :noclose))
-       (username-textbox (ag:textbox-new window :label-text "Benutzername: "))
-       (server-hostname-textbox (ag:textbox-new window :label-text "Serveraddresse: "))
+       (username-textbox (ag:textbox-new window :label-text "Benutzername: " :init-text "skat"))
+       (server-hostname-textbox (ag:textbox-new window :label-text "Serveraddresse: " :init-text "draugr.de"))
        (server-domain-textbox (ag:textbox-new window :label-text "Serverdomäne (optional): "))
-       (password-textbox (ag:textbox-new window :label-text "Passwort: " :flags '(:password)))
+       (password-textbox (ag:textbox-new window :label-text "Passwort: " :flags '(:password) :init-text "skat"))
        (resource-textbox (ag:textbox-new window :label-text "Ressource (optional): " :init-text "skat"))
        (login-button (expanded-h (ag:new-button window nil "Einloggen"
 						(std-event-handler (send-login-data
