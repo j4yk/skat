@@ -114,9 +114,9 @@ Syntax: let-multiple-getf place ({indicator varname}*) form*"
 	(setf (login-result comm) conn))
     ;; close connection if failed
     (unless (eq (login-result comm) :authentication-successful)
-      (when (xmpp:connectedp conn)
-	(xmpp:disconnect conn)
-	(slot-makunbound comm 'connection))))
+      (when (and (typep conn 'xmpp:connection) (xmpp:connectedp conn))
+	(xmpp:disconnect conn))
+      (slot-makunbound comm 'connection)))
   ;; fertig
   (bt:condition-notify (login-done comm)))
 
