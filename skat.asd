@@ -87,4 +87,5 @@
 				     (:file agar-test :depends-on (gl-ui agar))
 				     (:file test-module :depends-on (gl-ui))))
 	       (:file debugutils :depends-on (kernel comm ui host-ui opengl-ui))
-	       (:file test-utils :depends-on (xmpp-comm))))
+	       (:file test-utils :depends-on (xmpp-comm))
+	       (:file create-executables :depends-on (start xmpp-comm opengl-ui))))

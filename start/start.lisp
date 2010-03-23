@@ -39,3 +39,10 @@
 
 (defun start-host (login-data)
   (start-skat :host 'ui:host-ui 'comm:xmpp-comm :login-data login-data))
+
+(defun start-host-toplevel (alternative-login-data-read-fn)
+  (let* ((args #+sbcl sb-ext:*posix-argv*)
+	 (login-data-pos (position "--login-data" args)))
+    (if login-data-pos
+	(start-host (eval (read-from-string (nth (1+ login-data-pos) args))))
+	(start-host (funcall alternative-login-data-read-fn)))))

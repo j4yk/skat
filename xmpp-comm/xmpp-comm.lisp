@@ -33,6 +33,18 @@ and calls the next method"
     (username nil :type string) (hostname nil :type string) (domain nil :type string)
     (resource nil :type string) (password nil :type string) (mechanism nil :type (or (eql :sasl-plain) (eql :plain))))
 
+(defun interactive-read-xmpp-login-data ()
+  (macrolet ((query (prompt)
+	       `(progn (format *standard-output* "~a: " ,prompt)
+		       (read-line *standard-input*))))
+    (make-xmpp-login-data :username (query "Jabber-Benutzername")
+			  :hostname (query "Serveradresse")
+			  :domain (query "Serverdomäne (optional)")
+			  :resource (let ((input (query "Ressource (optional, Vorgabe ist \"host\")")))
+				      (if (string= input "") "host" input))
+			  :password (query "Password")
+			  :mechanism :sasl-plain)))
+
 (kern:define-registration-data xmpp-registration-data
     (host-jid nil :type string))
 
@@ -190,5 +202,3 @@ note: this is executed in another thread!"
     (if (listp read-message)
 	(push-request (comm-object connection) sender (car read-message) (cdr read-message))
 	(signal 'received-other-content :message message))))
-
-;; TODO: XMPP-Zeugs testen
