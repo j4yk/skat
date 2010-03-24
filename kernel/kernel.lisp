@@ -25,7 +25,7 @@
       ,@direct-slots)
      ,@options))
 
-(defvar *kernel-verbosity* 1 "Wie viel Kernels drucken")
+(defvar *kernel-verbosity* #+debug 1 #-debug 0 "Wie viel die Kernels drucken")
 
 (defmacro verbose (min-value &body body)
   "Führt body nur aus, wenn *kernel-verbosity* mindestens min-value ist."
