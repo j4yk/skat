@@ -347,6 +347,10 @@ Vorderhand darf entscheiden, ob geramscht wird oder nicht."
   (setf (table host) (dealers host) ; die Runde aufmachen(jacks host) nil)
 	(jacks host) nil	    ; gesammelte Buben zurücksetzen
 	(tricks host) nil)	    ; Stiche zurücksetzen
+  (unless (eq (car declaration) :null)
+    ;; add jacks in the skat to the flush run of the declarer
+    (dolist (card (skat host))
+      (when (jackp card) (remember-jack host (suit card)))))
   (turn-table-to host (current-forehand host)) ; und Vorderhand fängt an
   (comm:send (comm host) (current-forehand host) 'choose-card)) ; lässt Vorderhand anspielen
 
