@@ -13,8 +13,9 @@ and subsequently calls the last available continue restart"
   (continue))
 
 (defmethod handle-error ((module error-handling) condition)
-  (ag:text-msg :error "Folgender Fehler ist Aufgetreten:~%~a~%~
+  (let ((*print-escape* nil))
+    (ag:text-msg :error "Folgender Fehler ist Aufgetreten:~%~a~%~
 Das Programm wird weiterhin ausgeführt, funktioniert jedoch~%~
 unter Umständen nicht mehr wie erwartet.  Es wird empfohlen~%~
-das Spiel zu schließen und neu zu starten.")
+das Spiel zu schließen und neu zu starten." condition))
   (continue))
