@@ -198,7 +198,8 @@ note: this is executed in another thread!"
   (let ((read-message (handler-case (read-from-string (xmpp:body message))
 			(error () :unprocessable)))
 	(sender (xmpp:from message)))
-    (format *debug-stream* "~%~a handles message from ~a: ~a" (address (comm-object connection))
+    (format (if (boundp '*debug-stream*) *debug-stream*) "~%~a handles message from ~a: ~a"
+	    (address (comm-object connection))
 	    (xmpp:from message) (xmpp:body message))
     (if (listp read-message)
 	(push-request (comm-object connection) sender (car read-message) (cdr read-message))
