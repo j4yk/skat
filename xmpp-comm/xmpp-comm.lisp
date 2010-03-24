@@ -55,6 +55,7 @@ and calls the next method"
 
 (defmethod start ((comm xmpp-comm))
   "Initialisiert dieses XMPP-Verbindungsobjekt. Fügt nur die Login-Parameterliste für Kernel zum Abruf ein."
+  #-debug (setq xmpp:*debug-stream* nil) ; don't show everything in the terminal unless debugging
   (push-request comm comm 'login-struct (list 'xmpp-login-data))
   (values))
 
@@ -198,7 +199,8 @@ note: this is executed in another thread!"
   (let ((read-message (handler-case (read-from-string (xmpp:body message))
 			(error () :unprocessable)))
 	(sender (xmpp:from message)))
-    (format (if (boundp '*debug-stream*) *debug-stream*) "~%~a handles message from ~a: ~a"
+    #+debug
+    (format xmpp:*debug-stream* "~%~a handles message from ~a: ~a"
 	    (address (comm-object connection))
 	    (xmpp:from message) (xmpp:body message))
     (if (listp read-message)
