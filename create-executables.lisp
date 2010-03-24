@@ -5,13 +5,9 @@
   #-sbcl (error "CREATE-EXECUTABLE is only implemented for SBCL"))
 
 (defun start-gl-ui-player ()
-  #+debug (format *standard-output* "Dies ist ein Debug-Build")
-  #-debug (setq *debug-stream* nil)	; prohibit printing all messages to terminal
   (start-skat :player 'gl-ui:opengl-ui 'comm:xmpp-comm))
 
 (defun start-host-xmpp-toplevel ()
-  #+debug (format *standard-output* "Dies ist ein Debug-Build")
-  #-debug (setq *debug-stream* nil)	; prohibit printing all messages to terminal
   (format *standard-output* "Dieses Programm kann mit Strg+C beendet werden~%~%")
   (restart-case
       (handler-bind ((sb-sys:interactive-interrupt (curry #'invoke-restart 'quit))
