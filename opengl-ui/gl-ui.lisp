@@ -107,6 +107,9 @@ own player info window"
   "Send hand-decision to kernel, playing a hand game
 and presents the player the declaration dialog."
   (call-kernel-handler ui 'hand-decision t)
+  (with-modules (cards)
+    ;; put cards to the tricks stack
+    (middle-stack-to-tricks cards :self nil))
   (query-declaration ui t))
 
 (defmethod send-declaration ((ui opengl-ui) declaration)
@@ -237,9 +240,11 @@ Hands the cards over to the cards module."
 
 (defhandler hand-decision (opengl-ui hand)
   (with-modules (cards players)
-    (unless hand
-      ;; add skat to his/her cards
-      (add-other-players-cards cards (player-direction players ui:sender) 2))
+    (if hand
+	;; add skat to his/her tricks
+	(middle-stack-to-tricks cards (player-direction players ui:sender) nil)
+	;; add skat to his/her cards
+	(add-other-players-cards cards (player-direction players ui:sender) 2))
     ;; skat no longer in the middle
     (clear-middle cards)))
 

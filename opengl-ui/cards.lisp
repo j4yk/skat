@@ -443,17 +443,6 @@ would see the other face than before"
   (setf (select-p module) t		; make cards selectable
 	(n-max-select module) 2))
 
-(defmethod end-choose-skat ((module cards))
-  "Put the selected cards into the skat, make cards no longer selectable
-and clear selection"
-  ;; push selected cards to trick stack
-  (dolist (card (selected-cards module))
-    (setf (ui-card-covered-p card) t)
-    (push card (slot-value module 'own-tricks)))
-  ;; and clean up
-  (clear-selected-cards module)
-  (setf (select-p module) nil))
-
 (defmethod add-cards ((module cards) cards)
   (setf (cards module)
 	(mapcar #'(lambda (card)
@@ -580,6 +569,31 @@ prohibit further reaction on clicks on the cards"
     (do-it :left)
     (do-it :right)))
 
+(defmethod push-cards-to-tricks ((module cards) cards direction flip-p)
+  "Pushes the cards to the tricks in the specified direction and turns the cards unless (null flip-p)"
+  ;; flip the cards in the middle
+  (when flip-p 
+    (dolist (ui-card cards)
+      (setf (ui-card-covered-p ui-card) (not (ui-card-covered-p ui-card)))))
+  ;; push the trick cards to trick stack
+  (with-slots (middle-stack own-tricks left-tricks right-tricks) module
+    (ecase direction
+      (:self (setf own-tricks (nconc own-tricks middle-stack)))
+      (:left (setf left-tricks (nconc left-tricks middle-stack)))
+      (:right (setf right-tricks (nconc right-tricks middle-stack))))))
+
+(defmethod middle-stack-to-tricks ((module cards) direction flip-p)
+  "Moves the cards on the middle stack to the specified tricks"
+  (push-cards-to-tricks module (slot-value module 'middle-stack) direction flip-p)
+  (clear-middle module))
+
+(defmethod end-choose-skat ((module cards))
+  "Put the selected cards into the skat, make cards no longer selectable
+and clear selection"
+  ;; push selected cards to trick stack
+  (push-cards-to-tricks module (selected-cards module) :self t)
+  (setf (select-p module) nil))
+
 (define-delayed trick-push ((module cards) direction) 1000
   "Pushes the cards from the middle stack to the tricks of the player"
   (hide-last-trick module)
@@ -587,16 +601,8 @@ prohibit further reaction on clicks on the cards"
       module
     ;; remember this trick as the latest trick
     (setf (last-trick module) (cons direction (mapcar #'copy-ui-card middle-stack)))
-    ;; flip the cards in the middle
-    (dolist (ui-card middle-stack)
-      (setf (ui-card-covered-p ui-card) t))
-    ;; push the trick cards to trick stack
-    (ecase direction
-      (:self (setf own-tricks (nconc own-tricks middle-stack)))
-      (:left (setf left-tricks (nconc left-tricks middle-stack)))
-      (:right (setf right-tricks (nconc right-tricks middle-stack))))
-    ;; and clear the table
-    (clear-middle module)))
+    ;; push the trick cards to trick stack and clear the table
+    (middle-stack-to-tricks module direction t)))
 
 (define-delayed trick-to ((module cards) direction) 1
   "Waits until all cards are on the table (middle-stack-push) and
