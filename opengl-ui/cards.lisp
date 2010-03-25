@@ -127,7 +127,10 @@ If the card is already selected it will be removed from that list."
 
 (defmethod load-textures ((module cards))
   "Lädt die Texturen"
-  (let ((*default-pathname-defaults* (merge-pathnames "resources/cards/")))
+  (let ((*default-pathname-defaults* (or (probe-file (merge-pathnames "resources/cards/"))
+					 (probe-file #P"/usr/share/skat/cards/"))))
+    (unless *default-pathname-defaults*
+      (error "Cannot load textures: no directory to load them from found!"))
     (map nil
 	 #'(lambda (name texture)
 	     (add-texture module name texture))

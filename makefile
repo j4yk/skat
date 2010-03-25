@@ -1,3 +1,6 @@
+SHARED_ROOT=$(DESTDIR)/usr/share/skat
+BIN=$(DESTDIR)/usr/bin
+
 all: skat-player skat-host
 
 skat-image:
@@ -7,10 +10,14 @@ skat-image:
 
 skat-player: skat-image
 	sbcl --core skat-image \
-             --eval "(funcall (intern (symbol-name '#:create-gl-ui-xmpp-player-executable) :kern) \
-                      	      \"skat-player\")"
+             --eval "(kern::create-gl-ui-xmpp-player-executable \"skat-player\")"
 
 skat-host: skat-image
 	sbcl --core skat-image \
-             --eval "(funcall (intern (symbol-name '#:create-host-xmpp-executable) :kern) \
-                              \"skat-host\")"
+             --eval "(kern::create-host-xmpp-executable \"skat-host\")"
+
+install: skat-player skat-host resources
+	install -d $(BIN) $(SHARED_ROOT)/cards
+	install resources/cards/* -t $(SHARED_ROOT)/cards
+	install skat-player $(BIN)/skat-player
+	install skat-host $(BIN)/skat-host
