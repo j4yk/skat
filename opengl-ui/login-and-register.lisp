@@ -130,7 +130,8 @@ enable the login-button and autosize the window"
 	(expanded-h (ag:new-label (cffi:null-pointer) nil
 				  (format nil "Host akzeptierte ~
 die Registrierungsanfrage nicht!~% Wählen Sie einen anderen Host."))))
-       (host-jid-textbox (ag:textbox-new window :label-text "Jabber-ID des Hostes: "))
+       (host-jid-textbox (ag:textbox-new window :label-text "Jabber-ID des Hostes: "
+					 :init-text "skat@draugr.de/host"))
        (lower-hbox (expanded-h (ag:hbox-new window)))
        (wait-label (ag:new-label (null-pointer) nil "Warte auf Antwort des Hostes..."))
        (register-button (ag:new-button lower-hbox nil "Registrierung anfragen"
@@ -141,6 +142,7 @@ die Registrierungsanfrage nicht!~% Wählen Sie einen anderen Host."))))
        (cancel-button (ag:new-button (null-pointer) nil "Abbrechen"
 				     (std-event-handler
 				       (cancel-registration register-window)))))
+    (ag:textbox-size-hint host-jid-textbox "skat@draugr.de/hostXXXXX")
     (ag:window-set-caption window "Registrierung mit einem Host")
     (ag:set-timeout wait-timeout (lambda-timeout-callback (obj ival arg)
 				   (declare (ignore obj ival arg))
@@ -148,13 +150,13 @@ die Registrierungsanfrage nicht!~% Wählen Sie einen anderen Host."))))
 				   0)
 		    (null-pointer) nil)))
 
-(defmethod cancel-registration ((register-window register-window))
-  "Detach wait-, and timeout-label and cancel-button,
-enable register-button and autosize the window"
-  (with-slots (window register-button lower-hbox wait-label timeout-label cancel-button)
-      register-window
-    (mapcar (rcurry #'ensure-detached window)
-	    (list timeout-label cancel-button))
+ (defmethod cancel-registration ((register-window register-window))
+   "Detach wait-, and timeout-label and cancel-button,
+ enable register-button and autosize the window"
+   (with-slots (window register-button lower-hbox wait-label timeout-label cancel-button)
+       register-window
+     (mapcar (rcurry #'ensure-detached window)
+	     (list timeout-label cancel-button))
     (ensure-detached wait-label lower-hbox)
     (ag:enable-widget register-button)
     (autosize register-window)))
