@@ -8,7 +8,7 @@
 
 (defun game-points (declaration flush-run-value)
   "Gibt den Spielwert der Ansage zurück."
-  (if (eq (car declaration) :null)
+  (if (eq (game-variant declaration) :null)
       (cond ((equal (cdr declaration) nil) 23)
 	    ((equal (cdr declaration) '(:hand)) 35)
 	    ((equal (cdr declaration) '(:ouvert)) 46)
