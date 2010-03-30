@@ -30,8 +30,8 @@ and calls the next method"
 (require-lock-for-method has-request ((comm xmpp-comm)))
 
 (kern:define-login-data xmpp-login-data
-    (username nil :type string) (hostname nil :type string) (domain nil :type string)
-    (resource nil :type string) (password nil :type string) (mechanism nil :type (or (eql :sasl-plain) (eql :plain))))
+    (username nil :type string) (hostname nil :type string) (domain "" :type string)
+    (resource "" :type string) (password nil :type string) (mechanism :sasl-plain :type (or (eql :sasl-plain) (eql :plain))))
 
 (defun interactive-read-xmpp-login-data ()
   (macrolet ((query (prompt)
