@@ -74,7 +74,7 @@ Always invoke continue restart on errors"
   (handler-bind ((error (lambda (condition)
 			  (if (typep condition 'comm:login-unsuccessful)
 			      (error condition)
-			      #'continue-after-unknown-error))))
+			      (continue-after-unknown-error condition)))))
     (call-next-method)))
 
 (define-state-switch-function registration (host reset-registered-players-p)
