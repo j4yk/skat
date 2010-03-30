@@ -3,7 +3,7 @@ BIN=$(DESTDIR)/usr/bin
 
 all: skat.core
 
-dependencies.core: install-dependencies.lisp load-dependencies.lisp
+dependencies.core: dependencies.lisp
 	sbcl --script dependencies.lisp
 
 skat.core: dependencies.core
