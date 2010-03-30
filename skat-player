@@ -1,0 +1,3 @@
+#!/bin/sh
+
+sbcl --noinform --core skat.core --no-userinit --eval "(progn (kern::start-gl-ui-player) (quit))"

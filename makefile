@@ -1,22 +1,15 @@
 SHARED_ROOT=$(DESTDIR)/usr/share/skat
 BIN=$(DESTDIR)/usr/bin
 
-all: skat-player skat-host
+all: skat.core
 
-skat-image:
-	sbcl --eval "(progn \
-                        (require 'skat) \
-                        (save-lisp-and-die \"skat-image\"))"
+dependencies.core: install-dependencies.lisp load-dependencies.lisp
+	sbcl --script dependencies.lisp
 
-skat-player: skat-image
-	sbcl --core skat-image \
-             --eval "(kern::create-gl-ui-xmpp-player-executable \"skat-player\")"
+skat.core: dependencies.core
+	sbcl --core dependencies.core --script make-image.lisp
 
-skat-host: skat-image
-	sbcl --core skat-image \
-             --eval "(kern::create-host-xmpp-executable \"skat-host\")"
-
-install: skat-player skat-host resources
+install: skat.core skat-player skat-host resources
 	install -d $(BIN) $(SHARED_ROOT)/cards
 	install resources/cards/* -t $(SHARED_ROOT)/cards
 	install skat-player $(BIN)/skat-player
