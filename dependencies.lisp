@@ -27,23 +27,17 @@
 	    (apply #'asdf-install:install packages)))))))
 
 (defun ensure-dependencies (packages)
-  (let ((missing (loop for p in packages
-		    unless (asdf:find-system p nil)
-		    collect p)))
-    (when missing
-      (install-dependencies missing))))
-
-(defun ensure-skat-dependencies ()
-  (ensure-dependencies '(clunit fiveam
-			 cffi trivial-garbage trivial-timeout bordeaux-threads
-			 cl-xmpp lispbuilder-sdl lispbuilder-sdl-image cl-opengl)))
+  (loop for p in packages
+     unless (asdf:find-system p nil)
+     do (install-dependencies (list p))))
 
 (eval-when (:execute)
-  (ensure-skat-dependencies)
-
-  (mapcar #'require '(clunit fiveam cffi trivial-garbage
-		      trivial-timeout bordeaux-threads cl-xmpp
-		      lispbuilder-sdl lispbuilder-sdl-image
-		      cl-opengl))
-
-  (save-lisp-and-die "dependencies.core"))
+  (defvar *dependencies* '(clunit fiveam
+			   cffi trivial-garbage trivial-timeout bordeaux-threads
+			   cl-xmpp cl-xmpp-tls
+			   lispbuilder-sdl lispbuilder-sdl-image
+			   cl-opengl cl-glu
+			   agar))
+  (ensure-dependencies *dependencies*)
+  (mapcar #'require *dependencies*)
+  (sb-ext:save-lisp-and-die "dependencies.core"))
