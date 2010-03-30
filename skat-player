@@ -1,3 +1,13 @@
 #!/bin/sh
 
-sbcl --noinform --core skat.core --no-userinit --eval "(progn (kern::start-gl-ui-player) (quit))"
+for core in /usr/lib/skat.core /usr/local/lib/skat.core skat.core;
+do
+    if [ -e $core ]; then
+	sbcl --noinform --core $core --no-userinit --eval "(progn (kern::start-gl-ui-player) (quit))"
+	exit 0
+    fi
+done
+
+# no core found?
+echo "Fatal error: cannot find skat.core!"
+exit 1
