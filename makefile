@@ -12,5 +12,6 @@ skat.core: dependencies.core
 install: skat.core skat-player skat-host resources
 	install -d $(BIN) $(SHARED_ROOT)/cards
 	install resources/cards/* -t $(SHARED_ROOT)/cards
+	install skat.core $(BIN)/skat.core
 	install skat-player $(BIN)/skat-player
 	install skat-host $(BIN)/skat-host
