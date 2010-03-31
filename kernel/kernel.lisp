@@ -133,8 +133,14 @@ Error Conditions: invalid-request-sender-error"
 		    ;; if no such function exists, ignore this request or whatever it is
 		    (when handler
 		      ;; if handler is not implemented for this kernel, ignore it
-		      (handler-bind ((handler-not-defined-error (lambda (condition) (skip-not-defined-request request-name sender)))
-				     (invalid-request-sender-error (lambda (condition) (skip-request-from-invalid-sender request-name sender))))
+		      (handler-bind ((handler-not-defined-error
+				      (lambda (&optional condition)
+					(declare (ignore condition))
+					(skip-not-defined-request request-name sender)))
+				     (invalid-request-sender-error
+				      (lambda (&optional condition)
+					(declare (ignore condition))
+					(skip-request-from-invalid-sender request-name sender))))
 			(apply handler kernel sender request-args))))
 		(retry (&optional condition)
 		  :report "Call the kernel handler again immediately"

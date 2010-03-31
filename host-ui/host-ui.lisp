@@ -39,6 +39,7 @@ Endet, wenn Slot stop-received initialisiert wird."
 
 (defmethod start ((ui host-ui) &optional new-thread-p)
   "Makes stop-received unbound"
+  (declare (ignore new-thread-p))
   (slot-makunbound ui 'stop-received))
   ;; (if new-thread-p
   ;;     (sb-thread:make-thread #'(lambda () (main-loop-in-other-thread ui)) :name "Host Main Loop Thread")

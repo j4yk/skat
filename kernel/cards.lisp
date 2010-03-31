@@ -10,7 +10,7 @@
 (in-package :skat-kernel)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defstruct (card :conc-name (:print-object print-card)) suit rank)
+  (defstruct (card :conc-name) suit rank)
 
   (defparameter *card-suits* '((:diamonds :d #\d #\D) 
 			       (:hearts :h #\h #\H)
@@ -82,7 +82,7 @@ in die jeweils erstgenannte um, d. h. in das ausgeschriebene keyword."
   (set-dispatch-macro-character #\# #\! #'read-card)
   (set-dispatch-macro-character #\# #\c #'read-card) ; keine komplexen Zahlen notwendig
 
-  (defmethod print-card (card stream)
+  (defmethod print-object ((card card) stream)
     (format stream "#!~a~a" (second (assoc (suit card) *card-suits*)) (second (assoc (rank card) *card-ranks*))))
 
   (defmethod make-load-form ((card card) &optional environment)
