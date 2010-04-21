@@ -157,7 +157,7 @@ If the card is already selected it will be removed from that list."
 (defun card-to-texture-name (card)
   "Returns the texture name for this specific card"
   (check-type card kern:card)
-  (intern (subseq (with-output-to-string (s) (kern:print-card card s)) 2) 'keyword))
+  (intern (subseq (with-output-to-string (s) (print-object card s)) 2) 'keyword))
 
 (defun candidate-card-p (module card)
   (equalp card (slot-value module 'candidate-card)))
