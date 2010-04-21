@@ -112,12 +112,14 @@ Weist comm an sich mit den Daten bei einem Host zu registrieren."
   "Wechelt in den Zustand registration-succeeded."
   (setf (host player) host))
 
-(DEFHANDLER REGISTRATION-REPLY (REGISTRATION-PENDING) :any (PLAYER ACCEPTED)
+(DEFHANDLER REGISTRATION-REPLY (unregistered REGISTRATION-PENDING) :any (PLAYER ACCEPTED)
   "Behandelt die Antwort auf die Registrierungsanfrage vom Host."
-  (IF ACCEPTED
-      (switch-to-registration-succeeded player sender)
-      (switch-to-unregistered player))
-  (CALL-UI 'registration-reply PLAYER SENDER ACCEPTED))
+  ;; in unregistered soll das ignoriert werden
+  (unless (eq (state player) 'unregistered)
+    (IF ACCEPTED
+	(switch-to-registration-succeeded player sender)
+	(switch-to-unregistered player))
+    (CALL-UI 'registration-reply PLAYER SENDER ACCEPTED)))
 
 (DEFHANDLER SERVER-UPDATE (REGISTRATION-SUCCEEDED) host (PLAYER EVENTS)
   "Behandelt Neuigkeiten vom Host."
