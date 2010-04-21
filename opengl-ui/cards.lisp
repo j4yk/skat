@@ -592,6 +592,7 @@ prohibit further reaction on clicks on the cards"
 and clear selection"
   ;; push selected cards to trick stack
   (push-cards-to-tricks module (selected-cards module) :self t)
+  (setf (slot-value module 'selected-cards) nil)
   (setf (select-p module) nil))
 
 (define-delayed trick-push ((module cards) direction) 1000
