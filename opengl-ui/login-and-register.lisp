@@ -150,15 +150,19 @@ die Registrierungsanfrage nicht!~% Wählen Sie einen anderen Host."))))
 				   0)
 		    (null-pointer) nil)))
 
- (defmethod cancel-registration ((register-window register-window))
-   "Detach wait-, and timeout-label and cancel-button,
+(defmethod cancel-registration ((register-window register-window))
+  "Detach wait-, and timeout-label and cancel-button,
  enable register-button and autosize the window"
-   (with-slots (window register-button lower-hbox wait-label timeout-label cancel-button)
-       register-window
-     (mapcar (rcurry #'ensure-detached window)
-	     (list timeout-label cancel-button))
+  (with-slots (window register-button lower-hbox wait-label timeout-label cancel-button upper-hbox failure-notice-label)
+      register-window
+    (mapcar (rcurry #'ensure-detached window)
+	    (list timeout-label cancel-button))
     (ensure-detached wait-label lower-hbox)
     (ag:enable-widget register-button)
+    (call-kernel-handler (ui (module register-window)) 'registration-reply nil)
+    ;; this calls the registration-reply handler of UI in return and shows the failure notice
+    ;; hide this because the negative registration-reply is intended
+    (ensure-detached failure-notice-label upper-hbox)
     (autosize register-window)))
 
 (defmethod show :before ((register-window register-window))
