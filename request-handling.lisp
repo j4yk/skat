@@ -28,6 +28,8 @@
   ((state :accessor state :initarg :state)
    (request-name :accessor request-name :initarg :request-name)
    (request-args :accessor request-args :initarg :request-args))
+  (:report (lambda (condition stream)
+	     (format stream "Kann ~a in Zustand ~a nicht verarbeiten!" (request-name condition) (state condition))))
   (:documentation "Signalisiert, dass eine Anfrage eintraf, die im aktuellen Zustand des Kernels nicht erlaubt ist."))
 
 (define-condition error-in-handler (error)
