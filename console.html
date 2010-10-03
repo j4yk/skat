@@ -1,0 +1,31 @@
+<!DOCTYPE html5>
+<html>
+<head>
+	<title>XMPP Console</title>
+	<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/themes/start/jquery-ui.css"
+        type="text/css" rel="Stylesheet" />
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.js"></script>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.2/jquery-ui.js"</script>
+<!--	<script type="text/javascript" src="flensed-1.0/deploy/flXHR.js"></script> -->
+	<script type="text/javascript" src="strophe.js"></script>
+<!--	<script type="text/javascript" src="strophe.flxhr.js"></script> -->
+	<script type="text/javascript" src="console.js"></script>
+	<link href="console.css" type="text/css" rel="stylesheet"/>
+</head>
+<body>
+	<div id="console">
+		<div id="log" style="height: 25em; left: 0; right: 0; width: auto; border: solid thin black;">
+		</div>
+		<textarea disabled="disabled" style="left: 0; right: 0; width: auto; height: 10em;" id="input">
+		</textarea>
+		<div id="button-bar">
+			<button id="send-button" disabled="disabled">Send</button>
+			<button id="disconnect-button" disabled="disabled">Disconnect</button>
+		</div>
+	</div>
+	<div id="login-dialog" style="display: none">
+		<label>JID</label><input type="text" name="jid">
+		<label>PW</label><input type="password" name="password">
+	</div>
+</body>
+</html>
