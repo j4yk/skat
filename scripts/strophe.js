@@ -1,0 +1,1 @@
+../../strophejs-1.0.1/strophe.js

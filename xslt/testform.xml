@@ -1,0 +1,183 @@
+<x xmlns="jabber:x:data" type="form">
+<title>Configuration for "darkcave" Room</title>
+<instructions>
+Your room darkcave@macbeth has been created!
+The default configuration is as follows:
+- No logging
+- No moderation
+- Up to 20 occupants
+- No password required
+- No invitation required
+- Room is not persistent
+- Only admins may change the subject
+- Presence broadcasted for all users
+To accept the default configuration, click OK. To
+select a different configuration, please complete
+this form.
+</instructions>
+<field
+type='hidden'
+var='FORM_TYPE'>
+<value>http://jabber.org/protocol/muc#roomconfig</value>
+</field>
+<field
+label='Natural-Language Room Name'
+type='text-single'
+var='muc#roomconfig_roomname'/>
+<field
+label='Short Description of Room'
+type='text-single'
+var='muc#roomconfig_roomdesc'/>
+<field
+label='Natural Language for Room Discussions'
+type='text-single'
+var='muc#roomconfig_lang'/>
+<field
+label='Enable Public Logging?'
+type='boolean'
+var='muc#roomconfig_enablelogging'>
+<value>0</value>
+</field>
+<field
+label='Allow Occupants to Change Subject?'
+type='boolean'
+var='muc#roomconfig_changesubject'>
+<value>0</value>
+</field>
+<field
+label='Allow Occupants to Invite Others?'
+type='boolean'
+var='muc#roomconfig_allowinvites'>
+<value>0</value>
+</field>
+<field
+label='Maximum Number of Occupants'
+type='list-single'
+var='muc#roomconfig_maxusers'>
+<value>20</value>
+<option label='10'>
+<value>10</value>
+</option>
+<option label='20'>
+<value>20</value>
+</option>
+<option label='30'>
+<value>30</value>
+</option>
+<option label='50'>
+<value>50</value>
+</option>
+<option label='100'>
+<value>100</value>
+</option>
+<option label='None'>
+<value>none</value>
+</option>
+</field>
+<field
+label='Roles for which Presence is Broadcast'
+type='list-multi'
+var='muc#roomconfig_presencebroadcast'>
+<value>moderator</value>
+<value>participant</value>
+<value>visitor</value>
+<option label='Moderator'>
+<value>moderator</value>
+</option>
+<option label='Participant'>
+<value>participant</value>
+</option>
+<option label='Visitor'>
+<value>visitor</value>
+</option>
+</field>
+<field
+label='Roles and Affiliations that May Retrieve Member List'
+type='list-multi'
+var='muc#roomconfig_getmemberlist'>
+<value>moderator</value>
+<value>participant</value>
+<value>visitor</value>
+<option label='Moderator'>
+<value>moderator</value>
+</option>
+<option label='Participant'>
+<value>participant</value>
+</option>
+<option label='Visitor'>
+<value>visitor</value>
+</option>
+</field>
+<field
+label='Make Room Publicly Searchable?'
+type='boolean'
+var='muc#roomconfig_publicroom'>
+<value>1</value>
+</field>
+<field
+label='Make Room Persistent?'
+type='boolean'
+var='muc#roomconfig_persistentroom'>
+<value>0</value>
+</field>
+<field
+label='Make Room Moderated?'
+type='boolean'
+var='muc#roomconfig_moderatedroom'>
+<value>0</value>
+</field>
+<field
+label='Make Room Members-Only?'
+type='boolean'
+var='muc#roomconfig_membersonly'>
+<value>0</value>
+</field>
+<field
+label='Password Required to Enter?'
+type='boolean'
+var='muc#roomconfig_passwordprotectedroom'>
+<value>0</value>
+</field>
+<field type='fixed'>
+<value>
+If a password is required to enter this room,
+   you must specify the password below.
+   </value>
+   </field>
+   <field
+   label='Password'
+   type='text-private'
+   var='muc#roomconfig_roomsecret'/>
+   <field
+   label='Who May Discover Real JIDs?'
+   type='list-single'
+   var='muc#roomconfig_whois'>
+   <option label='Moderators Only'>
+   <value>moderators</value>
+   </option>
+   <option label='Anyone'>
+   <value>anyone</value>
+   </option>
+   </field>
+   <field type='fixed'>
+   <value>
+   You may specify additional people who have
+   administrative privileges in the room. Please
+   provide one Jabber ID per line.
+   </value>
+   </field>
+   <field
+   label='Room Admins'
+   type='jid-multi'
+   var='muc#roomconfig_roomadmins'/>
+   <field type='fixed'>
+   <value>
+   You may specify additional owners for this
+   room. Please provide one Jabber ID per line.
+   </value>
+   </field>
+   <field
+   label='Room Owners'
+   type='jid-multi'
+   var='muc#roomconfig_roomowners'/>
+</x>

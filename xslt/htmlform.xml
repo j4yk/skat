@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<div xmlns="http://www.w3.org/1999/xhtml">
+	<div id="foo">
+		<label>foo</label>
+		<input type="text" value="footext" />
+	</div>
+	<div id="bar">
+		<label>bar</label>
+		<input type="checkbox" selected="selected" />
+	</div>
+	<div id="baz">
+		<label>baz</label>
+		<textarea>"foo
+bar
+bla</textarea>
+	</div>
+	<div id="mbaz">
+		<label>mbaz</label>
+		<select multiple="multiple">
+			<option selected="selected" value="20">20</option>
+			<option selected="selected" value="30">30</option>
+			<option value="40">40</option>
+		</select>
+	</div>
+	<div>fooblarbar<input type="text" value="Möööp" /></div>
+	<div id="pw">
+		<input type="password" value="secret" />
+	</div>
+</div>

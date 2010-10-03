@@ -1,0 +1,34 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <title>Skat Jasmine Test Runner</title>
+  <link rel="stylesheet" type="text/css" href="scripts/jasmine.css">
+  <script type="text/javascript" src="scripts/jasmine.js"></script>
+  <script type="text/javascript" src="scripts/jasmine-html.js"></script>
+
+  <!-- include source files here... -->
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.js"></script>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.2/jquery-ui.js"</script>
+	<script type="text/javascript" src="scripts/utils.js"></script>
+	<script type="text/javascript" src="scripts/xslt.js"></script>
+	<script type="text/javascript" src="scripts/strophe.js"></script>
+	<script type="text/javascript" src="skat.js"></script>
+	<script type="text/javascript" src="skat-comm.js"></script>
+	<script type="text/javascript" src="../console-plugin.js"></script>
+
+  <!-- include spec files here... -->
+  <script type="text/javascript" src="spec/UtilsSpec.js"></script>
+  <script type="text/javascript" src="spec/XsltSpec.js"></script>
+  <script type="text/javascript" src="spec/skat-spec.js"></script>
+  <script type="text/javascript" src="spec/skat-comm-spec.js"></script>
+
+</head>
+<body>
+<script type="text/javascript">
+  jasmine.getEnv().addReporter(new jasmine.TrivialReporter());
+  jasmine.getEnv().execute();
+</script>
+
+</body>
+</html>
