@@ -163,14 +163,19 @@ Skat.Comm = {
 		var config_dialog = $('#game-config-dialog');
 		config_dialog.empty();
 		// insert the option for members-only access manually
-		config_dialog.append('<div id="muc#roomconfig_membersonly"><label>Require users to be approved by you</label><input type="checkbox"></div>');
-		options.find('field[var="muc#roomconfig_membersonly"]').data('done', true);
+		if (options.find('field[var="muc#roomconfig_membersonly"]').length > 0) {
+			options.find('field[var="muc#roomconfig_membersonly"]').data('done', true);
+		}
 		// and the rest of the options automatically
 		var fields = options.find('field[var][type!="hidden"]').select(function () {
-			return !$(this).data('done') || !$(this).attr('done'); // return true if done is false or undefined
+			return !$(this).data('done'); // return true if done is false or undefined
 		});
 		var form = $('<x xmlns="jabber:x:data" type="query"></x>').append(fields);
 		Skat.Comm.build_dialog_from_fields(config_dialog, form.get(0), options);
+		// now prepend the members-only option
+		if (options.find('field[var="muc#roomconfig_membersonly"]').length > 0) {
+			config_dialog.find('tr:first').before('<tr><td><label>Require others to be approved by you</label></td><td><input id="muc#roomconfig_membersonly" type="checkbox"></td></tr>');
+		}
 		// show the configuration dialog
 		config_dialog.dialog('open');
 	},
@@ -402,11 +407,11 @@ $(function () {
 		}
 	});
 	
-	$(Skat).bind('game-options-approved', function () {
+	$(Skat).bind('game-config-approved', function () {
 		// the user accepted the options for MUC room creation for his own game
 		// continue the process of game creation
 		// clean the data-form and submit it
-		options = $('#game-creation-dialog').data('query-dom'); // data-form DOM
+		options = $('#game-creation-dialog').data('form-dom'); // data-form DOM
 		options.find('field :not(value)').remove();  // remove everything except values
 		options.find('field').removeAttr('type').removeAttr('label');
 		options.attr('type', 'submit');
