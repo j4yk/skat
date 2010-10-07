@@ -2,6 +2,7 @@
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 	xmlns:html="http://www.w3.org/1999/xhtml"
 	xmlns="jabber:x:data">
+<xsl:output type="xml" indent="yes" encoding="utf-8" />
 
 <xsl:template match="/">
 	<x type="submit">
@@ -9,7 +10,7 @@
 	</x>
 </xsl:template>
 
-<xsl:template match="html:div">
+<xsl:template match="html:tr">
 	<field>
 		<xsl:attribute name="var"><xsl:value-of select="@id" /></xsl:attribute>
 		<xsl:apply-templates select="html:textarea|html:input|html:select" />
@@ -50,10 +51,10 @@
 	<value>
 		<xsl:choose>
 			<xsl:when test="@checked='checked'">
-				1
+				<xsl:text>1</xsl:text>
 			</xsl:when>
 			<xsl:otherwise>
-				0
+				<xsl:text>0</xsl:text>
 			</xsl:otherwise>
 		</xsl:choose>
 	</value>
