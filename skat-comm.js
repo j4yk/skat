@@ -431,6 +431,7 @@ $(function () {
 	$(Skat).bind('game-creation-aborted', function () {
 		// cancel the room configuration form
 		Skat.Comm.connection.send($iq({to: Skat.Comm.game_room, type: 'set'}).c('query', {xmlns: Strophe.NS.MUC + '#owner'}).c('x', {xmlns: 'jabber:x:data', type: 'cancel'}));
+		Skat.Comm.connection.send($pres({to: Skat.Comm.game_room, type: 'unavailable'}));
 		// TODO: change presence in lobby?
 	});
 
