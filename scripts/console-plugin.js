@@ -102,7 +102,7 @@ Console = {
 	}
 }
 
-$(document).bind('console-loaded', function () {
+$(function () {
 	$(document).bind('connection-created', function (ev, conn) {
 		Console.connection = conn;
 		conn.xmlInput = function (body) {
@@ -165,7 +165,9 @@ $(document).bind('console-loaded', function () {
 			Console.inputHistory.push(input);
 		}
 	});
+});
 
+$(document).bind('console-loaded', function () {
 	$('#send-button').click(function () {
 		$(document).trigger('console-send');
 	});
