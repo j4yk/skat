@@ -361,7 +361,7 @@ Skat.Comm.Room.prototype.presence_handler = function (presence) {
 
 $(function () {
 	// load the xmpp console
-	$('#console').load('../console.html #console', function () { $(document).trigger('console-loaded'); });
+	$('#console').load('console.html #console', function () { $(document).trigger('console-loaded'); });
 
 	$(document).bind('connect', function (ev, login_data) {
 		// create the connection
