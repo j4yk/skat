@@ -4,9 +4,10 @@ Strophe.addNamespace("lobby", "urn:xmpp:skat:lobby");
 //Skat.NS_LOBBY = "urn:xmpp:skat:lobby";
 
 Skat.Comm = {
-	connection: null,
-
 	Room: null,
+	XMPP: {},   // scripts/data-forms.js
+
+	connection: null,
 
 	lobby: null,
 	lobby_jid: "skatlobby@conference.draugr.de/tester",
@@ -37,69 +38,39 @@ Skat.Comm = {
 
 	enter_lobby: function (lobby_address, nick) {
 		Skat.Comm.lobby = new Skat.Comm.Room();
-		Skat.Comm.lobby.bind('error', function (presence) {
-		});
-		Skat.Comm.lobby.bind('error-while-joining', function (presence) {
+		var lobby = $(Skat.Comm.lobby);
+		lobby.bind('error-while-joining', function (ev, presence) {
 			$(Skat.Comm).trigger('error-joining-lobby', presence);
 		});
-		Skat.Comm.lobby.bind('joined', function (presence) {
+		lobby.bind('joined', function (ev, presence) {
 			$(Skat).trigger('lobby-joined');
+			if ($(presence).find('status[code="201"]').length > 0) {
+				// ask if the lobby room should be created
+				var dlg = $('<div id="#confirm-lobby-create-dialog">The lobby at ' + 
+					Strophe.getBareJidFromJid($(presence).attr('from')) + 
+					' does not exist yet.  Create it?</div>');
+				dlg.dialog({
+					autoOpen: true,
+					title: 'Lobby does not exist',
+					buttons: {
+						'Create lobby': function () {
+							Skat.Comm.lobby.configure();
+							$(this).dialog('close');
+						},
+						'Abort': function () {
+							Skat.Comm.lobby.leave();
+							$(this).dialog('close');
+						}
+					}
+				});
+			}
 		});
-		Skat.Comm.lobby.bind('nick-changed', function (presence) {
-		});
-		Skat.Comm.lobby.bind('user-joined', function (presence) {
+		lobby.bind('user-joined', function (ev, presence) {
 			$(Skat).trigger('user-joined-lobby', {name: nick, status: $(presence).find('status').text()});
 		});
-		Skat.Comm.lobby.bind('user-presence', function (presence) {
-		});
-		Skat.Comm.lobby.bind('user-left', function (presence) {
-		});
-		Skat.Comm.lobby.bind('left', function (presence) {
-		});
 		Skat.Comm.lobby.join(lobby_address + "/" + nick, null, Skat.Comm.join_lobby_pres(lobby_address + "/" + nick)); 
-		/*Skat.Comm.lobby_jid = lobby_address + "/" + nick;
-		// add handler for presence from lobby room
-		var lobbyPresenceHandler = Skat.Comm.connection.addHandler(Skat.Comm.on_lobby_presence, null, "presence", null, null, Skat.Comm.lobby_jid, {matchBare: true});
-		// send presence to lobby room
-		var pres = Skat.Comm.join_lobby_pres(Skat.Comm.lobby_jid);
-		Skat.Comm.connection.send(pres);*/
 	},
 
-	/*on_lobby_presence: function (pres) {
-		var from = $(pres).attr('from');
-		var nick = Strophe.getResourceFromJid(from);
-
-		if ($(pres).attr('type') === 'error' && !Skat.lobby_entered) {
-			// error joining lobby
-			$(Skat.Comm).trigger('error-joining-lobby', pres);
-		} else if (!Skat.Comm.lobby_roster[nick] && $(pres).attr('type') !== 'unavailable') {
-			// add user to lobby roster
-			Skat.Comm.lobby_roster[nick] = true;
-			$(Skat).trigger('user-joined-lobby', {name: nick, status: $(pres).find('status').text()});
-		}
-
-		// check for our own presence
-		if ($(pres).attr('from') === Skat.Comm.lobby_jid) {
-			if ($(pres).attr('type') === 'unavailable') {
-				// we left the room...
-				return false; // don't need this handler anymore
-			}
-		}
-		if ($(pres).attr('type') !== 'error' && !Skat.lobby_entered) {
-			// this is indicated by status 110 or by 201 if the room is freshly created
-			if ($(pres).find('status[code="110"], status[code="201"]').length > 0) {
-				// check if the server changed our nick
-				if ($(pres).find("status[code='210']").length > 0) {
-					Skat.Comm.lobby_jid = from;
-				}
-
-				// lobby join complete
-				$(Skat).trigger('lobby-joined');
-			}
-		}
-
-		return true;
-	},*/
 
 	create_game: function (game_jid) {
 		// attempt to open a new MUC room for a fresh game
@@ -114,7 +85,8 @@ Skat.Comm = {
 	},
 
 	set_form_field: function (form, fieldvar, value) {
-		var field = form.find('field[var="' + fieldvar + '"]');
+		form.set(fieldvar, value);
+		/*var field = form.find('field[var="' + fieldvar + '"]');
 		if (field.length > 0) {
 			if (typeof value === "object") { // probably array
 				field.find('value').remove();
@@ -130,29 +102,24 @@ Skat.Comm = {
 		}
 		field.data('done', true);
 		field.attr('done', 'done');
-		return field;
+		return field;*/
 	},
 
 	set_roomconfig_form_field: function (form, varname, value) {
 		Skat.Comm.set_form_field(form, 'muc#roomconfig_' + varname, value);
 	},
 
-	// get XSLT dom trees for data form transformation to and from html
-	form2html_xslt: $.get("xslt/forms.xslt", function (xslt) { Skat.Comm.form2html_xslt = DOM.parse(xslt); }),
-
-	html2form_xslt: $.get('xslt/html-to-form.xslt', function (xslt) { Skat.Comm.html2form_xslt = DOM.parse(xslt); }),
-
 	// fills the dialog element with elements that can be used to fill out the form
 	// @form:  DOM node that contains the fields as children
 	build_dialog_from_fields: function (dialog, form, form_dom) {
-		var transformed = XSLT.transform(form, Skat.Comm.form2html_xslt);
-		$(dialog).append(transformed);
-		$(dialog).data('form-dom', form_dom || form);
+		new Skat.Comm.XMPP.DataForm(form_dom || form).fill_dialog(dialog);
 	},
 
 	configure_room: function (options) {
 		// fill in some options automatically and present the rest to the user
 		// finally send the configuration form
+		var options_jquery = options;
+		var options = new Skat.Comm.XMPP.DataForm(options);
 		$.map([['allowinvites', 0], ['changesubject', 0], ['enablelogging', 0], ['getmemberlist', ['moderator', 'participant']],
 			['pubsub', ''], ['moderatedroom', 0], ['passwordprotectedroom', 0], ['persistentroom', 0], 
 			['presencebroadcast', ['moderator', 'participant', 'visitor']], ['publicroom', 0], ['roomadmins', [Skat.Comm.connection.jid]],
@@ -162,6 +129,8 @@ Skat.Comm = {
 			});
 		var config_dialog = $('#game-config-dialog');
 		config_dialog.empty();
+		var dataform = options;
+		options = options_jquery;
 		// insert the option for members-only access manually
 		if (options.find('field[var="muc#roomconfig_membersonly"]').length > 0) {
 			options.find('field[var="muc#roomconfig_membersonly"]').data('done', true);
@@ -171,7 +140,8 @@ Skat.Comm = {
 			return !$(this).data('done'); // return true if done is false or undefined
 		});
 		var form = $('<x xmlns="jabber:x:data" type="query"></x>').append(fields);
-		Skat.Comm.build_dialog_from_fields(config_dialog, form.get(0), options);
+		Skat.Comm.build_dialog_from_fields(config_dialog, form.get(0), //options);
+			dataform);
 		// now prepend the members-only option
 		if (options.find('field[var="muc#roomconfig_membersonly"]').length > 0) {
 			config_dialog.find('tr:first').before('<tr><td><label>Require others to be approved by you</label></td><td><input id="muc#roomconfig_membersonly" type="checkbox"></td></tr>');
@@ -284,80 +254,6 @@ Skat.Comm = {
 	}
 }
 
-Skat.Comm.Room = function () {
-	this.room_jid = null;
-	this.nick = null;
-	this.my_jid = null;
-
-	this.joined = false;
-	this.roster = {};
-};
-
-Skat.Comm.Room.prototype.join = function (my_jid, password, initial_presence) {
-	/// attempts to join a room by sending initial presence
-	/// sets room_jid, nick and my_jid
-	this.room_jid = Strophe.getBareJidFromJid(my_jid);
-	this.nick = Strophe.getResourceFromJid(my_jid);
-	this.my_jid = my_jid;
-	Skat.Comm.connection.addHandler(this.presence_handler, null, 'presence', null, null, this.room_jid, {matchBare: true});
-	var pres = null;
-	if (!initial_presence) {
-		pres = $pres({to: this.my_jid}).c("x", {xmlns: Strophe.NS.MUC});
-		if (password) {
-			pres.c("password").t(password); // append password element to x element
-		}
-	}
-	Skat.Comm.connection.send(initial_presence || pres);
-};
-
-Skat.Comm.Room.prototype.presence_handler = function (presence) {
-	/// this is the default presence handler for MUC rooms that are managed by Skat.Comm.Room
-	var from = $(presence).attr('from');
-	var type = $(presence).attr('type');
-
-	if ($(presence).find('status[code="210"]')) {
-		// server changed our nick
-		this.my_jid = from;
-		$(this).trigger('nick-changed', presence);
-	}
-
-	if (type === 'error') {
-		if (!this.joined) {
-			$(this).trigger('error-while-joining', presence);
-		} else {
-			$(this).trigger('error', presence);
-		}
-	} else if (from === this.my_jid || $(presence).find('status[code="110"]').length > 0) {
-		// our own presence
-		if (type === 'unavailable') {
-			// officially logged out
-			this.joined = false;
-			$(this).trigger('left', presence);
-			return false; // hence, this handler is obsolete
-		} else if ($(presence).find('status[code="110"], status[code="201"]').length > 0) {
-			if (!this.joined) {
-				this.joined = true;
-				$(this).trigger('joined', presence);
-			}
-		}
-	} else {
-		// someone else's presence
-		var nick = Strophe.getResourceFromJid(from);
-		if (type === 'unavailable') {
-			delete this.roster[nick];
-			$(this).trigger('user-left', {nick: nick, jid: from, presence: presence});
-		} else {
-			if (!this.roster[nick]) {
-				this.roster[nick] = presence;
-				$(this).trigger('user-joined', presence);
-			} else {
-				this.roster[nick] = presence;
-				$(this).trigger('user-presence', presence);
-			}
-		}
-	}
-	return true;
-};
 
 $(function () {
 	// load the xmpp console
