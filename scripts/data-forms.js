@@ -29,7 +29,7 @@ Skat.Comm.XMPP.DataForm.prototype = {
 
 	to_html: function () {
 		// transform the form into an html table
-		return XSLT.transform(this.form_dom, Skat.Comm.XMPP.DataForm.prototype.html_xslt);
+		return XSLT.transform(this.form_dom.ownerDocument, Skat.Comm.XMPP.DataForm.prototype.html_xslt);
 	},
 
 	set: function (varname, value) {
