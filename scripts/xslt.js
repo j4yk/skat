@@ -43,17 +43,21 @@ DOM = {
 		} else if (node2 === undefined) {
 			return node1 === undefined;
 		}
-		for (var property in node1) {
-			// check atomic properties (nodeValue, nodeName etc.)
-			if (typeof node1[property] in {string: 1, number: 1, boolean: 1}) {
-				if (node1[property] !== node2[property]) return false;
+		var result = null;
+		$.map(["localName", "nodeValue", "textContent", "namespaceURI", "childElementCount"], function (property) {
+			if (node1[property] !== node2[property]) {
+				result = false;
+				return false;
 			}
-		}
+		});
+		if (result === false) return result;
 		// check attributes
 		var attributes1 = node1.attributes;
 		var attributes2 = node2.attributes;
 		if (attributes1 === null) {
 			if (attributes2 !== null) return false;
+		} else if (attributes2 === null) {
+			return false;
 		} else {
 			if (attributes1.length !== attributes2.length) return false;
 			for (var i = 0; i < attributes1.length; i++) {
@@ -83,18 +87,22 @@ DOM = {
 		} else if (node2 === undefined) {
 			return node1 === undefined ? null : [node1, node2];
 		}
-		for (var property in node1) {
+		var result = null;
+		$.map(["localName", "nodeValue", "textContent", "namespaceURI", "childElementCount"], function (property) {
 			// check atomic properties (nodeValue, nodeName etc.)
-			if (typeof node1[property] in {string: 1, number: 1, boolean: 1}) {
-				if (node1[property] !== node2[property])
-					return [node1, node2, property];
+			if (node1[property] !== node2[property]) {
+				result = [node1, node2, property];
+				return;
 			}
-		}
+		});
+		if (result) return result;
 		// check attributes
 		var attributes1 = node1.attributes;
 		var attributes2 = node2.attributes;
 		if (attributes1 === null) {
 			if (attributes2 !== null) return [node1, node2, 'attributes'];
+		} else if (attributes2 === null) {
+			return [node1, node2, 'attributes'];
 		} else {
 			if (attributes1.length !== attributes2.length)
 				return [node1, node2, 'attributes'];
