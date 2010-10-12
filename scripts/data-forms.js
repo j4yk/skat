@@ -9,16 +9,16 @@ Skat.Comm.XMPP.DataForm = function (form_dom) {
 
 Skat.Comm.XMPP.DataForm.prototype = {
 	// get XSLT dom trees for data form transformation to and from html
-	html_xslt: $.get("xslt/forms.xslt", function (xslt) {
-		Skat.Comm.XMPP.DataForm.prototype.html_xslt = DOM.parse(xslt);
+	html_xslt: $.get("xslt/forms.xsl", function (xslt) {
+		Skat.Comm.XMPP.DataForm.prototype.html_xslt = xslt;
 		Skat.Comm.XMPP.DataForm.prototype.html_xslt_ready = true;
-	}),
+	}, "xml"),
 	html_xslt_ready: false,
 
-	form_xslt: $.get('xslt/html-to-form.xslt', function (xslt) {
-		Skat.Comm.XMPP.DataForm.prototype.form_xslt = DOM.parse(xslt);
+	form_xslt: $.get('xslt/html-to-form.xsl', function (xslt) {
+		Skat.Comm.XMPP.DataForm.prototype.form_xslt = xslt;
 		Skat.Comm.XMPP.DataForm.prototype.form_xslt_ready = true;
-	}),
+	}, "xml"),
 	form_xslt_ready: false,
 
 	ready: function () {
