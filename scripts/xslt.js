@@ -20,7 +20,7 @@ DOM = {
 			// Internet Explorer
 			var doc = new ActiveXObject("Microsoft.XMLDOM");
 			doc.async = "false";
-			doc.loadXML(text);
+			doc.loadXML(str);
 			return doc;
 		}
 	},
