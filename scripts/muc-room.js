@@ -2,6 +2,7 @@
    implements generic MUC room actions
 
    triggers the following events on itself:
+   - created               created the room
    - joined                successfully joined the room
    - left                  left the room
    - nick-changed          nickname has changed
@@ -102,7 +103,11 @@ Skat.Comm.Room.prototype.presence_handler = function (presence) {
 		} else if ($(presence).find('status[code="110"], status[code="201"]').length > 0) {
 			if (!this.joined) {
 				this.joined = true;
-				$(this).trigger('joined', presence);
+				if ($(presence).find('status[code="201"]').length > 0) {
+					$(this).trigger('created', presence);
+				} else {
+					$(this).trigger('joined', presence);
+				}
 			}
 		}
 	} else {
