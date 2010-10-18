@@ -11,6 +11,7 @@
    - presence              some presence arrived
    - user-joined           a user joined the room
    - user-left             a user left the room
+   - awaits-configuration  room-configuration form received and prefilled
    - room-configured       successfully configured the room
    - error-while-configuring   an error was send back when the configuration form should be received
 */
@@ -66,6 +67,12 @@ Skat.Comm.Room.prototype.configure = function (enforced_values, default_values, 
 			// form retrieved
 			if ($(iq).attr('type' === 'result') && $(iq).find('x[xmlns="jabber:x:data"][type="form"]').length > 0) {
 				// prefill form and display the rest to the user
+				var form = new Skat.Comm.XMPP.DataForm($(iq).find('x[xmlns="jabber:x:data"]'));
+				form.set(enforced_values).set(default_values);
+				var subset = form.filter(function () {
+					return !($(this).attr('var') in enforced_values);
+				});
+				$(this).trigger('awaits-configuration', subset);
 			} else {
 				$(this).trigger('error-while-configuring', { reason: 'no configuration form' });
 			}
