@@ -44,7 +44,7 @@ DOM = {
 			return node1 === undefined;
 		}
 		var result = null;
-		$.map(["localName", "nodeValue", "textContent", "namespaceURI", "childElementCount"], function (property) {
+		$.map(["nodeName", "nodeValue", "textContent", "childElementCount"], function (property) {
 			if (node1[property] !== node2[property]) {
 				result = false;
 				return false;
