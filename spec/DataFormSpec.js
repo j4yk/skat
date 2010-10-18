@@ -85,4 +85,24 @@ describe('Data Form handling', function () {
 				jasmine.log([diff[0][diff[2]], diff[1][diff[2]]].join(" !== "));
 		}
 	});
+
+	it('can set multiple fields in a form', function () {
+		var expdom = new Strophe.Builder("x", {xmlns: "jabber:x:data", type: "form"})
+		.c("field", {"var": "a", "type": "boolean"}).c("value").t("1").up().up()
+		.c("field", {"var": "b", "type": "text-single"}).c("value").t("bla").up().up()
+		.c("field", {"var": "c", "type": "text-multi"}).c("value").t("A").up().c("value").t("B").tree();
+		test_form.set({
+			a: true,
+			b: "bla",
+			c: ['A', 'B']
+		});
+		expect(DOM.treeEquals(expdom, test_form.submit_dom)).toBeTruthy();
+		var diff = DOM.differenceNode(expdom, test_form.submit_dom);
+		if (diff) {
+			jasmine.log(diff[0].localName);
+			jasmine.log(diff[2]);
+			if (typeof diff[2] === "string")
+				jasmine.log([diff[0][diff[2]], diff[1][diff[2]]].join(" !== "));
+		}
+	});
 });

@@ -32,35 +32,94 @@ Skat.Comm.XMPP.DataForm.prototype = {
 		return XSLT.transform(this.form_dom.ownerDocument, Skat.Comm.XMPP.DataForm.prototype.html_xslt);
 	},
 
-	set: function (varname, value) {
-		// set the value of a form field
-		var field = $(this.submit_dom).find('field[var="' + varname + '"]');
-		if (field.length > 0) {
-			if (typeof value === "object") { // probably array
-				field.find('value').remove();
-				$.map(value, function (value) {
-					var elm = DOM.build('value', 'jabber:x:data').t(value).tree();
-					field.append(field[0].ownerDocument.adoptNode(elm));
-				});
-			} else if (field.find('value').length > 0) {
-				if (typeof value === "boolean") {
-					field.find('value').text(value ? '1' : '0');
+	set: function (varname_or_object, value) {
+		if (typeof varname_or_object === "string") {
+			var varname = varname_or_object;
+			// set the value of a form field
+			var field = $(this.submit_dom).find('field[var="' + varname + '"]');
+			if (field.length > 0) {
+				if (typeof value === "object") { // probably array
+					field.find('value').remove();
+					$.map(value, function (value) {
+						var elm = DOM.build('value', 'jabber:x:data').t(value).tree();
+						field.append(field[0].ownerDocument.adoptNode(elm));
+					});
+				} else if (field.find('value').length > 0) {
+					if (typeof value === "boolean") {
+						field.find('value').text(value ? '1' : '0');
+					} else {
+						field.find('value').text(value);
+					}
 				} else {
-					field.find('value').text(value);
+					// insert value
+					var val = DOM.build('value', 'jabber:x:data').t(value).tree();
+					field.append(field[0].ownerDocument.adoptNode(val));
 				}
-			} else {
-				// insert value
-				var val = DOM.build('value', 'jabber:x:data').t(value).tree();
-				field.append(field[0].ownerDocument.adoptNode(val));
 			}
+			field.data('done', true);
+			// field.attr('done', 'done');
+			return this;
+		} else if (typeof varname_or_object === "object") {
+			var values = varname_or_object;
+			// values contains an object which shall be used as key-value store
+			for (var k in values) {
+				if (values.hasOwnProperty(k)) {
+					// set the values one after another
+					this.set(k, values[k]);
+				}
+			}
+			return this;
 		}
-		field.data('done', true);
-		// field.attr('done', 'done');
-		return this;
 	},
 
 	fill_dialog: function (dialog) {
 		$(dialog).append(this.to_html());
 		$(dialog).data('form-dom', this.form_dom);
+	},
+
+	add_field: function (name, type, value) {
+		if ($(this.submit_dom).find('field[var="' + name + '"]').length === 0) {
+			var field = new Strophe.Builder("field", {"var": name, type: type});
+			if (typeof value === "object") {
+				$.map(value, function (value) {
+					field.c("value").t("" + value).up();
+				});
+			} else {
+				field.c("value").t("" + value).up();
+			}
+			$(this.submit_dom).find('x[xmlns="jabber:x:data"]').append(field.toString());
+		} else {
+			throw "Skat.Comm.XMPP.DataForm.add_field: field exists.";
+		}
+		return this;
+	},
+
+	/// Return a form which contains a subset of the fields in this form
+	filter: function (filter) {
+		if (typeof filter === "function") {
+			var newform = new Skat.Comm.XMPP.DataForm($(this.submit_dom).clone()[0]);
+			$(newform.submit_dom).find('field[var]').filter(function (index) {
+				return !filter.call(this, index);
+			}).remove();
+			return newform;
+		} else {
+			throw "Skat.Comm.XMPP.DataForm.filter:  not implemented for typeof filter !== function"
+		}
+	},
+
+	/// Insert fields from other form into this form
+	merge: function (otherform, overwrite) {
+		var thisform = $(this.submit_dom);
+		$(otherform.submit_dom).find('field[var]').each(function () {
+			var thisfield = thisform.find('field[var="' + $(this).attr('var') + '"]');
+			if (thisfield.length > 0) {
+				if (overwrite) {
+					thisfield.remove();
+					thisform.append($(this).clone());
+				}
+			} else {
+				thisform.append($(this).clone());
+			}
+		});
 	}
 }
