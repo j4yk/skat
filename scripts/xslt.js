@@ -88,7 +88,7 @@ DOM = {
 			return node1 === undefined ? null : [node1, node2];
 		}
 		var result = null;
-		$.map(["localName", "nodeValue", "textContent", "namespaceURI", "childElementCount"], function (property) {
+		$.map(["nodeName", "nodeValue", "textContent", "childElementCount"], function (property) {
 			// check atomic properties (nodeValue, nodeName etc.)
 			if (node1[property] !== node2[property]) {
 				result = [node1, node2, property];

@@ -79,18 +79,18 @@ describe('DOM helper functions', function () {
 		elm1 = DOM.parse('<foo xmlns="x" />').documentElement;
 		elm2 = DOM.parse('<foo xmlns="y" />').documentElement;
 		diff = DOM.differenceNode(elm1, elm2);
-		expect(diff[0]).toBe(elm1);
-		expect(diff[1]).toBe(elm2);
-		expect(diff[2]).toBe('namespaceURI');
+		expect(diff[0]).toBe(elm1.attributes[0]);
+		expect(diff[1]).toBe(elm2.attributes[0]);
+		expect(diff[2]).toBe(elm1);
 	});
 
-	it('can find children node differnces', function () {
+	it('can find children node differences', function () {
 		var elm1 = DOM.parse('<foo><bar /></foo>').documentElement;
 		var elm2 = DOM.parse('<foo><baz /></foo>').documentElement;
 		var diff = DOM.differenceNode(elm1, elm2);
 		expect(diff[0]).toBe(elm1.childNodes[0]);
 		expect(diff[1]).toBe(elm2.childNodes[0]);
-		expect(diff[2]).toBe('localName');
+		expect(diff[2]).toBe('nodeName');
 
 		var elm3 = DOM.parse('<foo />').documentElement;
 		var elm4 = DOM.parse('<foo><bar /><baz /></foo>').documentElement;
