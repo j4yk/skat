@@ -9,7 +9,7 @@ describe('Data Form handling', function () {
 			'<field var="e" type="list-single" label="single list"><option>A</option><option>B</option><value>B</value></field>' +
 			'<field var="f" type="list-multi" label="multi list"><option label="A">a</option><option label="B">b</option><option>C</option><value>a</value><value>C</value></field>' +
 			'<field var="g" type="text-private" label="Password" />' + 
-			'</x>');
+			'</x>').documentElement;
 		// make DataForm
 		form = new Skat.Comm.XMPP.DataForm(form);
 		// wait for XSLT
@@ -59,6 +59,14 @@ describe('Data Form handling', function () {
 		'<field var="c" type="text-multi"><value>1</value><value>2</value></field>' +
 		'</x>').documentElement);
 
+	beforeEach(function () {
+		test_form = new Skat.Comm.XMPP.DataForm(DOM.parse('<x xmlns="jabber:x:data" type="form">' +
+			'<field var="a" type="boolean"><value>0</value></field>' +
+			'<field var="b" type="text-single"><value>foo</value></field>' +
+			'<field var="c" type="text-multi"><value>1</value><value>2</value></field>' +
+			'</x>').documentElement);
+	});
+
 	it('has correctly initialized properties', function () {
 		expect(test_form.form_dom).toBeDefined();
 		expect(test_form.submit_dom).toBeDefined();
@@ -98,7 +106,7 @@ describe('Data Form handling', function () {
 		}
 	});
 
-	it('can set multiple fields in a form', function () {
+	it('can set multiple fields in a form at once', function () {
 		var expdom = new Strophe.Builder("x", {xmlns: "jabber:x:data", type: "form"})
 		.c("field", {"var": "a", "type": "boolean"}).c("value").t("1").up().up()
 		.c("field", {"var": "b", "type": "text-single"}).c("value").t("bla").up().up()
@@ -116,5 +124,45 @@ describe('Data Form handling', function () {
 			if (typeof diff[2] === "string")
 				jasmine.log([diff[0][diff[2]], diff[1][diff[2]]].join(" !== "));
 		}
+	});
+
+	it('can filter form fields (new forms are created)', function () {
+		var newform = test_form.filter(function () { return $(this).attr('var') === "a" || $(this).attr('type') === "text-multi"; });
+		expect(test_form.submit_dom.childElementCount).toBe(3); // original untouched
+		var expdom = new Strophe.Builder("x", {xmlns: "jabber:x:data", type: "form"})
+		.c('field', {'var': 'a', type: 'boolean'}).c('value').t('0').up().up()
+		.c('field', {'var': 'c', type: 'text-multi'}).c('value').t('1').up().c('value').t('2').tree();
+		expect(DOM.treeEquals(newform.submit_dom, expdom)).toBeTruthy();
+		var diff = DOM.differenceNode(expdom, newform.submit_dom);
+		if (diff) {
+			jasmine.log(diff[0].nodeName);
+			jasmine.log(diff[2]);
+			if (typeof diff[2] === "string")
+				jasmine.log([diff[0][diff[2]], diff[1][diff[2]]].join(" !== "));
+		}
+	});
+
+	it('can merge two forms together without overwriting', function () {
+		var secondform = new Skat.Comm.XMPP.DataForm(new Strophe.Builder('x', {xmlns: 'jabber:x:data', type: 'form'})
+		.c('field', {'var': 'd', type: 'text-private'}).c('value').t('foo').up().up()
+		.c('field', {'var': 'c', type: 'text-single'}).c('value').t('bla').tree());
+		test_form.merge(secondform);
+		expect(test_form.field('a')).toBeTruthy();
+		expect(test_form.field('b')).toBe('foo');
+		expect($(test_form.submit_dom).find('field[var="c"]').attr('type')).toBe('text-multi');
+		expect(test_form.field('c')).toEqual(['1', '2']);
+		expect(test_form.field('d')).toBe('foo');
+	});
+
+	it('can merge two forms together with overwriting', function () {
+		var secondform = new Skat.Comm.XMPP.DataForm(new Strophe.Builder('x', {xmlns: 'jabber:x:data', type: 'form'})
+		.c('field', {'var': 'd', type: 'text-private'}).c('value').t('foo').up().up()
+		.c('field', {'var': 'c', type: 'text-single'}).c('value').t('bla').tree());
+		test_form.merge(secondform, true);
+		expect(test_form.field('a')).toBeTruthy();
+		expect(test_form.field('b')).toBe('foo');
+		expect($(test_form.submit_dom).find('field[var="c"]').attr('type')).toBe('text-single');
+		expect(test_form.field('c')).toBe('bla');
+		expect(test_form.field('d')).toBe('foo');
 	});
 });
