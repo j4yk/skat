@@ -72,6 +72,25 @@ Skat.Comm.XMPP.DataForm.prototype = {
 		}
 	},
 
+	field: function (varname, value) {
+		if (value !== undefined) {
+			this.set(varname, value);
+		} else {
+			// get this field
+			var field = $(this.submit_dom).find('field[var="' + varname + '"]');
+			if (field.length > 0) {
+				var values = field.find('value');
+				if (values.length === 1) {
+					return values.text();
+				} else if (values.length > 1) {
+					return $.map(values, function (value) { return $(value).text(); });
+				} else {
+					return null;
+				}
+			}
+		}
+	},
+
 	fill_dialog: function (dialog) {
 		$(dialog).append(this.to_html());
 		$(dialog).data('form-dom', this.form_dom);

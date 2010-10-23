@@ -65,6 +65,18 @@ describe('Data Form handling', function () {
 		expect(DOM.treeEquals(test_form.query_dom, test_form.submit_dom));
 	});
 
+	describe('field method', function () {
+		it('allows to read fields', function () {
+			expect(test_form.field('a')).toBe('0');
+			expect(test_form.field('b')).toBe('foo');
+			expect(test_form.field('c')).toEqual(['1', '2']);
+		});
+
+		it('returns undefined on undefined fields', function () {
+			expect(test_form.field('d')).not.toBeDefined();
+		});
+	});
+
 	it('can set fields in a form', function () {
 		var expdom = DOM.parse('<x xmlns="jabber:x:data" type="form">' +
 			'<field var="a" type="boolean"><value>1</value></field>' +
