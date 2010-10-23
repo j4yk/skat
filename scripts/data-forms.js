@@ -140,5 +140,14 @@ Skat.Comm.XMPP.DataForm.prototype = {
 				thisform.append($(this).clone());
 			}
 		});
+	},
+
+	// copy the form, strip the unneccecary attributes and elements and change its type, then return the dom
+	submit: function () {
+		var form = $(this.submit_dom).clone();
+		var fields = form.find('field');
+		fields.removeAttr('type').removeAttr('label').find('option').remove();
+		form.attr('type', 'submit');
+		return form[0];
 	}
 }

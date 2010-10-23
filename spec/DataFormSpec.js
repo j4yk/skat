@@ -165,4 +165,22 @@ describe('Data Form handling', function () {
 		expect(test_form.field('c')).toBe('bla');
 		expect(test_form.field('d')).toBe('foo');
 	});
+
+	it('can strip down a form for submission', function () {
+		var sf = test_form.submit();
+		expect(sf).toBeDefined();
+		expect(jasmine.isDomNode(sf)).toBeTruthy();
+		expect(sf.nodeName).toBe('x');
+		expect($(sf).attr('xmlns')).toBe('jabber:x:data');
+		expect($(sf).attr('type')).toBe('submit');
+		// label and type attributes removed
+		expect($('field[label]', sf).length).toBe(0);
+		expect($('field[type]', sf).length).toBe(0);
+		// no more options
+		expect($('field option', sf).length).toBe(0);
+		// all fields must have a var attribute
+		expect($('field[var]', sf).length).toBe($('field', sf).length);
+		// test_form unchanged
+		expect($('field[type]', test_form.submit_dom).length).toBe(3);
+	});
 });
